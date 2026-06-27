@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Profile - Hostel ERP</title>
+  
+  <!-- CSS Library -->
+  <link rel="stylesheet" href="../../css/variables.css">
+  <link rel="stylesheet" href="../../css/global.css">
+  <link rel="stylesheet" href="../../css/components.css">
+  <link rel="stylesheet" href="../../css/student.css">
+  
+  <!-- FontAwesome & Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body class="theme-light" data-root-path="../../">
+
+  <div class="app-container">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+    
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Navbar -->
+      <div id="navbar-container"></div>
+      
+      <!-- Page Body -->
+      <div class="page-body">
+        <div class="container-fluid">
+          
+          <!-- Header -->
+          <div style="margin-bottom: 2rem;">
+            <h2 style="font-size: 1.5rem; font-weight: 800; background: linear-gradient(135deg, var(--text-primary) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">My Profile</h2>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">View and verify your registered campus details</p>
+          </div>
+
+          <div class="row">
+            <!-- Left Bio Card -->
+            <div class="col-md-4">
+              <div class="glass-card text-center" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2.5rem 1.5rem;">
+                <div id="profile-avatar-big" style="width: 100px; height: 100px; border-radius: 50%; background: var(--grad-primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: 800; margin-bottom: 1.5rem; box-shadow: 0 8px 24px rgba(124, 58, 237, 0.3);">
+                  R
+                </div>
+                
+                <h3 id="profile-name" style="font-size: 1.2rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem;">Student Name</h3>
+                <span class="badge badge-present" style="margin-bottom: 1.5rem;">Hosteller</span>
+                
+                <div style="width: 100%; border-top: 1px solid var(--border-color); padding-top: 1.5rem; text-align: left; display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.8rem; color: var(--text-muted);">
+                  <div>
+                    <i class="fa-solid fa-hotel" style="margin-right: 0.5rem; color: var(--primary);"></i>
+                    <span>Campus Residence: <strong id="profile-residence-card">—</strong></span>
+                  </div>
+                  <div>
+                    <i class="fa-solid fa-graduation-cap" style="margin-right: 0.5rem; color: var(--primary);"></i>
+                    <span>Student Status: <strong id="profile-status-card">—</strong></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Details Card -->
+            <div class="col-md-8">
+              <div class="glass-card">
+                <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;"><i class="fa-solid fa-id-card-clip" style="margin-right: 0.5rem; color: var(--primary);"></i>Registration Credentials</h3>
+                
+                <div class="profile-info-grid">
+                  <!-- Name -->
+                  <div class="profile-info-item">
+                    <span class="profile-info-label">Full Name</span>
+                    <span class="profile-info-value" id="profile-name-detail">—</span>
+                  </div>
+                  
+                  <!-- Reg Number -->
+                  <div class="profile-info-item">
+                    <span class="profile-info-label">Register Number</span>
+                    <span class="profile-info-value" id="profile-reg">—</span>
+                  </div>
+
+                  <!-- Dept -->
+                  <div class="profile-info-item">
+                    <span class="profile-info-label">Department</span>
+                    <span class="profile-info-value" id="profile-dept">—</span>
+                  </div>
+
+                  <!-- Room -->
+                  <div class="profile-info-item">
+                    <span class="profile-info-label">Allocated Room</span>
+                    <span class="profile-info-value" id="profile-room">—</span>
+                  </div>
+
+                  <!-- Email -->
+                  <div class="profile-info-item">
+                    <span class="profile-info-label">Registered Email</span>
+                    <span class="profile-info-value" id="profile-email">—</span>
+                  </div>
+
+                  <!-- Student Phone -->
+                  <div class="profile-info-item">
+                    <span class="profile-info-label">Student Phone</span>
+                    <span class="profile-info-value" id="profile-student-phone">—</span>
+                  </div>
+
+                  <!-- Parent Phone -->
+                  <div class="profile-info-item">
+                    <span class="profile-info-label">Parent Phone</span>
+                    <span class="profile-info-value" id="profile-parent-phone">—</span>
+                  </div>
+
+                  <!-- Gender -->
+                  <div class="profile-info-item">
+                    <span class="profile-info-label">Gender</span>
+                    <span class="profile-info-value" id="profile-gender">—</span>
+                  </div>
+
+                  <!-- Date of Birth -->
+                  <div class="profile-info-item">
+                    <span class="profile-info-label">Date of Birth</span>
+                    <span class="profile-info-value" id="profile-dob">—</span>
+                  </div>
+
+                  <!-- Parent Name -->
+                  <div class="profile-info-item">
+                    <span class="profile-info-label">Parent Name</span>
+                    <span class="profile-info-value" id="profile-parent-name">—</span>
+                  </div>
+
+                  <!-- Bed Number -->
+                  <div class="profile-info-item">
+                    <span class="profile-info-label">Bed Number</span>
+                    <span class="profile-info-value" id="profile-bed">—</span>
+                  </div>
+
+                  <!-- Address -->
+                  <div class="profile-info-item" style="grid-column: span 2;">
+                    <span class="profile-info-label">Address</span>
+                    <span class="profile-info-value" id="profile-address">—</span>
+                  </div>
+                </div>
+
+                <div style="margin-top: 2rem; background: var(--bg-primary); padding: 1.25rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5;">
+                  <strong>Need to update details?</strong> Profile changes must be authorized by the college administration. Please raise a request with the Administrative Officer (AO) along with valid identity proofs.
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      
+      <!-- Footer -->
+      <div id="footer-container"></div>
+    </main>
+  </div>
+
+  <!-- Scripts -->
+  <script src="../../js/utils.js"></script>
+  <script src="../../js/auth.js"></script>
+  <script src="../../js/notifications.js"></script>
+  <script src="../../js/app.js"></script>
+  <script src="../../js/student.js"></script>
+  <script>
+    // Extra sync because we had name detail twice
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        const user = HMSAuth.getCurrentUser();
+        if (user && document.getElementById('profile-name-detail')) {
+          document.getElementById('profile-name-detail').textContent = user.name;
+        }
+      }, 300);
+    });
+  </script>
+</body>
+</html>

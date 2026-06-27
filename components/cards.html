@@ -1,0 +1,33 @@
+<!-- Reference / Template file for cards (Not injected directly, used for codebase reference) -->
+
+<!-- 1. Stats Card Template -->
+<div class="glass-card stat-card">
+  <div class="stat-icon">
+    <i class="fa-solid fa-users"></i>
+  </div>
+  <div class="stat-info">
+    <span class="stat-label">Total Students</span>
+    <span class="stat-value" id="stats-total-students">0</span>
+  </div>
+</div>
+
+<!-- 2. Chart Card Template -->
+<div class="glass-card">
+  <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+    <h3 style="font-size: 1rem; font-weight: 700;">Student Demographics</h3>
+    <div class="card-actions">
+      <!-- Options dropdown or action icons -->
+    </div>
+  </div>
+  <div class="card-body">
+    <canvas id="demographics-chart"></canvas>
+  </div>
+</div>
+
+<!-- 3. General Informational Card -->
+<div class="glass-card">
+  <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.75rem;">Important Guidelines</h3>
+  <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">
+    All students must mark attendance before 9:00 PM. Leave requests must be submitted at least 24 hours in advance.
+  </p>
+</div>

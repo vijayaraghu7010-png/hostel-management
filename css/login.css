@@ -1,0 +1,143 @@
+/* --- Login Page Styles --- */
+
+.login-body {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 10% 20%, rgba(79, 70, 229, 0.1) 0%, transparent 40%),
+              radial-gradient(circle at 90% 80%, rgba(217, 70, 239, 0.1) 0%, transparent 40%),
+              #070a13;
+  color: #fff;
+  font-family: var(--font-primary);
+  padding: 1rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  position: relative;
+}
+
+/* Background animated glow mesh */
+.login-bg-glow {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  right: -50%;
+  bottom: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(ellipse at center, rgba(124, 58, 237, 0.08) 0%, transparent 60%);
+  animation: spin 30s linear infinite;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.login-container {
+  width: 100%;
+  max-width: 440px;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--border-radius-lg);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+  padding: 2.5rem;
+  z-index: 10;
+  animation: pageFadeIn 0.8s ease forwards;
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.login-logo {
+  width: 60px;
+  height: 60px;
+  border-radius: var(--border-radius-sm);
+  background: var(--grad-primary);
+  margin: 0 auto 1rem auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.75rem;
+  font-weight: 800;
+  box-shadow: 0 4px 20px rgba(124, 58, 237, 0.5);
+  color: #fff;
+}
+
+.login-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  margin-bottom: 0.25rem;
+  background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.login-subtitle {
+  font-size: 0.8rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+/* Password Input field wrapper */
+.password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-wrapper input {
+  padding-right: 2.75rem;
+  width: 100%;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 1rem;
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  font-size: 0.95rem;
+  transition: color var(--transition-fast);
+}
+
+.password-toggle:hover {
+  color: #fff;
+}
+
+/* Role Selector dropdown custom styling */
+.login-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 1em;
+  padding-right: 2.5rem;
+}
+
+.login-form-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.forgot-link {
+  font-size: 0.8rem;
+  color: #818cf8;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color var(--transition-fast);
+}
+
+.forgot-link:hover {
+  color: #a5b4fc;
+}
+
+.login-btn {
+  width: 100%;
+  margin-top: 0.5rem;
+}

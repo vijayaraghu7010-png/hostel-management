@@ -1,0 +1,9 @@
+/* HOD specific styling overrides */
+.department-filter {
+  margin-bottom: 2rem;
+}
+.chart-container {
+  position: relative;
+  height: 300px;
+  width: 100%;
+}

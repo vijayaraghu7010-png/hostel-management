@@ -1,0 +1,168 @@
+/* --- Global Styles & Layout Framework --- */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-primary);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+  transition: background-color var(--transition-normal), color var(--transition-normal);
+}
+
+/* App Container Layout */
+.app-container {
+  display: flex;
+  min-height: 100vh;
+  position: relative;
+}
+
+/* Sidebar Wrapper */
+#sidebar-container {
+  width: var(--sidebar-width);
+  flex-shrink: 0;
+  z-index: 100;
+  transition: width var(--transition-normal);
+}
+
+/* Main Workspace */
+.main-content {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-width: 0; /* Prevents flex children from breaking parent bounds */
+  transition: padding-left var(--transition-normal);
+}
+
+/* Page Content Body */
+.page-body {
+  flex-grow: 1;
+  padding: 2rem;
+  animation: pageFadeIn var(--transition-slow) forwards;
+}
+
+/* Common Layout Utilities */
+.container-fluid {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Scrollbar Customization */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+/* --- Core Animations --- */
+
+@keyframes pageFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .5;
+  }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes modalZoom {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Skeleton Loading utility class */
+.skeleton {
+  animation: pulse 1.5s infinite ease-in-out;
+  background-color: var(--border-color);
+  border-radius: var(--border-radius-sm);
+  color: transparent !important;
+  pointer-events: none;
+}
+
+/* Utility to hide elements */
+.hidden {
+  display: none !important;
+}
+
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+
+.text-primary-color { color: var(--primary); }
+.text-success { color: var(--success); }
+.text-warning { color: var(--warning); }
+.text-danger { color: var(--danger); }
+.text-muted { color: var(--text-muted); }
+
+/* Sticky footer placement utility */
+footer {
+  margin-top: auto;
+}
+
+@media (max-width: 768px) {
+  .page-body {
+    padding: 1rem;
+  }
+}

@@ -1,0 +1,72 @@
+<div class="navbar">
+  <button class="nav-btn" id="sidebar-toggle-btn" title="Toggle Sidebar">
+    <i class="fa-solid fa-bars"></i>
+  </button>
+  <div class="nav-title" id="navbar-page-title">
+    Dashboard
+  </div>
+  
+  <div class="nav-actions">
+    <!-- Search Bar -->
+    <div class="nav-search">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <input type="text" placeholder="Search records..." id="global-search-input">
+    </div>
+    
+    <!-- Theme Toggle -->
+    <button class="nav-btn" id="theme-toggle-btn" title="Toggle Dark/Light Mode">
+      <i class="fa-solid fa-moon"></i>
+    </button>
+    
+    <!-- Notifications Menu -->
+    <div style="position: relative;">
+      <button class="nav-btn" id="notification-bell-btn" title="Notifications">
+        <i class="fa-solid fa-bell"></i>
+        <span class="badge-dot hidden" id="notification-dot"></span>
+      </button>
+      
+      <!-- Notifications Dropdown -->
+      <div class="dropdown-menu" id="notifications-dropdown">
+        <div class="dropdown-header">Notifications</div>
+        <div class="notification-list" id="navbar-notification-list">
+          <!-- Populated by JS -->
+          <div class="dropdown-item text-center text-muted" style="font-size: 0.75rem;">
+            No new notifications
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Profile Menu -->
+    <div style="position: relative;">
+      <div class="user-profile" id="user-profile-menu-btn">
+        <div class="user-avatar" id="navbar-user-avatar">
+          U
+        </div>
+        <div class="user-info">
+          <span class="user-name" id="navbar-user-name">User Name</span>
+          <span class="user-role" id="navbar-user-role">Role</span>
+        </div>
+        <i class="fa-solid fa-chevron-down" style="font-size: 0.7rem; color: var(--text-muted);"></i>
+      </div>
+      
+      <!-- Profile Dropdown -->
+      <div class="dropdown-menu" id="profile-dropdown">
+        <div class="dropdown-header">Account Management</div>
+        <button class="dropdown-item" id="btn-profile-redirect">
+          <i class="fa-solid fa-user-gear"></i>
+          <span>View Profile</span>
+        </button>
+        <button class="dropdown-item" id="btn-logout-navbar">
+          <i class="fa-solid fa-right-from-bracket text-danger"></i>
+          <span class="text-danger">Sign Out</span>
+        </button>
+      </div>
+    </div>
+    
+    <!-- Direct Quick Logout Button -->
+    <button class="nav-btn" id="btn-logout-direct" title="Sign Out" style="color: var(--danger);">
+      <i class="fa-solid fa-right-from-bracket"></i>
+    </button>
+  </div>
+</div>

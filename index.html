@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Hostel Management System</title>
+  
+  <!-- CSS Library -->
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/global.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/login.css">
+  
+  <!-- FontAwesome & Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body class="theme-light login-body">
+
+  <!-- Background animated glow -->
+  <div class="login-bg-glow"></div>
+
+  <!-- Wrapper to display cards side-by-side on desktop and stacked on mobile -->
+  <div style="display: flex; gap: 2rem; max-width: 900px; width: 100%; flex-wrap: wrap; justify-content: center; align-items: stretch; z-index: 10; padding: 1rem;">
+    
+    <!-- Login Card container -->
+    <div class="login-container" style="margin: 0; max-width: 440px; flex-grow: 1;">
+      <div class="login-header">
+        <div class="login-logo">
+          <i class="fa-solid fa-graduation-cap"></i>
+        </div>
+        <h1 class="login-title">Hostel ERP</h1>
+        <p class="login-subtitle">Sign in to your campus account portal</p>
+      </div>
+
+      <!-- Login Form -->
+      <form id="login-form">
+        <!-- Role Selection -->
+        <div class="form-group">
+          <label class="form-label" for="role">User Role</label>
+          <select class="form-control login-select" id="role" required>
+            <option value="" disabled selected>Choose portal role...</option>
+            <option value="student">Student Portal</option>
+            <option value="warden">Hostel Warden</option>
+            <option value="teacher">Class Teacher</option>
+            <option value="hod">Head of Department (HOD)</option>
+            <option value="ao">Administrative Officer (AO)</option>
+            <option value="principal">College Principal</option>
+          </select>
+        </div>
+
+        <!-- Email Field -->
+        <div class="form-group">
+          <label class="form-label" for="email">Campus Email</label>
+          <input type="email" class="form-control" id="email" placeholder="username@gmail.com" required autocomplete="email">
+        </div>
+
+        <!-- Password Field -->
+        <div class="form-group">
+          <label class="form-label" for="password">Security Password</label>
+          <div class="password-wrapper">
+            <input type="password" class="form-control" id="password" placeholder="••••••••" required autocomplete="current-password">
+            <button type="button" class="password-toggle" id="toggle-password" title="Show/Hide Password">
+              <i class="fa-solid fa-eye"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Form Options -->
+        <div class="login-form-options">
+          <label class="form-checkbox">
+            <input type="checkbox" id="remember-me">
+            <span>Remember session</span>
+          </label>
+          <a href="#" class="forgot-link" onclick="showToast('Password recovery is managed by the administrator. Contact AO.', 'info')">Forgot credentials?</a>
+        </div>
+
+        <!-- Login Submit Button -->
+        <button type="submit" class="btn btn-primary login-btn">
+          <span>Enter Dashboard</span>
+          <i class="fa-solid fa-right-to-bracket"></i>
+        </button>
+      </form>
+    </div>
+
+    <!-- Quick Demo Logins Helper -->
+    <div class="login-container" style="margin: 0; max-width: 420px; flex-grow: 1; padding: 2.25rem 2rem; display: flex; flex-direction: column; justify-content: center;">
+      <div class="login-header" style="margin-bottom: 1.5rem; text-align: center;">
+        <h2 class="login-title" style="font-size: 1.25rem;">Quick Demo Logins</h2>
+        <p class="login-subtitle">Click a role below to auto-fill credentials and test workflow propagation</p>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 0.65rem;">
+        <!-- Student -->
+        <button type="button" class="btn btn-secondary btn-sm demo-autofill-btn" data-email="rahul@gmail.com" data-role="student" style="display: flex; flex-direction: column; align-items: flex-start; padding: 0.75rem 1rem; width: 100%; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: #fff; text-align: left; gap: 0.25rem; border-radius: var(--border-radius-sm);">
+          <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+            <span style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600;"><i class="fa-solid fa-graduation-cap text-primary-color" style="width: 16px;"></i> Student Portal</span>
+            <span style="font-size: 0.72rem; color: var(--primary); font-weight: 600;">Rahul (CSE) &rarr;</span>
+          </div>
+          <div style="font-size: 0.68rem; opacity: 0.6; padding-left: 1.5rem;">
+            ID: <strong style="color: #fff;">rahul@gmail.com</strong> | Pw: <strong style="color: #fff;">password</strong>
+          </div>
+        </button>
+
+        <!-- Warden -->
+        <button type="button" class="btn btn-secondary btn-sm demo-autofill-btn" data-email="warden@gmail.com" data-role="warden" style="display: flex; flex-direction: column; align-items: flex-start; padding: 0.75rem 1rem; width: 100%; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: #fff; text-align: left; gap: 0.25rem; border-radius: var(--border-radius-sm);">
+          <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+            <span style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600;"><i class="fa-solid fa-user-shield text-warning" style="width: 16px;"></i> Hostel Warden</span>
+            <span style="font-size: 0.72rem; color: var(--warning); font-weight: 600;">Dr. Srinivasan &rarr;</span>
+          </div>
+          <div style="font-size: 0.68rem; opacity: 0.6; padding-left: 1.5rem;">
+            ID: <strong style="color: #fff;">warden@gmail.com</strong> | Pw: <strong style="color: #fff;">password</strong>
+          </div>
+        </button>
+
+        <!-- Teacher -->
+        <button type="button" class="btn btn-secondary btn-sm demo-autofill-btn" data-email="teacher@gmail.com" data-role="teacher" style="display: flex; flex-direction: column; align-items: flex-start; padding: 0.75rem 1rem; width: 100%; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: #fff; text-align: left; gap: 0.25rem; border-radius: var(--border-radius-sm);">
+          <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+            <span style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600;"><i class="fa-solid fa-chalkboard-user text-success" style="width: 16px;"></i> Class Teacher</span>
+            <span style="font-size: 0.72rem; color: var(--success); font-weight: 600;">Prof. Sen &rarr;</span>
+          </div>
+          <div style="font-size: 0.68rem; opacity: 0.6; padding-left: 1.5rem;">
+            ID: <strong style="color: #fff;">teacher@gmail.com</strong> | Pw: <strong style="color: #fff;">password</strong>
+          </div>
+        </button>
+
+        <!-- HOD -->
+        <button type="button" class="btn btn-secondary btn-sm demo-autofill-btn" data-email="hod@gmail.com" data-role="hod" style="display: flex; flex-direction: column; align-items: flex-start; padding: 0.75rem 1rem; width: 100%; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: #fff; text-align: left; gap: 0.25rem; border-radius: var(--border-radius-sm);">
+          <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+            <span style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600;"><i class="fa-solid fa-building-user text-primary-color" style="width: 16px;"></i> Head of Dept</span>
+            <span style="font-size: 0.72rem; color: var(--primary); font-weight: 600;">Dr. Kumar &rarr;</span>
+          </div>
+          <div style="font-size: 0.68rem; opacity: 0.6; padding-left: 1.5rem;">
+            ID: <strong style="color: #fff;">hod@gmail.com</strong> | Pw: <strong style="color: #fff;">password</strong>
+          </div>
+        </button>
+
+        <!-- AO -->
+        <button type="button" class="btn btn-secondary btn-sm demo-autofill-btn" data-email="ao@gmail.com" data-role="ao" style="display: flex; flex-direction: column; align-items: flex-start; padding: 0.75rem 1rem; width: 100%; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: #fff; text-align: left; gap: 0.25rem; border-radius: var(--border-radius-sm);">
+          <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+            <span style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600;"><i class="fa-solid fa-screwdriver-wrench text-danger" style="width: 16px;"></i> Admin Officer</span>
+            <span style="font-size: 0.72rem; color: var(--danger); font-weight: 600;">V. Malhotra &rarr;</span>
+          </div>
+          <div style="font-size: 0.68rem; opacity: 0.6; padding-left: 1.5rem;">
+            ID: <strong style="color: #fff;">ao@gmail.com</strong> | Pw: <strong style="color: #fff;">password</strong>
+          </div>
+        </button>
+
+        <!-- Principal -->
+        <button type="button" class="btn btn-secondary btn-sm demo-autofill-btn" data-email="principal@gmail.com" data-role="principal" style="display: flex; flex-direction: column; align-items: flex-start; padding: 0.75rem 1rem; width: 100%; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: #fff; text-align: left; gap: 0.25rem; border-radius: var(--border-radius-sm);">
+          <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+            <span style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600;"><i class="fa-solid fa-building-columns text-primary-color" style="width: 16px;"></i> Principal Portal</span>
+            <span style="font-size: 0.72rem; color: var(--primary); font-weight: 600;">Dr. Shastri &rarr;</span>
+          </div>
+          <div style="font-size: 0.68rem; opacity: 0.6; padding-left: 1.5rem;">
+            ID: <strong style="color: #fff;">principal@gmail.com</strong> | Pw: <strong style="color: #fff;">password</strong>
+          </div>
+        </button>
+      </div>
+    </div>
+    
+  </div>
+
+  <!-- Core Scripts -->
+  <script src="js/utils.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/notifications.js"></script>
+  <script src="js/login.js"></script>
+</body>
+</html>
