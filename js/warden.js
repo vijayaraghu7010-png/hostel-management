@@ -2029,8 +2029,13 @@ async function initWardenStudyHour() {
       btn.classList.add('active');
       const contentEl = document.getElementById(targetTab);
       if (contentEl) contentEl.style.display = 'block';
+      // Re-register tables inside newly visible tab for responsive card mode
+      if (typeof initResponsiveTables === 'function') {
+        setTimeout(initResponsiveTables, 50);
+      }
     });
   });
+
 
   // Modal Handlers
   const modalConfirmClose = document.getElementById('modal-confirm-close-session');

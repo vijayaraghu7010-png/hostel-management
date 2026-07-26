@@ -2538,3 +2538,67 @@ function playAudioBeep(isSuccess = true) {
     // Graceful silence if audio context is blocked
   }
 }
+
+// =============================================================================
+// HMS Responsive Table Engine
+// Converts desktop tables → mobile cards automatically via CSS data-label trick.
+// Usage: called by app.js after DOMContentLoaded, and after any tbody change.
+// No changes needed in individual JS modules — this is fully automatic.
+// =============================================================================
+
+/**
+ * Reads <th> headers from a table and stamps data-label="Header Text" on
+ * every <td> in the tbody. CSS hides the th on mobile and shows the label
+ * as a pseudo-element prefix instead, creating a card-style layout.
+ *
+ * @param {HTMLElement} tableEl  - The <table> element to process
+ */
+function applyDataLabels(tableEl) {
+  if (!tableEl) return;
+  const headers = Array.from(tableEl.querySelectorAll('thead th')).map(th => {
+    // Get clean text — strip icon HTML, trim whitespace
+    return th.cloneNode(true).innerText.trim().replace(/\s+/g, ' ');
+  });
+  if (headers.length === 0) return;
+
+  const rows = tableEl.querySelectorAll('tbody tr');
+  rows.forEach(row => {
+    const cells = row.querySelectorAll('td');
+    cells.forEach((td, i) => {
+      if (headers[i] !== undefined) {
+        td.setAttribute('data-label', headers[i]);
+      }
+    });
+  });
+}
+
+/**
+ * Registers a MutationObserver on a table's tbody so that whenever JS
+ * re-renders it (e.g., pagination, filter), data-label stamps are re-applied.
+ *
+ * @param {HTMLElement} tableEl - The <table> element to watch
+ */
+function observeTableBody(tableEl) {
+  if (!tableEl) return;
+  const tbody = tableEl.querySelector('tbody');
+  if (!tbody) return;
+
+  // Apply immediately for current content
+  applyDataLabels(tableEl);
+
+  // Re-apply every time the tbody changes (JS re-renders rows)
+  const observer = new MutationObserver(() => {
+    applyDataLabels(tableEl);
+  });
+  observer.observe(tbody, { childList: true, subtree: false });
+}
+
+/**
+ * Registers all tables on the current page.
+ * Called once from app.js after the page is ready.
+ */
+function initResponsiveTables() {
+  const tables = document.querySelectorAll('table.table-custom');
+  tables.forEach(tableEl => observeTableBody(tableEl));
+}
+

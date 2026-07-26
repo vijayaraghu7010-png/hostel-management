@@ -20,6 +20,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 2. Initialize UI Features
   await initializeGlobalUI();
+
+  // 3. Register all tables for auto-responsive card mode on mobile
+  //    Runs immediately, then again after 800ms to catch late-rendered tables
+  if (typeof initResponsiveTables === 'function') {
+    initResponsiveTables();
+    setTimeout(initResponsiveTables, 800);
+    setTimeout(initResponsiveTables, 2000);
+  }
 });
 
 async function initializeGlobalUI() {

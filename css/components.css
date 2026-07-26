@@ -420,8 +420,10 @@
 }
 
 /* ==========================================================================
-   4. Tables (Professional Grid)
+   4. Tables (Professional Grid — Desktop) & Mobile Card Mode
    ========================================================================== */
+
+/* Desktop: standard responsive scroll container */
 .table-responsive {
   width: 100%;
   overflow-x: auto;
@@ -469,6 +471,160 @@
 .table-custom tbody tr:last-child td {
   border-bottom: none;
 }
+
+/* Pagination Bar — sits below any table-responsive wrapper */
+.table-pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1.25rem;
+  border-top: 1px solid var(--border-color);
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+
+/* ==========================================================================
+   4b. Mobile Card Mode  — kicks in below 768px
+   No JS changes needed. CSS reads data-label stamped by utils.js engine.
+   ========================================================================== */
+@media (max-width: 767px) {
+
+  /* Remove scroll container border — cards have their own border */
+  .table-responsive {
+    overflow-x: visible !important;
+    border: none !important;
+    background: transparent !important;
+    margin-top: 0.5rem;
+    border-radius: 0;
+  }
+
+  /* Table becomes a block layout container. Override any inline min-width. */
+  .table-custom {
+    display: block;
+    border-collapse: unset;
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+
+  /* Hide the desktop header row entirely (screen-reader accessible via data-label) */
+  .table-custom thead {
+    display: none;
+  }
+
+  /* tbody becomes a flex column */
+  .table-custom tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  /* Each row is now a standalone card */
+  .table-custom tbody tr {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+  }
+
+  .table-custom tbody tr:hover {
+    background: var(--bg-secondary);
+    box-shadow: 0 4px 20px rgba(79, 70, 229, 0.12);
+    transform: translateY(-1px);
+  }
+
+  /* Special row for colspan empty/loading states — keep as single block */
+  .table-custom tbody tr td[colspan] {
+    text-align: center;
+    padding: 2rem 1rem !important;
+    white-space: normal !important;
+    display: block !important;
+    border: none !important;
+    background: var(--bg-secondary);
+    border-radius: 14px;
+    border: 1px solid var(--border-color);
+  }
+
+  /* Each cell becomes a label-value row (label on left, value on right) */
+  .table-custom td {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.65rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    white-space: normal;
+    font-size: 0.875rem;
+    min-height: 40px;
+    text-align: right;
+  }
+
+  /* Last cell in card has no bottom border */
+  .table-custom td:last-child {
+    border-bottom: none;
+  }
+
+  /* Label prefix from data-label attribute — always left-aligned */
+  .table-custom td::before {
+    content: attr(data-label);
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    white-space: nowrap;
+    min-width: 90px;
+    flex-shrink: 0;
+    padding-top: 0.1rem;
+    text-align: left;
+  }
+
+  /* Badges stay inline */
+  .table-custom td .badge {
+    display: inline-flex;
+    margin-left: auto;
+  }
+
+  /* Buttons in action columns: full-width touch targets */
+  .table-custom td .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Action cells with multiple buttons — stack them */
+  .table-custom td[data-label="Actions"],
+  .table-custom td[data-label="Action"],
+  .table-custom td:last-child {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.4rem;
+    padding: 0.75rem 1rem;
+  }
+
+  .table-custom td[data-label="Actions"]::before,
+  .table-custom td[data-label="Action"]::before {
+    display: none;
+  }
+
+  /* Radio inputs in attendance table — show side by side */
+  .table-custom td .form-checkbox {
+    margin-left: auto;
+  }
+
+  /* Pagination bar stays horizontal */
+  .table-pagination-bar {
+    flex-wrap: wrap !important;
+    gap: 0.5rem !important;
+    padding: 0.75rem 0 !important;
+  }
+}
+
+
 
 /* Status Badges */
 .badge {
@@ -977,17 +1133,7 @@ body.modal-open {
   display: none;
 }
 
-/* Responsive Table Wrapper */
-.table-responsive {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  border-radius: var(--border-radius-sm);
-  margin-bottom: 0.5rem;
-  box-sizing: border-box;
-}
+
 
 /* Touch friendly form inputs */
 .form-control {
@@ -1181,7 +1327,28 @@ body.modal-open {
     min-width: 100% !important;
     max-width: 100% !important;
   }
+
+  /* Filter bar stacks on mobile */
+  .filter-bar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.75rem !important;
+  }
+
+  .filter-group {
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    gap: 0.5rem !important;
+    width: 100%;
+  }
+
+  .filter-group select.form-control {
+    flex: 1 1 auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+  }
 }
+
 
 /* Extra small devices (320px - 412px) card stacking & touch adjustments */
 @media (max-width: 412px) {
