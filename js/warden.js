@@ -2981,71 +2981,154 @@ async function initWardenGateControl() {
 
   // Google Pay / PhonePe Style High-Performance Scanner Implementation
   const laserEl = document.getElementById('scanner-laser');
+  const cornersEl = document.getElementById('scanner-corners');
   const controlsEl = document.getElementById('scanner-controls');
   const torchBtn = document.getElementById('btn-toggle-torch');
   const switchCamBtn = document.getElementById('btn-switch-camera');
+  const placeholder = document.getElementById('gate-scanner-placeholder');
+  const loadingEl = document.getElementById('gate-scanner-loading');
+  const errorEl = document.getElementById('gate-scanner-error');
+  const errorText = document.getElementById('gate-error-text');
+  const retryBtn = document.getElementById('btn-retry-camera');
 
   let currentFacingMode = 'environment';
   let isTorchOn = false;
+  let isProcessingScan = false;
+  let lastScannedText = '';
+  let lastScanTimestamp = 0;
+
+  // Complete MediaStream Track Cleanup (Prevents camera lock / black screen on Android & iOS)
+  const releaseMediaTracks = () => {
+    try {
+      const videoEl = document.querySelector('#gate-qr-reader video');
+      if (videoEl && videoEl.srcObject) {
+        const stream = videoEl.srcObject;
+        if (stream.getTracks) {
+          stream.getTracks().forEach(track => {
+            track.stop();
+          });
+        }
+        videoEl.srcObject = null;
+      }
+    } catch (e) {
+      console.warn('Track release warning:', e);
+    }
+  };
 
   const stopScanner = async () => {
-    if (html5QrcodeScanner && isScanning) {
+    if (html5QrcodeScanner) {
       try {
-        await html5QrcodeScanner.stop();
-        html5QrcodeScanner.clear();
+        if (isScanning) {
+          await html5QrcodeScanner.stop();
+        }
+        await html5QrcodeScanner.clear();
       } catch (err) {
         console.warn('Scanner stop warning:', err);
       }
     }
+    releaseMediaTracks();
     html5QrcodeScanner = null;
     isScanning = false;
     isTorchOn = false;
 
     if (camBtnText) camBtnText.textContent = 'Start Camera Scanner';
-    const placeholder = document.getElementById('gate-scanner-placeholder');
     if (placeholder) placeholder.style.display = 'block';
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (errorEl) errorEl.style.display = 'none';
     if (laserEl) laserEl.style.display = 'none';
+    if (cornersEl) cornersEl.style.display = 'none';
     if (controlsEl) controlsEl.style.display = 'none';
     if (torchBtn) torchBtn.classList.remove('active');
   };
 
   const startScanner = async () => {
     if (typeof Html5Qrcode === 'undefined') {
-      showToast('QR Scanner module loading... Try manual entry.', 'warning');
+      showToast('QR Scanner library loading... Try manual entry.', 'warning');
       return;
     }
 
-    const placeholder = document.getElementById('gate-scanner-placeholder');
+    // UI Loading State
     if (placeholder) placeholder.style.display = 'none';
-    if (laserEl) laserEl.style.display = 'block';
-    if (controlsEl) controlsEl.style.display = 'flex';
+    if (errorEl) errorEl.style.display = 'none';
+    if (loadingEl) loadingEl.style.display = 'block';
+    if (laserEl) laserEl.style.display = 'none';
+    if (cornersEl) cornersEl.style.display = 'none';
+    if (controlsEl) controlsEl.style.display = 'none';
+
+    // Stop any existing stream before creating a new instance
+    await stopScanner();
+    if (placeholder) placeholder.style.display = 'none';
+    if (loadingEl) loadingEl.style.display = 'block';
 
     html5QrcodeScanner = new Html5Qrcode("gate-qr-reader");
+
+    // Dynamic QR Viewfinder Sizing based on container width
+    const containerEl = document.getElementById('gate-qr-reader');
+    const containerWidth = containerEl ? containerEl.clientWidth : 300;
+    const boxSize = Math.min(Math.floor(containerWidth * 0.72), 240);
+
     try {
       await html5QrcodeScanner.start(
         { facingMode: currentFacingMode },
-        { fps: 15, qrbox: { width: 230, height: 230 } },
+        { 
+          fps: 20, 
+          qrbox: { width: boxSize, height: boxSize },
+          aspectRatio: 1.0
+        },
         async (decodedText) => {
-          // 1. Instant Device Vibration Feedback (Google Pay Style)
+          const now = Date.now();
+          // Debounce duplicate scans within 2.5 seconds
+          if (isProcessingScan || (decodedText === lastScannedText && (now - lastScanTimestamp < 2500))) {
+            return;
+          }
+          isProcessingScan = true;
+          lastScannedText = decodedText;
+          lastScanTimestamp = now;
+
+          // 1. Audio & Vibration Feedback (Google Pay / PhonePe Style)
+          if (typeof playAudioBeep === 'function') {
+            playAudioBeep(true);
+          }
           if (navigator.vibrate) {
             navigator.vibrate([100, 50, 100]);
           }
 
-          // 2. Stop camera immediately upon detection
+          // 2. Visual Success Flash Animation
+          const resultCard = document.getElementById('outpass-validation-result-card');
+          if (resultCard) {
+            resultCard.classList.remove('scan-success-flash');
+            void resultCard.offsetWidth; // Trigger reflow
+            resultCard.classList.add('scan-success-flash');
+          }
+
+          // 3. Stop camera immediately after successful scan
           await stopScanner();
 
-          showToast('✓ Outpass QR Detected Successfully!', 'success');
+          showToast('✓ Outpass QR Code Scanned!', 'success');
           await handleValidateQrString(decodedText);
+          isProcessingScan = false;
         },
         () => {}
       );
 
       isScanning = true;
+      if (loadingEl) loadingEl.style.display = 'none';
+      if (laserEl) laserEl.style.display = 'block';
+      if (cornersEl) cornersEl.style.display = 'block';
+      if (controlsEl) controlsEl.style.display = 'flex';
       if (camBtnText) camBtnText.textContent = 'Stop Camera Scanner';
     } catch (err) {
       console.error('Camera access error:', err);
-      showToast('Camera permission denied or camera unavailable. Please check permissions.', 'warning');
-      await stopScanner();
+      if (loadingEl) loadingEl.style.display = 'none';
+      if (errorEl) {
+        errorEl.style.display = 'block';
+        if (errorText) {
+          errorText.textContent = err.message || 'Camera permission denied or camera lens unavailable. Please allow camera permissions.';
+        }
+      }
+      releaseMediaTracks();
+      isScanning = false;
+      if (camBtnText) camBtnText.textContent = 'Start Camera Scanner';
     }
   };
 
@@ -3060,6 +3143,13 @@ async function initWardenGateControl() {
     });
   }
 
+  // Camera Permission Retry Handler
+  if (retryBtn) {
+    retryBtn.addEventListener('click', async () => {
+      await startScanner();
+    });
+  }
+
   // Flashlight / Torch Toggle Handler
   if (torchBtn) {
     torchBtn.addEventListener('click', async () => {
@@ -3070,21 +3160,20 @@ async function initWardenGateControl() {
           advanced: [{ torch: isTorchOn }]
         });
         torchBtn.classList.toggle('active', isTorchOn);
-        showToast(isTorchOn ? 'Flashlight Enabled' : 'Flashlight Disabled', 'info');
+        showToast(isTorchOn ? 'Flashlight On' : 'Flashlight Off', 'info');
       } catch (err) {
         console.warn('Torch constraint error:', err);
-        showToast('Torch flashlight is not supported on this camera device.', 'warning');
+        showToast('Torch flashlight is not supported on this camera lens.', 'warning');
       }
     });
   }
 
-  // Camera Switch Handler (Environment vs User)
+  // Camera Switch Handler (Rear vs Front)
   if (switchCamBtn) {
     switchCamBtn.addEventListener('click', async () => {
       currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
-      showToast(`Switched camera to ${currentFacingMode === 'environment' ? 'Rear' : 'Front'} lens`, 'info');
+      showToast(`Switched to ${currentFacingMode === 'environment' ? 'Rear' : 'Front'} Camera`, 'info');
       if (isScanning) {
-        await stopScanner();
         await startScanner();
       }
     });
@@ -3092,6 +3181,7 @@ async function initWardenGateControl() {
 
   // Page Unload Camera Cleanup
   window.addEventListener('beforeunload', () => {
+    releaseMediaTracks();
     if (isScanning && html5QrcodeScanner) {
       html5QrcodeScanner.stop().catch(() => {});
     }

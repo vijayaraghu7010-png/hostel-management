@@ -47,14 +47,37 @@
               <div class="glass-card" style="margin-bottom: 1.5rem;">
                 <h3 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem;"><i class="fa-solid fa-qrcode" style="color: var(--primary); margin-right: 0.5rem;"></i>Outpass QR Verification Scanner</h3>
                 
-                <!-- Camera Viewfinder Wrapper with Laser Overlay & Quick Controls -->
+                <!-- Camera Viewfinder Wrapper with Google Pay / PhonePe Laser Overlay & Quick Controls -->
                 <div class="scanner-viewport-wrapper" style="margin-bottom: 1rem;">
-                  <div id="gate-qr-reader" style="width: 100%; min-height: 260px; display: flex; align-items: center; justify-content: center; background: #0b0f19;">
+                  <div id="gate-qr-reader" style="width: 100%; min-height: 270px; display: flex; align-items: center; justify-content: center; background: #070a0f;">
+                    <!-- Default Initial State -->
                     <div style="text-align: center; color: var(--text-muted); padding: 2rem 1.5rem;" id="gate-scanner-placeholder">
-                      <i class="fa-solid fa-qrcode" style="font-size: 3rem; margin-bottom: 0.75rem; color: var(--primary); opacity: 0.7;"></i>
-                      <p style="font-size: 0.85rem; margin: 0; color: #cbd5e1;">Click 'Start Camera Scanner' to activate Google Pay / PhonePe style scanner</p>
+                      <i class="fa-solid fa-qrcode" style="font-size: 3.2rem; margin-bottom: 0.75rem; color: var(--primary); opacity: 0.85;"></i>
+                      <p style="font-size: 0.85rem; margin: 0; color: #cbd5e1; font-weight: 500;">Click 'Start Camera Scanner' to launch high-speed scanner</p>
+                    </div>
+
+                    <!-- Camera Loading State -->
+                    <div id="gate-scanner-loading" style="display: none; text-align: center; color: #fff; padding: 2rem 1.5rem;">
+                      <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 2.5rem; margin-bottom: 0.75rem; color: var(--primary);"></i>
+                      <p style="font-size: 0.85rem; margin: 0; color: #e2e8f0;">Initializing Camera Lens...</p>
+                    </div>
+
+                    <!-- Permission Error & Retry State -->
+                    <div id="gate-scanner-error" style="display: none; text-align: center; color: #f87171; padding: 1.5rem;">
+                      <i class="fa-solid fa-triangle-exclamation" style="font-size: 2.5rem; margin-bottom: 0.75rem;"></i>
+                      <p style="font-size: 0.85rem; margin-bottom: 1rem; color: #fecaca;" id="gate-error-text">Camera permission denied or camera unavailable.</p>
+                      <button type="button" class="btn btn-sm btn-primary" id="btn-retry-camera"><i class="fa-solid fa-rotate-right"></i> Grant Access & Retry</button>
                     </div>
                   </div>
+
+                  <!-- Google Pay Style Corner Overlay Target Frame -->
+                  <div class="scanner-corners-overlay" id="scanner-corners" style="display: none;">
+                    <div class="corner corner-tl"></div>
+                    <div class="corner corner-tr"></div>
+                    <div class="corner corner-bl"></div>
+                    <div class="corner corner-br"></div>
+                  </div>
+
                   <div class="scanner-laser-line" id="scanner-laser" style="display: none;"></div>
 
                   <!-- Scanner Floating Controls (Torch & Camera Switch) -->

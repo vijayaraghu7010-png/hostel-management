@@ -91,11 +91,60 @@
   box-shadow: 0 8px 32px rgba(0,0,0,0.3);
 }
 
+.scanner-corners-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 220px;
+  height: 220px;
+  max-width: 75vw;
+  max-height: 75vw;
+  pointer-events: none;
+  z-index: 12;
+}
+
+.scanner-corners-overlay .corner {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-color: #10b981;
+  border-style: solid;
+}
+
+.corner-tl {
+  top: 0;
+  left: 0;
+  border-width: 4px 0 0 4px;
+  border-top-left-radius: 12px;
+}
+
+.corner-tr {
+  top: 0;
+  right: 0;
+  border-width: 4px 4px 0 0;
+  border-top-right-radius: 12px;
+}
+
+.corner-bl {
+  bottom: 0;
+  left: 0;
+  border-width: 0 0 4px 4px;
+  border-bottom-left-radius: 12px;
+}
+
+.corner-br {
+  bottom: 0;
+  right: 0;
+  border-width: 0 4px 4px 0;
+  border-bottom-right-radius: 12px;
+}
+
 .scanner-laser-line {
   position: absolute;
-  top: 10%;
-  left: 5%;
-  right: 5%;
+  top: 15%;
+  left: 10%;
+  right: 10%;
   height: 3px;
   background: linear-gradient(90deg, transparent 0%, #10b981 50%, transparent 100%);
   box-shadow: 0 0 15px #10b981, 0 0 25px #10b981;
@@ -105,8 +154,8 @@
 }
 
 @keyframes scanLaser {
-  0% { top: 10%; opacity: 0.9; }
-  100% { top: 90%; opacity: 0.9; }
+  0% { top: 15%; opacity: 0.9; }
+  100% { top: 85%; opacity: 0.9; }
 }
 
 .scanner-controls-bar {
@@ -144,6 +193,17 @@
   background: var(--primary);
   border-color: var(--primary);
   transform: scale(0.95);
+}
+
+/* Success Card Scan Flash Animation */
+.scan-success-flash {
+  animation: successPulse 0.4s ease-out;
+}
+
+@keyframes successPulse {
+  0% { transform: scale(0.96); box-shadow: 0 0 0 rgba(16, 185, 129, 0.8); }
+  50% { transform: scale(1.02); box-shadow: 0 0 30px rgba(16, 185, 129, 0.6); }
+  100% { transform: scale(1); box-shadow: none; }
 }
 
 /* Responsive Tab Controls */

@@ -2507,3 +2507,34 @@ function formatDateString(dateStr) {
 function generateID(prefix = 'ID') {
   return prefix + Math.floor(1000 + Math.random() * 9000);
 }
+
+// --- Synthesized Audio Chime Feedback (Google Pay / PhonePe Style) ---
+function playAudioBeep(isSuccess = true) {
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    if (isSuccess) {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime); // High pitch GPay chime (A5)
+      gain.gain.setValueAtTime(0.18, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.22);
+    } else {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(280, ctx.currentTime);
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.3);
+    }
+  } catch (e) {
+    // Graceful silence if audio context is blocked
+  }
+}
