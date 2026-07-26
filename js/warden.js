@@ -2979,49 +2979,127 @@ async function initWardenGateControl() {
     });
   }
 
-  // Camera Scanner Toggle
+  // Google Pay / PhonePe Style High-Performance Scanner Implementation
+  const laserEl = document.getElementById('scanner-laser');
+  const controlsEl = document.getElementById('scanner-controls');
+  const torchBtn = document.getElementById('btn-toggle-torch');
+  const switchCamBtn = document.getElementById('btn-switch-camera');
+
+  let currentFacingMode = 'environment';
+  let isTorchOn = false;
+
+  const stopScanner = async () => {
+    if (html5QrcodeScanner && isScanning) {
+      try {
+        await html5QrcodeScanner.stop();
+        html5QrcodeScanner.clear();
+      } catch (err) {
+        console.warn('Scanner stop warning:', err);
+      }
+    }
+    html5QrcodeScanner = null;
+    isScanning = false;
+    isTorchOn = false;
+
+    if (camBtnText) camBtnText.textContent = 'Start Camera Scanner';
+    const placeholder = document.getElementById('gate-scanner-placeholder');
+    if (placeholder) placeholder.style.display = 'block';
+    if (laserEl) laserEl.style.display = 'none';
+    if (controlsEl) controlsEl.style.display = 'none';
+    if (torchBtn) torchBtn.classList.remove('active');
+  };
+
+  const startScanner = async () => {
+    if (typeof Html5Qrcode === 'undefined') {
+      showToast('QR Scanner module loading... Try manual entry.', 'warning');
+      return;
+    }
+
+    const placeholder = document.getElementById('gate-scanner-placeholder');
+    if (placeholder) placeholder.style.display = 'none';
+    if (laserEl) laserEl.style.display = 'block';
+    if (controlsEl) controlsEl.style.display = 'flex';
+
+    html5QrcodeScanner = new Html5Qrcode("gate-qr-reader");
+    try {
+      await html5QrcodeScanner.start(
+        { facingMode: currentFacingMode },
+        { fps: 15, qrbox: { width: 230, height: 230 } },
+        async (decodedText) => {
+          // 1. Instant Device Vibration Feedback (Google Pay Style)
+          if (navigator.vibrate) {
+            navigator.vibrate([100, 50, 100]);
+          }
+
+          // 2. Stop camera immediately upon detection
+          await stopScanner();
+
+          showToast('✓ Outpass QR Detected Successfully!', 'success');
+          await handleValidateQrString(decodedText);
+        },
+        () => {}
+      );
+
+      isScanning = true;
+      if (camBtnText) camBtnText.textContent = 'Stop Camera Scanner';
+    } catch (err) {
+      console.error('Camera access error:', err);
+      showToast('Camera permission denied or camera unavailable. Please check permissions.', 'warning');
+      await stopScanner();
+    }
+  };
+
+  // Camera Toggle Handler
   if (camBtn) {
     camBtn.addEventListener('click', async () => {
       if (isScanning) {
-        if (html5QrcodeScanner) {
-          await html5QrcodeScanner.stop();
-          html5QrcodeScanner = null;
-        }
-        isScanning = false;
-        if (camBtnText) camBtnText.textContent = 'Start Camera Scanner';
-        const placeholder = document.getElementById('gate-scanner-placeholder');
-        if (placeholder) placeholder.style.display = 'block';
+        await stopScanner();
       } else {
-        if (typeof Html5Qrcode !== 'undefined') {
-          const placeholder = document.getElementById('gate-scanner-placeholder');
-          if (placeholder) placeholder.style.display = 'none';
-
-          html5QrcodeScanner = new Html5Qrcode("gate-qr-reader");
-          try {
-            await html5QrcodeScanner.start(
-              { facingMode: "environment" },
-              { fps: 10, qrbox: { width: 220, height: 220 } },
-              async (decodedText) => {
-                showToast('QR Code Scanned!', 'info');
-                await handleValidateQrString(decodedText);
-              },
-              (errorMessage) => {}
-            );
-            isScanning = true;
-            if (camBtnText) camBtnText.textContent = 'Stop Camera Scanner';
-          } catch (err) {
-            console.error('Camera access error:', err);
-            showToast('Unable to access camera scanner. Please check browser permissions or use manual entry.', 'warning');
-          }
-        } else {
-          showToast('QR Scanner module loading... Try manual entry.', 'warning');
-        }
+        await startScanner();
       }
     });
   }
 
+  // Flashlight / Torch Toggle Handler
+  if (torchBtn) {
+    torchBtn.addEventListener('click', async () => {
+      if (!isScanning || !html5QrcodeScanner) return;
+      try {
+        isTorchOn = !isTorchOn;
+        await html5QrcodeScanner.applyVideoConstraints({
+          advanced: [{ torch: isTorchOn }]
+        });
+        torchBtn.classList.toggle('active', isTorchOn);
+        showToast(isTorchOn ? 'Flashlight Enabled' : 'Flashlight Disabled', 'info');
+      } catch (err) {
+        console.warn('Torch constraint error:', err);
+        showToast('Torch flashlight is not supported on this camera device.', 'warning');
+      }
+    });
+  }
+
+  // Camera Switch Handler (Environment vs User)
+  if (switchCamBtn) {
+    switchCamBtn.addEventListener('click', async () => {
+      currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+      showToast(`Switched camera to ${currentFacingMode === 'environment' ? 'Rear' : 'Front'} lens`, 'info');
+      if (isScanning) {
+        await stopScanner();
+        await startScanner();
+      }
+    });
+  }
+
+  // Page Unload Camera Cleanup
+  window.addEventListener('beforeunload', () => {
+    if (isScanning && html5QrcodeScanner) {
+      html5QrcodeScanner.stop().catch(() => {});
+    }
+  });
+
   await refreshOverdueOutings();
-  setInterval(refreshOverdueOutings, 10000);
+  const overdueInterval = setInterval(refreshOverdueOutings, 15000);
+  window.addEventListener('beforeunload', () => clearInterval(overdueInterval));
 }
 
 

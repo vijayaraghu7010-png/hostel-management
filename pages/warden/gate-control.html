@@ -47,11 +47,24 @@
               <div class="glass-card" style="margin-bottom: 1.5rem;">
                 <h3 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem;"><i class="fa-solid fa-qrcode" style="color: var(--primary); margin-right: 0.5rem;"></i>Outpass QR Verification Scanner</h3>
                 
-                <!-- Camera viewfinder -->
-                <div id="gate-qr-reader" style="width: 100%; min-height: 250px; background: rgba(0, 0, 0, 0.05); border-radius: var(--border-radius-sm); overflow: hidden; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; border: 2px dashed var(--border-color);">
-                  <div style="text-align: center; color: var(--text-muted); padding: 1.5rem;" id="gate-scanner-placeholder">
-                    <i class="fa-solid fa-camera-retro" style="font-size: 2.5rem; margin-bottom: 0.75rem; color: var(--primary); opacity: 0.6;"></i>
-                    <p style="font-size: 0.85rem; margin: 0;">Click 'Start Camera Scanner' above to scan QR code from student's phone</p>
+                <!-- Camera Viewfinder Wrapper with Laser Overlay & Quick Controls -->
+                <div class="scanner-viewport-wrapper" style="margin-bottom: 1rem;">
+                  <div id="gate-qr-reader" style="width: 100%; min-height: 260px; display: flex; align-items: center; justify-content: center; background: #0b0f19;">
+                    <div style="text-align: center; color: var(--text-muted); padding: 2rem 1.5rem;" id="gate-scanner-placeholder">
+                      <i class="fa-solid fa-qrcode" style="font-size: 3rem; margin-bottom: 0.75rem; color: var(--primary); opacity: 0.7;"></i>
+                      <p style="font-size: 0.85rem; margin: 0; color: #cbd5e1;">Click 'Start Camera Scanner' to activate Google Pay / PhonePe style scanner</p>
+                    </div>
+                  </div>
+                  <div class="scanner-laser-line" id="scanner-laser" style="display: none;"></div>
+
+                  <!-- Scanner Floating Controls (Torch & Camera Switch) -->
+                  <div class="scanner-controls-bar" id="scanner-controls" style="display: none;">
+                    <button type="button" class="scanner-btn" id="btn-toggle-torch" title="Toggle Flashlight / Torch">
+                      <i class="fa-solid fa-bolt"></i>
+                    </button>
+                    <button type="button" class="scanner-btn" id="btn-switch-camera" title="Switch Camera">
+                      <i class="fa-solid fa-camera-rotate"></i>
+                    </button>
                   </div>
                 </div>
 

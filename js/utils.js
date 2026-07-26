@@ -2476,17 +2476,20 @@ class HostelDB {
 // Ingest Database initially (run immediately on import)
 HostelDB.init();
 
-// --- Component Loader Utility ---
+// --- Component Loader Utility (In-Memory Cached) ---
+const _componentCache = {};
 async function loadComponent(selector, filepath) {
   try {
-    const response = await fetch(filepath);
-    if (!response.ok) {
-      throw new Error(`Failed to load component: ${filepath} (${response.status})`);
+    if (!_componentCache[filepath]) {
+      const response = await fetch(filepath);
+      if (!response.ok) {
+        throw new Error(`Failed to load component: ${filepath} (${response.status})`);
+      }
+      _componentCache[filepath] = await response.text();
     }
-    const html = await response.text();
     const container = document.querySelector(selector);
     if (container) {
-      container.innerHTML = html;
+      container.innerHTML = _componentCache[filepath];
     }
   } catch (error) {
     console.error('HMS Component Injection Error:', error);

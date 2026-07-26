@@ -4,6 +4,7 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -12,7 +13,13 @@ body {
   color: var(--text-primary);
   min-height: 100vh;
   overflow-x: hidden;
+  touch-action: manipulation;
   transition: background-color var(--transition-normal), color var(--transition-normal);
+}
+
+/* Optimize touch targets and response */
+button, input, select, textarea, a, .btn, .card, .glass-card, .sidebar-link, .nav-btn {
+  touch-action: manipulation;
 }
 
 /* App Container Layout */
@@ -80,8 +87,8 @@ body {
 
 /* Scrollbar Customization */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -102,7 +109,7 @@ body {
 @keyframes pageFadeIn {
   from {
     opacity: 0;
-    transform: translateY(15px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
@@ -129,6 +136,17 @@ body {
   to {
     transform: translateX(100%);
     opacity: 0;
+  }
+}
+
+@keyframes slideUpBottomSheet {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
   }
 }
 
@@ -187,6 +205,6 @@ footer {
 
 @media (max-width: 768px) {
   .page-body {
-    padding: 1rem;
+    padding: 1rem 0.75rem;
   }
 }

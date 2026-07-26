@@ -83,13 +83,17 @@ async function initializeGlobalUI() {
     roleEl.textContent = currentUser.role === 'ao' ? 'Admin Officer' : currentUser.role;
   }
 
-  // --- Mobile Sidebar Toggle ---
+  // --- Mobile Off-Canvas Sidebar & Gesture Controls ---
   let overlay = document.querySelector('.sidebar-overlay');
   if (!overlay) {
     overlay = document.createElement('div');
     overlay.className = 'sidebar-overlay';
     document.body.appendChild(overlay);
   }
+
+  const closeSidebar = () => {
+    document.body.classList.remove('sidebar-open');
+  };
 
   const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
   if (sidebarToggleBtn) {
@@ -98,16 +102,34 @@ async function initializeGlobalUI() {
       document.body.classList.toggle('sidebar-open');
     });
 
-    overlay.addEventListener('click', () => {
-      document.body.classList.remove('sidebar-open');
-    });
+    overlay.addEventListener('click', closeSidebar, { passive: true });
 
     document.addEventListener('click', (e) => {
       const sidebarLink = e.target.closest('.sidebar-link');
       if (sidebarLink) {
-        document.body.classList.remove('sidebar-open');
+        closeSidebar();
       }
     });
+
+    // Touch Swipe to Close Sidebar (Left swipe)
+    let touchStartX = 0;
+    let touchStartY = 0;
+    document.addEventListener('touchstart', (e) => {
+      touchStartX = e.changedTouches[0].screenX;
+      touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+      const touchEndX = e.changedTouches[0].screenX;
+      const touchEndY = e.changedTouches[0].screenY;
+      const diffX = touchEndX - touchStartX;
+      const diffY = Math.abs(touchEndY - touchStartY);
+
+      // Swiping left from open sidebar
+      if (document.body.classList.contains('sidebar-open') && diffX < -50 && diffY < 100) {
+        closeSidebar();
+      }
+    }, { passive: true });
   }
 
   // --- Dropdowns Controls ---
