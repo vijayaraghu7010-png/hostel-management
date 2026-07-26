@@ -24,3 +24,19 @@
   font-weight: 600;
   color: var(--text-primary);
 }
+
+/* Student Study Hour & Dynamic QR Canvas Responsive Overrides */
+#qr-canvas-entry,
+#qr-canvas-exit {
+  max-width: 100% !important;
+  height: auto !important;
+  display: block;
+  margin: 0 auto;
+}
+
+@media (max-width: 576px) {
+  .profile-info-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem;
+  }
+}

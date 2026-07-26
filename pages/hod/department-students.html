@@ -38,13 +38,13 @@
 
           <!-- Filters & Search Ledger -->
           <div class="glass-card" style="margin-bottom: 1.5rem; padding: 1.25rem 1.5rem;">
-            <div style="display: flex; gap: 1rem; flex-wrap: wrap; justify-content: space-between; align-items: center;">
-              <div style="display: flex; align-items: center; gap: 0.5rem; flex-grow: 1; max-width: 400px;">
+            <div class="filter-bar">
+              <div style="display: flex; align-items: center; gap: 0.5rem; flex-grow: 1; max-width: 400px; min-width: 200px;">
                 <i class="fa-solid fa-magnifying-glass text-muted"></i>
                 <input type="text" id="dept-students-search" class="form-control" placeholder="Search student name, reg, or room..." style="margin-bottom: 0;">
               </div>
-              <div style="display: flex; gap: 0.75rem; align-items: center;">
-                <label class="form-label" for="filter-dept-status" style="margin-bottom: 0; font-weight: 600; font-size: 0.8rem;">Status Today:</label>
+              <div class="filter-group">
+                <label class="form-label" for="filter-dept-status" style="margin-bottom: 0; font-weight: 600; font-size: 0.8rem; white-space: nowrap;">Status Today:</label>
                 <select id="filter-dept-status" class="form-control" style="margin-bottom: 0; max-width: 180px; padding: 0.35rem 0.75rem;">
                   <option value="">All</option>
                   <option value="In Hostel">In Hostel</option>
@@ -57,8 +57,8 @@
 
           <!-- Students Table Card -->
           <div class="glass-card" style="padding: 0; overflow: hidden;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
-              <h3 style="font-size: 1rem; font-weight: 700;"><i class="fa-solid fa-users-line" style="margin-right: 0.5rem; color: var(--primary);"></i>Registered Students Status</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 0.5rem;">
+              <h3 style="font-size: 1rem; font-weight: 700; margin: 0;"><i class="fa-solid fa-users-line" style="margin-right: 0.5rem; color: var(--primary);"></i>Registered Students Status</h3>
               <span style="font-size: 0.75rem; color: var(--text-muted);">Updates in real-time on Warden evening roll calls</span>
             </div>
 

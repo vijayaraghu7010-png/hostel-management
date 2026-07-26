@@ -132,6 +132,7 @@
                     <th>Status</th>
                     <th>Reviewed By</th>
                     <th>Remarks</th>
+                    <th style="text-align: right; padding-right: 1.5rem;">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="student-leaves-tbody">
@@ -239,7 +240,27 @@
     </div>
   </div>
 
+  <!-- CENTER-SCREEN MODAL: Digital Outpass Viewer -->
+  <div class="modal-overlay hidden" id="modal-view-outpass">
+    <div class="modal-backdrop" id="modal-outpass-backdrop"></div>
+    <div class="modal-container" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fa-solid fa-qrcode" style="color: var(--primary); margin-right: 0.5rem;"></i>KVCET Digital Outpass</h3>
+        <button class="modal-close" id="modal-outpass-close">&times;</button>
+      </div>
+      <div class="modal-body" style="text-align: center;">
+        <div id="outpass-card-content">
+          <!-- Hydrated dynamically -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btn-close-outpass-modal">Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Scripts -->
+  <script src="../../js/vendor/qrcode.min.js"></script>
   <script src="../../js/utils.js"></script>
   <script src="../../js/auth.js"></script>
   <script src="../../js/notifications.js"></script>

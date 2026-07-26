@@ -23,8 +23,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     await initComplaints();
   } else if (pagePath.includes('leave-requests.html')) {
     await initLeaveRequests();
+  } else if (pagePath.includes('outing-requests.html')) {
+    await initWardenOutingRequests();
+  } else if (pagePath.includes('gate-control.html')) {
+    await initWardenGateControl();
   } else if (pagePath.includes('staff.html')) {
     await initStaffManagement();
+  } else if (pagePath.includes('study-hour.html')) {
+    await initWardenStudyHour();
   }
 });
 
@@ -1093,11 +1099,11 @@ async function initStudentManagement() {
       document.getElementById('modal-title').textContent = title;
       document.getElementById('edit-mode').value = editMode;
       document.getElementById('student-reg').disabled = editMode; // Cannot edit primary key
-      if (modal) modal.style.display = 'flex';
+      if (modal) HMSModal.open(modal);
     };
 
     const closeModal = () => {
-      if (modal) modal.style.display = 'none';
+      if (modal) HMSModal.close(modal);
       if (form) form.reset();
     };
 
@@ -1488,11 +1494,11 @@ async function initRoomManagement() {
       document.getElementById('modal-title').textContent = title;
       document.getElementById('edit-mode').value = editMode;
       document.getElementById('room-number').disabled = editMode;
-      if (modal) modal.style.display = 'flex';
+      if (modal) HMSModal.open(modal);
     };
 
     const closeRoomModal = () => {
-      if (modal) modal.style.display = 'none';
+      if (modal) HMSModal.close(modal);
       if (form) form.reset();
     };
 
@@ -1556,11 +1562,11 @@ async function initRoomManagement() {
         }
       }
 
-      if (detailsModal) detailsModal.style.display = 'flex';
+      if (detailsModal) HMSModal.open(detailsModal);
     };
 
     const closeDetailsModal = () => {
-      if (detailsModal) detailsModal.style.display = 'none';
+      if (detailsModal) HMSModal.close(detailsModal);
     };
 
     if (closeDetailsBtn) closeDetailsBtn.addEventListener('click', closeDetailsModal);
@@ -1832,11 +1838,11 @@ async function initStaffManagement() {
       document.getElementById('staff-modal-title').textContent = title;
       document.getElementById('staff-edit-mode').value = editMode;
       document.getElementById('staff-reg').disabled = editMode; // Cannot edit Employee ID
-      if (modal) modal.style.display = 'flex';
+      if (modal) HMSModal.open(modal);
     };
 
     const closeModal = () => {
-      if (modal) modal.style.display = 'none';
+      if (modal) HMSModal.close(modal);
       if (form) form.reset();
     };
 
@@ -1954,3 +1960,1068 @@ async function initStaffManagement() {
     }
   }
 }
+
+// 9. Warden Study Hour & Discipline Management Center
+async function initWardenStudyHour() {
+  const currentUser = HMSAuth.getCurrentUser();
+  const sessionBanner = document.getElementById('warden-session-banner');
+  const sessionBadge = document.getElementById('warden-session-status-badge');
+  const sessionTitle = document.getElementById('warden-session-title');
+  const sessionDetails = document.getElementById('warden-session-details');
+  const statEntry = document.getElementById('stat-entry-scans');
+  const statKeyword = document.getElementById('stat-keyword-rounds');
+  const statExit = document.getElementById('stat-exit-scans');
+
+  const btnStartSession = document.getElementById('btn-start-new-session');
+  const btnFinalizeSession = document.getElementById('btn-finalize-session');
+
+  const modalStartSession = document.getElementById('modal-start-session');
+  const formCreateSession = document.getElementById('form-create-session');
+  const btnCloseStartModal = document.getElementById('btn-close-start-session-modal');
+  const btnCancelStartModal = document.getElementById('btn-cancel-start-session');
+
+  // Tabs
+  const tabBtns = document.querySelectorAll('.tab-btn');
+  const tabContents = document.querySelectorAll('.tab-content');
+
+  // Camera Scanner
+  const btnStartCamera = document.getElementById('btn-start-camera');
+  const btnStopCamera = document.getElementById('btn-stop-camera');
+  const selectScanPurpose = document.getElementById('select-scan-purpose');
+  const formManualVerify = document.getElementById('form-manual-qr-verify');
+  const inputManualToken = document.getElementById('input-manual-token');
+  const scanActivityLog = document.getElementById('scan-activity-log');
+
+  // Keyword Trigger
+  const formTriggerKeyword = document.getElementById('form-trigger-keyword');
+  const inputKeywordWord = document.getElementById('input-keyword-word');
+  const selectKeywordDuration = document.getElementById('select-keyword-duration');
+  const tableKeywordResponsesTbody = document.getElementById('table-keyword-responses-tbody');
+  const btnRefreshKeyword = document.getElementById('btn-refresh-keyword-responses');
+
+  // Roster
+  const tableSessionRosterTbody = document.getElementById('table-session-roster-tbody');
+  const filterRosterSearch = document.getElementById('filter-roster-search');
+  const filterRosterStatus = document.getElementById('filter-roster-status');
+
+  // Risk Analysis
+  const tableStudentRiskTbody = document.getElementById('table-student-risk-tbody');
+  const filterRiskLevel = document.getElementById('filter-risk-level');
+
+  // Parent Alerts
+  const selectAlertStudent = document.getElementById('select-alert-student');
+  const selectAlertLanguage = document.getElementById('select-alert-language');
+  const textareaAlertPreview = document.getElementById('textarea-alert-preview');
+  const btnOpenWhatsapp = document.getElementById('btn-open-whatsapp');
+  const formParentAlert = document.getElementById('form-parent-alert-generator');
+  const tableParentAlertsTbody = document.getElementById('table-parent-alerts-tbody');
+
+  let activeSession = null;
+  let html5QrcodeScannerInstance = null;
+  let activeWhatsAppUrl = '';
+
+  // Tab Switcher
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetTab = btn.getAttribute('data-tab');
+      tabBtns.forEach(b => b.classList.remove('active'));
+      tabContents.forEach(c => c.style.display = 'none');
+      btn.classList.add('active');
+      const contentEl = document.getElementById(targetTab);
+      if (contentEl) contentEl.style.display = 'block';
+    });
+  });
+
+  // Modal Handlers
+  const modalConfirmClose = document.getElementById('modal-confirm-close-session');
+  const btnCloseConfirmModal = document.getElementById('btn-close-confirm-modal');
+  const btnCancelConfirmClose = document.getElementById('btn-cancel-confirm-close');
+  const btnExecuteConfirmClose = document.getElementById('btn-execute-confirm-close');
+
+  const openStartModal = () => { if (modalStartSession) HMSModal.open(modalStartSession); };
+  const closeStartModal = () => { if (modalStartSession) HMSModal.close(modalStartSession); };
+
+  if (btnStartSession) btnStartSession.addEventListener('click', openStartModal);
+  if (btnCloseStartModal) btnCloseStartModal.addEventListener('click', closeStartModal);
+  if (btnCancelStartModal) btnCancelStartModal.addEventListener('click', closeStartModal);
+
+  // Form Create Session
+  if (formCreateSession) {
+    formCreateSession.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const submitBtn = formCreateSession.querySelector('button[type="submit"]');
+      const title = document.getElementById('session-title-input').value;
+      const startTime = document.getElementById('session-start-time').value;
+      const endTime = document.getElementById('session-end-time').value;
+
+      HMSModal.setLoading(submitBtn, true, 'Launching Session...');
+
+      try {
+        await HostelDB.createStudySession({
+          sessionTitle: title,
+          date: new Date().toISOString().split('T')[0],
+          startTime: startTime,
+          endTime: endTime,
+          createdBy: currentUser ? currentUser.name : 'Warden'
+        });
+        showToast(`Study Session "${title}" launched successfully!`, 'success');
+        closeStartModal();
+        await refreshAllWardenViews();
+      } catch (err) {
+        showToast(err.message || 'Failed to start session.', 'danger');
+      } finally {
+        HMSModal.setLoading(submitBtn, false);
+      }
+    });
+  }
+
+  // Finalize Session with Confirmation Modal
+  if (btnFinalizeSession) {
+    btnFinalizeSession.addEventListener('click', () => {
+      if (!activeSession) return;
+      if (modalConfirmClose) HMSModal.open(modalConfirmClose);
+    });
+  }
+
+  if (btnCloseConfirmModal) btnCloseConfirmModal.addEventListener('click', () => HMSModal.close(modalConfirmClose));
+  if (btnCancelConfirmClose) btnCancelConfirmClose.addEventListener('click', () => HMSModal.close(modalConfirmClose));
+
+  if (btnExecuteConfirmClose) {
+    btnExecuteConfirmClose.addEventListener('click', async () => {
+      if (!activeSession) return;
+      HMSModal.setLoading(btnExecuteConfirmClose, true, 'Finalizing...');
+
+      try {
+        await HostelDB.closeStudySession(activeSession.id);
+        HMSModal.close(modalConfirmClose);
+        showToast('Study session finalized and discipline credits updated!', 'success');
+        await refreshAllWardenViews();
+      } catch (err) {
+        showToast('Error closing session.', 'danger');
+      } finally {
+        HMSModal.setLoading(btnExecuteConfirmClose, false);
+      }
+    });
+  }
+
+  // Camera QR Scanner Controls
+  if (btnStartCamera) {
+    btnStartCamera.addEventListener('click', async () => {
+      if (!activeSession) {
+        showToast('Please launch an active study session before starting scanner.', 'warning');
+        return;
+      }
+      try {
+        if (typeof Html5Qrcode !== 'undefined') {
+          html5QrcodeScannerInstance = new Html5Qrcode('qr-camera-viewfinder');
+          await html5QrcodeScannerInstance.start(
+            { facingMode: 'environment' },
+            { fps: 10, qrbox: 250 },
+            async (decodedText) => {
+              await processScannedToken(decodedText);
+            },
+            (err) => {}
+          );
+          btnStartCamera.disabled = true;
+          if (btnStopCamera) btnStopCamera.disabled = false;
+          showToast('Camera QR Scanner active.', 'info');
+        } else {
+          showToast('HTML5 Camera scanner library not available. Use manual token input.', 'warning');
+        }
+      } catch (e) {
+        console.error('Camera Scanner start error:', e);
+      }
+    });
+  }
+
+  if (btnStopCamera) {
+    btnStopCamera.addEventListener('click', async () => {
+      if (html5QrcodeScannerInstance) {
+        await html5QrcodeScannerInstance.stop();
+        html5QrcodeScannerInstance = null;
+      }
+      btnStartCamera.disabled = false;
+      btnStopCamera.disabled = true;
+      showToast('Camera scanner stopped.', 'info');
+    });
+  }
+
+  async function processScannedToken(tokenStr) {
+    if (!activeSession) {
+      showToast('No active session running!', 'warning');
+      return;
+    }
+    const purpose = selectScanPurpose ? selectScanPurpose.value : 'ENTRY';
+    
+    // Check if tokenStr is pure regNo
+    let token = tokenStr.trim();
+    if (token.startsWith('STU') && !token.includes('HMSQR_')) {
+      // Find or generate dynamic token for student
+      token = await HostelDB.generateStudentQRToken(token, activeSession.id, purpose);
+    }
+
+    const res = await HostelDB.verifyQRToken(token, purpose, activeSession.id, currentUser ? currentUser.email : 'Warden');
+    if (res.success) {
+      showToast(`✓ ${res.message}`, 'success');
+      logScanActivity(`✓ ${purpose} Verified: ${res.studentReg} at ${new Date().toLocaleTimeString()}`, 'text-success');
+    } else {
+      showToast(`✕ Scan Error: ${res.message}`, 'danger');
+      logScanActivity(`✕ Scan Error (${purpose}): ${res.message}`, 'text-danger');
+    }
+    await refreshAllWardenViews();
+  }
+
+  function logScanActivity(msgText, textClass) {
+    if (!scanActivityLog) return;
+    if (scanActivityLog.children.length === 1 && scanActivityLog.children[0].textContent.includes('No scans recorded')) {
+      scanActivityLog.innerHTML = '';
+    }
+    const div = document.createElement('div');
+    div.className = textClass || '';
+    div.style.padding = '0.35rem 0.5rem';
+    div.style.borderBottom = '1px solid var(--border-color)';
+    div.innerHTML = `<strong>${msgText}</strong>`;
+    scanActivityLog.insertBefore(div, scanActivityLog.firstChild);
+  }
+
+  // Manual QR Token Entry Form
+  if (formManualVerify) {
+    formManualVerify.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const tokenVal = inputManualToken.value.trim();
+      if (!tokenVal) return;
+      await processScannedToken(tokenVal);
+      inputManualToken.value = '';
+    });
+  }
+
+  // Trigger Keyword Form
+  if (formTriggerKeyword) {
+    formTriggerKeyword.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!activeSession) {
+        showToast('Please launch an active session first!', 'warning');
+        return;
+      }
+      const word = inputKeywordWord.value.trim();
+      const dur = parseInt(selectKeywordDuration.value) || 60;
+      if (!word) return;
+
+      try {
+        await HostelDB.createKeywordCheck(activeSession.id, word, dur);
+        showToast(`Keyword "${word.toUpperCase()}" activated for ${dur} seconds! Announce it verbally now.`, 'success');
+        inputKeywordWord.value = '';
+        await refreshKeywordResponses();
+      } catch (err) {
+        showToast('Failed to trigger keyword.', 'danger');
+      }
+    });
+  }
+
+  if (btnRefreshKeyword) {
+    btnRefreshKeyword.addEventListener('click', async () => {
+      await refreshKeywordResponses();
+      showToast('Keyword responses updated.', 'info');
+    });
+  }
+
+  async function refreshKeywordResponses() {
+    if (!tableKeywordResponsesTbody || !activeSession) return;
+    const checks = await HostelDB.getKeywordChecks(activeSession.id);
+    const responses = await HostelDB.getKeywordResponses(activeSession.id);
+
+    if (responses.length === 0) {
+      tableKeywordResponsesTbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted" style="padding: 1.5rem;">No student keyword submissions recorded yet.</td></tr>';
+      return;
+    }
+
+    const students = await HostelDB.getStudents();
+    tableKeywordResponsesTbody.innerHTML = responses.map(r => {
+      const check = checks.find(c => c.id === r.checkId);
+      const student = students.find(s => s.regNo === r.studentReg);
+      const statusBadge = r.status === 'PASS' ? '<span class="badge badge-present">PASS</span>' : '<span class="badge badge-absent">FAIL</span>';
+
+      return `
+        <tr>
+          <td>Round #${check ? check.roundNumber : 1}</td>
+          <td><strong>${r.studentReg}</strong></td>
+          <td>${student ? student.name : r.studentReg}</td>
+          <td><strong style="letter-spacing: 1px;">${r.submittedKeyword}</strong></td>
+          <td>${statusBadge}</td>
+          <td>${new Date(r.submittedAt).toLocaleTimeString()}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  // Refresh Roster View
+  async function refreshRosterView() {
+    if (!tableSessionRosterTbody || !activeSession) return;
+    const attList = await HostelDB.getStudyAttendance(activeSession.id);
+    const students = await HostelDB.getStudents();
+
+    const searchTerm = (filterRosterSearch ? filterRosterSearch.value : '').toLowerCase();
+    const statusTerm = filterRosterStatus ? filterRosterStatus.value : '';
+
+    const filteredStudents = students.filter(s => {
+      const att = attList.find(a => a.studentReg === s.regNo);
+      const attStatus = att ? att.finalStatus : 'PENDING';
+
+      const matchSearch = s.name.toLowerCase().includes(searchTerm) || s.regNo.toLowerCase().includes(searchTerm) || (s.dept || '').toLowerCase().includes(searchTerm);
+      const matchStatus = !statusTerm || attStatus === statusTerm;
+      return matchSearch && matchStatus;
+    });
+
+    if (filteredStudents.length === 0) {
+      tableSessionRosterTbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted" style="padding: 1.5rem;">No matching student roster entries found.</td></tr>';
+      return;
+    }
+
+    tableSessionRosterTbody.innerHTML = filteredStudents.map(s => {
+      const att = attList.find(a => a.studentReg === s.regNo);
+      const entryPass = att && att.entryStatus === 'PASS';
+      const exitPass = att && att.exitStatus === 'PASS';
+      const finalStatus = att ? att.finalStatus : 'PENDING';
+
+      let statusBadge = `<span class="badge badge-pending">${finalStatus}</span>`;
+      if (finalStatus === 'PRESENT') statusBadge = '<span class="badge badge-present">PRESENT</span>';
+      if (finalStatus === 'PARTIAL') statusBadge = '<span class="badge badge-primary">PARTIAL</span>';
+      if (finalStatus === 'ABSENT') statusBadge = '<span class="badge badge-absent">ABSENT</span>';
+      if (finalStatus === 'EXCUSED') statusBadge = '<span class="badge badge-warning">EXCUSED</span>';
+
+      return `
+        <tr>
+          <td><strong>${s.regNo}</strong></td>
+          <td>${s.name}</td>
+          <td>${s.dept || 'N/A'} (Room: ${s.room || 'N/A'})</td>
+          <td>${entryPass ? '<span class="text-success"><i class="fa-solid fa-circle-check"></i> ' + new Date(att.entryTime).toLocaleTimeString() + '</span>' : '<span class="text-muted">Pending</span>'}</td>
+          <td>${exitPass ? '<span class="text-success"><i class="fa-solid fa-circle-check"></i> ' + new Date(att.exitTime).toLocaleTimeString() + '</span>' : '<span class="text-muted">Pending</span>'}</td>
+          <td>${statusBadge}</td>
+          <td><span style="font-size: 0.8rem; color: var(--text-secondary);">${att ? att.notes : 'Active Session'}</span></td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  // Refresh Risk View
+  async function refreshRiskView() {
+    if (!tableStudentRiskTbody) return;
+    const students = await HostelDB.getStudents();
+    const filterTier = filterRiskLevel ? filterRiskLevel.value : '';
+
+    let rowsHtml = '';
+    for (const s of students) {
+      const balance = await HostelDB.getCreditBalance(s.regNo);
+      const tierInfo = HostelDB.evaluateRatingTier(balance);
+      const riskProfile = await HostelDB.getStudentRiskProfile(s.regNo);
+
+      if (filterTier && riskProfile.riskLevel !== filterTier && tierInfo.tier !== filterTier) {
+        continue;
+      }
+
+      let riskBadge = `<span class="badge badge-present">${riskProfile.riskLevel}</span>`;
+      if (riskProfile.riskLevel === 'WATCH') riskBadge = `<span class="badge badge-pending">WATCH</span>`;
+      if (riskProfile.riskLevel === 'WARNING') riskBadge = `<span class="badge badge-warning">WARNING</span>`;
+      if (riskProfile.riskLevel === 'CRITICAL') riskBadge = `<span class="badge badge-absent">CRITICAL</span>`;
+
+      const evidenceText = riskProfile.evidence && riskProfile.evidence.length > 0 ? riskProfile.evidence.join('; ') : 'No disciplinary infractions';
+
+      rowsHtml += `
+        <tr>
+          <td><strong>${s.regNo}</strong></td>
+          <td>${s.name}</td>
+          <td><strong class="text-primary-color">${balance} / 1000</strong></td>
+          <td><span class="badge ${tierInfo.badgeClass}">${tierInfo.tier}</span></td>
+          <td>${riskBadge}</td>
+          <td><span style="font-size: 0.8rem; color: var(--text-secondary);">${evidenceText}</span></td>
+          <td>
+            <button class="btn btn-secondary btn-sm btn-quick-alert" data-reg="${s.regNo}"><i class="fa-brands fa-whatsapp text-success"></i> Parent Alert</button>
+          </td>
+        </tr>
+      `;
+    }
+
+    if (!rowsHtml) {
+      tableStudentRiskTbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted" style="padding: 1.5rem;">No student risk profiles found for selected filter.</td></tr>';
+      return;
+    }
+    tableStudentRiskTbody.innerHTML = rowsHtml;
+
+    // Attach quick alert listeners
+    document.querySelectorAll('.btn-quick-alert').forEach(b => {
+      b.addEventListener('click', () => {
+        const reg = b.getAttribute('data-reg');
+        if (selectAlertStudent) selectAlertStudent.value = reg;
+        // Switch tab to alerts
+        const alertTabBtn = document.querySelector('[data-tab="tab-alerts"]');
+        if (alertTabBtn) alertTabBtn.click();
+        triggerParentAlertPreview();
+      });
+    });
+  }
+
+  // Refresh Parent Alerts View
+  async function refreshParentAlertsView() {
+    const students = await HostelDB.getStudents();
+
+    if (selectAlertStudent) {
+      const currentVal = selectAlertStudent.value;
+      selectAlertStudent.innerHTML = '<option value="" disabled selected>Choose student...</option>' + 
+        students.map(s => {
+          const parentPhone = HostelDB.getParentPhone(s);
+          const maskedPhone = parentPhone ? HostelDB.maskPhoneNumber(parentPhone) : 'No Phone';
+          return `<option value="${s.regNo}">${s.name} (${s.regNo} - Room ${s.room || 'N/A'}) [Parent: ${maskedPhone}]</option>`;
+        }).join('');
+      if (currentVal) selectAlertStudent.value = currentVal;
+    }
+
+    if (tableParentAlertsTbody) {
+      const alertLogs = await HostelDB.getParentAlerts();
+      if (alertLogs.length === 0) {
+        tableParentAlertsTbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted" style="padding: 1.5rem;">No parent alerts issued yet.</td></tr>';
+      } else {
+        tableParentAlertsTbody.innerHTML = alertLogs.map(a => {
+          const student = students.find(s => s.regNo === a.studentReg);
+          const parentPhone = student ? HostelDB.getParentPhone(student) : '';
+          const maskedPhone = parentPhone ? HostelDB.maskPhoneNumber(parentPhone) : 'N/A';
+          let statusBadge = `<span class="badge badge-pending">${a.status}</span>`;
+          if (a.status === 'WHATSAPP_OPENED' || a.status === 'PREPARED') statusBadge = `<span class="badge badge-primary">WHATSAPP OPENED</span>`;
+          if (a.status === 'SENT_CONFIRMED' || a.status === 'SENT') statusBadge = `<span class="badge badge-present">SENT CONFIRMED</span>`;
+
+          return `
+            <tr>
+              <td>${formatDateString(a.createdAt)}</td>
+              <td><strong>${student ? student.name : a.studentReg}</strong><br><span style="font-size: 0.72rem; color: var(--text-muted);">${a.studentReg}</span></td>
+              <td><span style="font-family: monospace; font-size: 0.8rem;">${maskedPhone}</span></td>
+              <td><span class="badge badge-secondary">${a.language}</span></td>
+              <td>${statusBadge}</td>
+              <td>
+                ${a.status !== 'SENT_CONFIRMED' ? `
+                  <button class="btn btn-outline-success btn-sm btn-mark-sent" data-id="${a.id}">
+                    <i class="fa-solid fa-check"></i> Mark Sent
+                  </button>
+                ` : `<span class="text-success" style="font-size: 0.75rem; font-weight: 600;"><i class="fa-solid fa-check-double"></i> Confirmed</span>`}
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+        // Attach event delegation for Mark as Sent
+        tableParentAlertsTbody.querySelectorAll('.btn-mark-sent').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const alertId = btn.getAttribute('data-id');
+            await HostelDB.updateParentAlertStatus(alertId, 'SENT_CONFIRMED', currentUser ? currentUser.name : 'Warden');
+            showToast('Alert status updated to Sent Confirmed!', 'success');
+            await refreshParentAlertsView();
+          });
+        });
+      }
+    }
+  }
+
+  async function triggerParentAlertPreview() {
+    const regNo = selectAlertStudent ? selectAlertStudent.value : '';
+    const lang = selectAlertLanguage ? selectAlertLanguage.value : 'ENGLISH';
+    
+    const infoCard = document.getElementById('parent-info-card');
+    const btnSaveAlert = document.getElementById('btn-save-parent-alert');
+
+    if (!regNo) {
+      if (infoCard) infoCard.style.display = 'none';
+      if (textareaAlertPreview) textareaAlertPreview.value = '';
+      if (btnOpenWhatsapp) btnOpenWhatsapp.disabled = true;
+      if (btnSaveAlert) btnSaveAlert.disabled = true;
+      activeWhatsAppUrl = '';
+      return;
+    }
+
+    const students = await HostelDB.getStudents();
+    const student = students.find(s => s.regNo === regNo);
+    if (!student) return;
+
+    const creditBalance = await HostelDB.getCreditBalance(regNo);
+    const riskProfile = await HostelDB.getStudentRiskProfile(regNo);
+
+    // Extract real parent phone & parent name
+    const parentPhone = HostelDB.getParentPhone(student);
+    const parentName = HostelDB.getParentName(student);
+
+    // Update UI Card
+    if (infoCard) infoCard.style.display = 'block';
+    const dispName = document.getElementById('disp-student-name');
+    const dispReg = document.getElementById('disp-student-reg');
+    const dispParent = document.getElementById('disp-parent-name');
+    const dispPhone = document.getElementById('disp-parent-phone');
+    const dispCredit = document.getElementById('disp-student-credit');
+    const dispRisk = document.getElementById('disp-student-risk');
+
+    if (dispName) dispName.textContent = student.name;
+    if (dispReg) dispReg.textContent = student.regNo;
+    if (dispParent) dispParent.textContent = parentName;
+    if (dispPhone) dispPhone.textContent = parentPhone ? HostelDB.maskPhoneNumber(parentPhone) : 'Not Available';
+    if (dispCredit) dispCredit.textContent = `${creditBalance}/1000`;
+
+    if (dispRisk) {
+      dispRisk.textContent = riskProfile.riskLevel;
+      dispRisk.className = 'badge';
+      let riskBadgeClass = 'present';
+      if (riskProfile.riskLevel === 'WATCH') riskBadgeClass = 'pending';
+      if (riskProfile.riskLevel === 'WARNING') riskBadgeClass = 'warning';
+      if (riskProfile.riskLevel === 'CRITICAL') riskBadgeClass = 'absent';
+      dispRisk.classList.add(`badge-${riskBadgeClass}`);
+    }
+
+    // Generate Message
+    const messageText = HostelDB.generateWhatsAppMessageTemplate(student, riskProfile, lang, creditBalance);
+    if (textareaAlertPreview) textareaAlertPreview.value = messageText;
+
+    // Normalize phone number
+    const normResult = HostelDB.normalizePhoneNumber(parentPhone);
+    if (normResult.valid) {
+      activeWhatsAppUrl = HostelDB.generateWhatsAppLink(normResult.phone, messageText);
+      if (btnOpenWhatsapp) {
+        btnOpenWhatsapp.disabled = false;
+        btnOpenWhatsapp.title = `Open WhatsApp for ${normResult.phone}`;
+      }
+      if (btnSaveAlert) btnSaveAlert.disabled = false;
+    } else {
+      activeWhatsAppUrl = '';
+      if (btnOpenWhatsapp) {
+        btnOpenWhatsapp.disabled = true;
+        btnOpenWhatsapp.title = normResult.error;
+      }
+      if (btnSaveAlert) btnSaveAlert.disabled = false;
+    }
+  }
+
+  if (selectAlertStudent) selectAlertStudent.addEventListener('change', triggerParentAlertPreview);
+  if (selectAlertLanguage) selectAlertLanguage.addEventListener('change', triggerParentAlertPreview);
+
+  if (btnOpenWhatsapp) {
+    btnOpenWhatsapp.addEventListener('click', async () => {
+      const regNo = selectAlertStudent ? selectAlertStudent.value : '';
+      if (!regNo) {
+        showToast('Please select a student first.', 'warning');
+        return;
+      }
+
+      const students = await HostelDB.getStudents();
+      const student = students.find(s => s.regNo === regNo);
+      const parentPhone = HostelDB.getParentPhone(student);
+      const normResult = HostelDB.normalizePhoneNumber(parentPhone);
+
+      if (!normResult.valid) {
+        showToast(normResult.error || "Parent phone number is not available or invalid. Please update the student's profile.", 'danger');
+        return;
+      }
+
+      const lang = selectAlertLanguage ? selectAlertLanguage.value : 'ENGLISH';
+      const text = textareaAlertPreview ? textareaAlertPreview.value : '';
+
+      const targetUrl = HostelDB.generateWhatsAppLink(normResult.phone, text);
+
+      // Open WhatsApp Chat
+      window.open(targetUrl, '_blank');
+      showToast(`Opening WhatsApp chat for parent (${HostelDB.maskPhoneNumber(parentPhone)})...`, 'success');
+
+      // Record in audit log
+      try {
+        await HostelDB.createParentAlert({
+          studentReg: regNo,
+          language: lang,
+          messageText: text,
+          status: 'WHATSAPP_OPENED'
+        });
+        await refreshParentAlertsView();
+      } catch (e) {
+        console.warn('Failed to log parent alert:', e);
+      }
+    });
+  }
+
+  if (formParentAlert) {
+    formParentAlert.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const regNo = selectAlertStudent.value;
+      const lang = selectAlertLanguage.value;
+      const text = textareaAlertPreview.value;
+      if (!regNo || !text) return;
+
+      try {
+        await HostelDB.createParentAlert({
+          studentReg: regNo,
+          language: lang,
+          messageText: text,
+          status: 'PREPARED'
+        });
+        showToast('Parent alert saved in history log!', 'success');
+        await refreshParentAlertsView();
+      } catch (err) {
+        showToast('Error saving alert.', 'danger');
+      }
+    });
+  }
+
+  // Filter Listeners
+  if (filterRosterSearch) filterRosterSearch.addEventListener('input', refreshRosterView);
+  if (filterRosterStatus) filterRosterStatus.addEventListener('change', refreshRosterView);
+  if (filterRiskLevel) filterRiskLevel.addEventListener('change', refreshRiskView);
+
+  async function refreshAllWardenViews() {
+    activeSession = await HostelDB.getActiveStudySession();
+
+    if (activeSession) {
+      if (sessionBadge) {
+        sessionBadge.textContent = 'ACTIVE SESSION';
+        sessionBadge.className = 'badge badge-present';
+      }
+      if (sessionTitle) sessionTitle.textContent = activeSession.sessionTitle;
+      if (sessionDetails) sessionDetails.textContent = `Date: ${activeSession.date} | Timings: ${activeSession.startTime} - ${activeSession.endTime} | Created by: ${activeSession.createdBy}`;
+
+      if (btnStartSession) btnStartSession.style.display = 'none';
+      if (btnFinalizeSession) btnFinalizeSession.style.display = 'inline-block';
+
+      // Stats
+      const attList = await HostelDB.getStudyAttendance(activeSession.id);
+      const entryCount = attList.filter(a => a.entryStatus === 'PASS').length;
+      const exitCount = attList.filter(a => a.exitStatus === 'PASS').length;
+      const checks = await HostelDB.getKeywordChecks(activeSession.id);
+
+      if (statEntry) statEntry.textContent = entryCount;
+      if (statKeyword) statKeyword.textContent = checks.length;
+      if (statExit) statExit.textContent = exitCount;
+
+    } else {
+      if (sessionBadge) {
+        sessionBadge.textContent = 'NO ACTIVE SESSION';
+        sessionBadge.className = 'badge badge-secondary';
+      }
+      if (sessionTitle) sessionTitle.textContent = "Click 'Start Study Session' to begin";
+      if (sessionDetails) sessionDetails.textContent = 'No active session currently running in the study hall.';
+
+      if (btnStartSession) btnStartSession.style.display = 'inline-block';
+      if (btnFinalizeSession) btnFinalizeSession.style.display = 'none';
+
+      if (statEntry) statEntry.textContent = '0';
+      if (statKeyword) statKeyword.textContent = '0';
+      if (statExit) statExit.textContent = '0';
+    }
+
+    await refreshKeywordResponses();
+    await refreshRosterView();
+    await refreshRiskView();
+    await refreshParentAlertsView();
+  }
+
+  await refreshAllWardenViews();
+  const wardenPoll = setInterval(refreshAllWardenViews, 5000);
+  window.addEventListener('beforeunload', () => clearInterval(wardenPoll));
+}
+
+// 10. Warden Outing Requests Management Controller
+async function initWardenOutingRequests() {
+  const tbody = document.getElementById('warden-outings-tbody');
+  const searchInput = document.getElementById('warden-outing-search');
+  const statusFilter = document.getElementById('filter-outing-status');
+  const modal = document.getElementById('modal-outing-action');
+  const modalClose = document.getElementById('modal-outing-action-close');
+  const modalCancel = document.getElementById('btn-cancel-outing-action');
+  const form = document.getElementById('form-outing-action');
+
+  if (modalClose) modalClose.addEventListener('click', () => HMSModal.close('#modal-outing-action'));
+  if (modalCancel) modalCancel.addEventListener('click', () => HMSModal.close('#modal-outing-action'));
+
+  const loadOutings = async () => {
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading outing applications...</td></tr>';
+    try {
+      const allOutings = await HostelDB.getOutingRequests();
+      const students = await HostelDB.getStudents();
+      const studentMap = {};
+      students.forEach(s => { studentMap[s.regNo] = s; });
+
+      const query = (searchInput ? searchInput.value : '').toLowerCase().trim();
+      const statusVal = statusFilter ? statusFilter.value : 'Pending Warden';
+
+      const filtered = allOutings.filter(o => {
+        const student = studentMap[o.studentReg] || { name: '', room: '' };
+        const matchesSearch = o.id.toLowerCase().includes(query) ||
+                              o.destination.toLowerCase().includes(query) ||
+                              o.reason.toLowerCase().includes(query) ||
+                              student.name.toLowerCase().includes(query) ||
+                              o.studentReg.toLowerCase().includes(query);
+
+        const matchesStatus = statusVal === '' || o.status === statusVal;
+        return matchesSearch && matchesStatus;
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted" style="padding: 2.5rem;">No outing requests matching current filters.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(o => {
+        const student = studentMap[o.studentReg] || { name: 'Student', dept: 'CSE', room: '-' };
+
+        let parentBadge = '<span class="badge badge-pending">Pending</span>';
+        if (o.parentApprovalStatus === 'Approved') parentBadge = '<span class="badge badge-present">Approved</span>';
+        if (o.parentApprovalStatus === 'Rejected') parentBadge = '<span class="badge badge-absent">Rejected</span>';
+
+        let wardenBadge = '<span class="badge badge-pending">Pending</span>';
+        if (o.wardenApprovalStatus === 'Approved') wardenBadge = '<span class="badge badge-present">Approved</span>';
+        if (o.wardenApprovalStatus === 'Rejected') wardenBadge = '<span class="badge badge-absent">Rejected</span>';
+
+        return `
+          <tr>
+            <td><strong>${o.id}</strong></td>
+            <td>
+              <strong>${student.name}</strong><br>
+              <small class="text-muted">${o.studentReg} (Room ${student.room || '-'})</small>
+            </td>
+            <td>
+              <strong>${formatDateString(o.outingDate)}</strong><br>
+              <small>${o.requestedExitTime} - ${o.expectedReturnTime}</small>
+            </td>
+            <td><span class="badge badge-secondary">${o.destination}</span></td>
+            <td style="max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${o.reason}</td>
+            <td>${parentBadge}</td>
+            <td>${wardenBadge}</td>
+            <td style="text-align: right;">
+              ${o.status === 'Pending Warden' ? `
+                <button class="btn btn-success btn-sm" onclick="openOutingActionModal('${o.id}', 'Approved')">
+                  <i class="fa-solid fa-check"></i> Approve Outing
+                </button>
+                <button class="btn btn-danger btn-sm" onclick="openOutingActionModal('${o.id}', 'Rejected')">
+                  <i class="fa-solid fa-xmark"></i> Reject
+                </button>
+              ` : `
+                <span class="text-muted" style="font-size: 0.8rem;">${o.wardenApprovedBy ? 'Reviewed by ' + o.wardenApprovedBy : 'Processed'}</span>
+              `}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    } catch (e) {
+      console.error('Error loading warden outings:', e);
+    }
+  };
+
+  window.openOutingActionModal = async function(id, actionType) {
+    const outings = await HostelDB.getOutingRequests();
+    const outing = outings.find(o => o.id === id);
+    if (!outing) return;
+
+    const students = await HostelDB.getStudents();
+    const student = students.find(s => s.regNo === outing.studentReg) || { name: 'Student' };
+
+    document.getElementById('outing-action-id').value = id;
+    document.getElementById('outing-action-type').value = actionType;
+    document.getElementById('outing-action-title').textContent = actionType === 'Approved' ? 'Approve Outing Permission' : 'Reject Outing Permission';
+
+    document.getElementById('outing-action-summary').innerHTML = `
+      <strong>${student.name} (${outing.studentReg})</strong><br>
+      Outing Date: ${outing.outingDate} (${outing.requestedExitTime} - ${outing.expectedReturnTime})<br>
+      Destination: ${outing.destination} | Reason: ${outing.reason}
+    `;
+
+    HMSModal.open('#modal-outing-action');
+  };
+
+  if (form) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = document.getElementById('outing-action-id').value;
+      const actionType = document.getElementById('outing-action-type').value;
+      const remarks = document.getElementById('outing-action-remarks').value.trim();
+
+      const warden = HMSAuth.getCurrentUser();
+      const wardenName = warden ? warden.name : 'Warden';
+
+      try {
+        await HostelDB.updateOutingWardenApproval(id, actionType, wardenName, remarks);
+        HMSModal.close('#modal-outing-action');
+        showToast(`Outing Request ${id} ${actionType.toLowerCase()} successfully.`, actionType === 'Approved' ? 'success' : 'warning');
+        await loadOutings();
+      } catch (err) {
+        console.error('Failed to process outing decision:', err);
+        showToast('Failed to process decision.', 'danger');
+      }
+    });
+  }
+
+  if (searchInput) searchInput.addEventListener('input', loadOutings);
+  if (statusFilter) statusFilter.addEventListener('change', loadOutings);
+
+  await loadOutings();
+}
+
+// 11. Warden Gate Control & QR Code Verification Scanner
+async function initWardenGateControl() {
+  const camBtn = document.getElementById('btn-toggle-camera-gate');
+  const camBtnText = document.getElementById('gate-cam-btn-text');
+  const manualInput = document.getElementById('manual-qr-input');
+  const manualValidateBtn = document.getElementById('btn-validate-manual');
+  const scanDetailContainer = document.getElementById('outpass-scan-detail');
+  const emptyStateContainer = document.getElementById('outpass-empty-state');
+  const overdueListContainer = document.getElementById('overdue-outings-list');
+  const overdueBadge = document.getElementById('overdue-count-badge');
+
+  let html5QrcodeScanner = null;
+  let isScanning = false;
+
+  // Load & Refresh Overdue Outings
+  const refreshOverdueOutings = async () => {
+    if (!overdueListContainer) return;
+    try {
+      const overdue = await HostelDB.getOverdueOutings();
+      if (overdueBadge) overdueBadge.textContent = `${overdue.length} Overdue`;
+
+      if (overdue.length === 0) {
+        overdueListContainer.innerHTML = '<p class="text-muted text-center" style="font-size: 0.8rem; margin: 1rem 0;">No overdue outings. All exited students returned within window.</p>';
+        return;
+      }
+
+      overdueListContainer.innerHTML = overdue.map(item => `
+        <div style="background: rgba(245, 158, 11, 0.08); border-left: 3px solid var(--warning); padding: 0.65rem 0.85rem; border-radius: 4px; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; font-size: 0.82rem;">
+          <div>
+            <strong>${item.student.name} (${item.student.regNo})</strong><br>
+            <span class="text-muted">Expected: ${item.pass.validUntil}</span>
+          </div>
+          <span class="badge badge-warning">${item.overdueMinutes} Mins Overdue</span>
+        </div>
+      `).join('');
+    } catch (e) {
+      console.error('Error refreshing overdue outings:', e);
+    }
+  };
+
+  // Render Outpass Validation Card
+  const renderValidationResult = (res) => {
+    if (!scanDetailContainer || !emptyStateContainer) return;
+
+    emptyStateContainer.style.display = 'none';
+    scanDetailContainer.style.display = 'block';
+
+    const isValid = res.valid;
+    const pass = res.pass;
+    const student = res.student || { name: 'Student', regNo: 'REG', dept: 'CSE', room: '-' };
+    const details = res.details || {};
+
+    let bannerBg = isValid ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)';
+    let bannerColor = isValid ? 'var(--success)' : 'var(--danger)';
+
+    let actionsHtml = '';
+    if (isValid && pass) {
+      if (pass.status === 'VALID' || pass.status === 'NOT_YET_VALID') {
+        actionsHtml = `
+          <button class="btn btn-success btn-lg" style="width: 100%; font-weight: 700;" onclick="executeGateExit('${pass.id}')">
+            <i class="fa-solid fa-person-walking-arrow-right"></i> RECORD CAMPUS EXIT
+          </button>
+        `;
+      } else if (pass.status === 'EXIT_RECORDED') {
+        actionsHtml = `
+          <button class="btn btn-primary btn-lg" style="width: 100%; font-weight: 700;" onclick="executeGateReturn('${pass.id}')">
+            <i class="fa-solid fa-house-user"></i> RECORD CAMPUS RETURN
+          </button>
+        `;
+      }
+    }
+
+    scanDetailContainer.innerHTML = `
+      <div style="background: ${bannerBg}; border-radius: var(--border-radius-sm); padding: 0.85rem 1rem; border-left: 4px solid ${bannerColor}; margin-bottom: 1.25rem;">
+        <h3 style="font-size: 1.1rem; font-weight: 800; color: ${bannerColor}; margin: 0;">${res.message}</h3>
+      </div>
+
+      ${pass ? `
+        <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1.25rem; background: var(--bg-primary); padding: 0.85rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color);">
+          <div style="width: 52px; height: 52px; border-radius: 50%; background: var(--grad-primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: bold; flex-shrink: 0;">
+            ${student.name ? student.name.charAt(0).toUpperCase() : 'S'}
+          </div>
+          <div>
+            <h4 style="font-size: 1.05rem; font-weight: 800; color: var(--text-primary); margin: 0;">${student.name}</h4>
+            <p style="font-size: 0.82rem; color: var(--text-secondary); margin: 0.15rem 0 0 0;">
+              Reg No: <strong>${student.regNo}</strong> | Dept: <strong>${student.dept || 'CSE'}</strong> | Room: <strong>${student.room || '-'}</strong>
+            </p>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; font-size: 0.82rem; margin-bottom: 1.25rem; text-align: left;">
+          <div style="background: var(--bg-primary); padding: 0.65rem; border-radius: 4px; border: 1px solid var(--border-color);">
+            <span style="font-size: 0.72rem; color: var(--text-muted); display: block;">PASS TYPE</span>
+            <strong>${pass.passType === 'HOME_LEAVE' ? 'HOME LEAVE' : 'SHORT OUTING'}</strong>
+          </div>
+          <div style="background: var(--bg-primary); padding: 0.65rem; border-radius: 4px; border: 1px solid var(--border-color);">
+            <span style="font-size: 0.72rem; color: var(--text-muted); display: block;">PASS ID</span>
+            <strong>${pass.id}</strong>
+          </div>
+          <div style="background: var(--bg-primary); padding: 0.65rem; border-radius: 4px; border: 1px solid var(--border-color);">
+            <span style="font-size: 0.72rem; color: var(--text-muted); display: block;">PERMITTED EXIT</span>
+            <strong>${pass.validFrom}</strong>
+          </div>
+          <div style="background: var(--bg-primary); padding: 0.65rem; border-radius: 4px; border: 1px solid var(--border-color);">
+            <span style="font-size: 0.72rem; color: var(--text-muted); display: block;">EXPECTED RETURN</span>
+            <strong>${pass.validUntil}</strong>
+          </div>
+        </div>
+
+        ${pass.actualExitTime ? `
+          <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem; background: rgba(79, 70, 229, 0.05); padding: 0.5rem 0.75rem; border-radius: 4px;">
+            <i class="fa-solid fa-clock-rotate-left"></i> Actual Exit Recorded: <strong>${formatDateString(pass.actualExitTime)}</strong>
+          </div>
+        ` : ''}
+
+        ${pass.actualReturnTime ? `
+          <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem; background: rgba(16, 185, 129, 0.05); padding: 0.5rem 0.75rem; border-radius: 4px;">
+            <i class="fa-solid fa-circle-check"></i> Actual Return Recorded: <strong>${formatDateString(pass.actualReturnTime)}</strong>
+          </div>
+        ` : ''}
+
+        <div style="margin-top: 1rem;">
+          ${actionsHtml}
+          ${pass.status !== 'REVOKED' && pass.status !== 'RETURNED' ? `
+            <button class="btn btn-secondary btn-sm" style="width: 100%; margin-top: 0.5rem; color: var(--danger);" onclick="openRevokeModal('${pass.id}')">
+              <i class="fa-solid fa-ban"></i> Revoke Pass Security Hold
+            </button>
+          ` : ''}
+        </div>
+      ` : ''}
+    `;
+  };
+
+  // Perform Validation Logic
+  const handleValidateQrString = async (qrString) => {
+    let finalPayloadStr = qrString.trim();
+
+    // If manual entry was raw pass ID (e.g. OP-L1029381), find pass token
+    if (finalPayloadStr.startsWith('OP-')) {
+      const passes = await HostelDB.getOutpasses();
+      const pass = passes.find(p => p.id === finalPayloadStr);
+      if (pass) {
+        finalPayloadStr = JSON.stringify({ op: pass.id, tok: pass.secureToken });
+      }
+    }
+
+    const res = await HostelDB.validateOutpassQR(finalPayloadStr);
+    renderValidationResult(res);
+  };
+
+  window.executeGateExit = async function(passId) {
+    try {
+      const res = await HostelDB.recordOutpassExit(passId);
+      showToast(`Campus Exit Recorded for pass ${passId}!`, 'success');
+      await handleValidateQrString(passId);
+      await refreshOverdueOutings();
+    } catch (e) {
+      console.error('Exit record error:', e);
+      showToast('Failed to record exit.', 'danger');
+    }
+  };
+
+  window.executeGateReturn = async function(passId) {
+    try {
+      const res = await HostelDB.recordOutpassReturn(passId);
+      if (res.isLate) {
+        showToast(`Campus Return Recorded! LATE RETURN by ${res.lateMinutes} mins. Discipline points updated.`, 'warning');
+      } else {
+        showToast(`Campus Return Recorded on-time for pass ${passId}!`, 'success');
+      }
+      await handleValidateQrString(passId);
+      await refreshOverdueOutings();
+    } catch (e) {
+      console.error('Return record error:', e);
+      showToast('Failed to record return.', 'danger');
+    }
+  };
+
+  window.openRevokeModal = function(passId) {
+    document.getElementById('revoke-pass-id').value = passId;
+    HMSModal.open('#modal-revoke-pass');
+  };
+
+  // Revoke Modal Form
+  const revokeForm = document.getElementById('form-revoke-pass');
+  if (revokeForm) {
+    revokeForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const passId = document.getElementById('revoke-pass-id').value;
+      const reason = document.getElementById('revoke-reason').value.trim();
+
+      const warden = HMSAuth.getCurrentUser();
+      const wardenName = warden ? warden.name : 'Warden';
+
+      try {
+        await HostelDB.revokeOutpass(passId, wardenName, reason);
+        HMSModal.close('#modal-revoke-pass');
+        showToast(`Pass ${passId} revoked!`, 'danger');
+        await handleValidateQrString(passId);
+        await refreshOverdueOutings();
+      } catch (err) {
+        console.error('Revocation error:', err);
+        showToast('Failed to revoke pass.', 'danger');
+      }
+    });
+  }
+
+  const cancelRevokeBtn = document.getElementById('btn-cancel-revoke');
+  const closeRevokeBtn = document.getElementById('modal-revoke-close');
+  if (cancelRevokeBtn) cancelRevokeBtn.addEventListener('click', () => HMSModal.close('#modal-revoke-pass'));
+  if (closeRevokeBtn) closeRevokeBtn.addEventListener('click', () => HMSModal.close('#modal-revoke-pass'));
+
+  // Manual Input Validator
+  if (manualValidateBtn && manualInput) {
+    manualValidateBtn.addEventListener('click', async () => {
+      const val = manualInput.value.trim();
+      if (!val) {
+        showToast('Please enter a Pass ID or QR payload string.', 'warning');
+        return;
+      }
+      await handleValidateQrString(val);
+    });
+  }
+
+  // Camera Scanner Toggle
+  if (camBtn) {
+    camBtn.addEventListener('click', async () => {
+      if (isScanning) {
+        if (html5QrcodeScanner) {
+          await html5QrcodeScanner.stop();
+          html5QrcodeScanner = null;
+        }
+        isScanning = false;
+        if (camBtnText) camBtnText.textContent = 'Start Camera Scanner';
+        const placeholder = document.getElementById('gate-scanner-placeholder');
+        if (placeholder) placeholder.style.display = 'block';
+      } else {
+        if (typeof Html5Qrcode !== 'undefined') {
+          const placeholder = document.getElementById('gate-scanner-placeholder');
+          if (placeholder) placeholder.style.display = 'none';
+
+          html5QrcodeScanner = new Html5Qrcode("gate-qr-reader");
+          try {
+            await html5QrcodeScanner.start(
+              { facingMode: "environment" },
+              { fps: 10, qrbox: { width: 220, height: 220 } },
+              async (decodedText) => {
+                showToast('QR Code Scanned!', 'info');
+                await handleValidateQrString(decodedText);
+              },
+              (errorMessage) => {}
+            );
+            isScanning = true;
+            if (camBtnText) camBtnText.textContent = 'Stop Camera Scanner';
+          } catch (err) {
+            console.error('Camera access error:', err);
+            showToast('Unable to access camera scanner. Please check browser permissions or use manual entry.', 'warning');
+          }
+        } else {
+          showToast('QR Scanner module loading... Try manual entry.', 'warning');
+        }
+      }
+    });
+  }
+
+  await refreshOverdueOutings();
+  setInterval(refreshOverdueOutings, 10000);
+}
+
+

@@ -248,6 +248,26 @@ async function initStudentStatus() {
         </span>
       `;
 
+      // Populate credit score & risk profile
+      const creditScoreEl = document.getElementById('res-credit-score');
+      if (creditScoreEl) {
+        const balance = await HostelDB.getCreditBalance(found.regNo);
+        const evalTier = HostelDB.evaluateRatingTier(balance);
+        const riskProfile = await HostelDB.getStudentRiskProfile(found.regNo);
+
+        let riskBadge = `<span class="badge badge-present">${riskProfile.riskLevel}</span>`;
+        if (riskProfile.riskLevel === 'WATCH') riskBadge = `<span class="badge badge-pending">WATCH</span>`;
+        if (riskProfile.riskLevel === 'WARNING') riskBadge = `<span class="badge badge-warning">WARNING</span>`;
+        if (riskProfile.riskLevel === 'CRITICAL') riskBadge = `<span class="badge badge-absent">CRITICAL</span>`;
+
+        creditScoreEl.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <strong style="color: var(--primary);">${balance} / 1000 (${evalTier.tier})</strong>
+            ${riskBadge}
+          </div>
+        `;
+      }
+
       // Attendance summary
       document.getElementById('res-attendance').innerHTML = `
         <strong>${percentage}%</strong> (${presentCount} Present / ${totalRolls - presentCount} Absent)

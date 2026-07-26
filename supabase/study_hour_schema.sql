@@ -1,0 +1,115 @@
+-- ============================================================
+-- KVCET SMART HOSTEL ERP - STUDY HOUR & DISCIPLINE CREDIT MODULE
+-- ADDITIVE DATABASE MIGRATION SCRIPT FOR SUPABASE
+-- ============================================================
+
+-- 1. STUDY SESSIONS TABLE
+CREATE TABLE IF NOT EXISTS hms_study_sessions (
+    id VARCHAR(50) PRIMARY KEY,
+    session_title VARCHAR(150) NOT NULL,
+    date DATE NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE', -- ACTIVE, CLOSED
+    created_by VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    closed_at TIMESTAMP WITH TIME ZONE,
+    config JSONB DEFAULT '{}'::jsonb
+);
+
+-- 2. STUDY ATTENDANCE RECORD TABLE
+CREATE TABLE IF NOT EXISTS hms_study_attendance (
+    id VARCHAR(50) PRIMARY KEY,
+    session_id VARCHAR(50) REFERENCES hms_study_sessions(id) ON DELETE CASCADE,
+    student_reg VARCHAR(50) NOT NULL,
+    student_name VARCHAR(100) NOT NULL,
+    dept VARCHAR(50) NOT NULL,
+    room VARCHAR(50) DEFAULT '',
+    entry_status VARCHAR(20) DEFAULT 'MISSED', -- PASS, MISSED
+    entry_time TIMESTAMP WITH TIME ZONE,
+    exit_status VARCHAR(20) DEFAULT 'MISSED', -- PASS, MISSED
+    exit_time TIMESTAMP WITH TIME ZONE,
+    final_status VARCHAR(20) DEFAULT 'REVIEW', -- PRESENT, PARTIAL, ABSENT, EXCUSED, REVIEW
+    notes TEXT DEFAULT '',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(session_id, student_reg)
+);
+
+-- 3. KEYWORD PRESENCE VERIFICATION CHECKS TABLE
+CREATE TABLE IF NOT EXISTS hms_study_checks (
+    id VARCHAR(50) PRIMARY KEY,
+    session_id VARCHAR(50) REFERENCES hms_study_sessions(id) ON DELETE CASCADE,
+    keyword VARCHAR(100) NOT NULL,
+    duration_seconds INT NOT NULL DEFAULT 60,
+    round_number INT NOT NULL DEFAULT 1,
+    started_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 4. KEYWORD RESPONSES TABLE
+CREATE TABLE IF NOT EXISTS hms_study_check_responses (
+    id VARCHAR(50) PRIMARY KEY,
+    check_id VARCHAR(50) REFERENCES hms_study_checks(id) ON DELETE CASCADE,
+    session_id VARCHAR(50) NOT NULL,
+    student_reg VARCHAR(50) NOT NULL,
+    submitted_keyword VARCHAR(100) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'MISSED', -- PASS, FAIL, MISSED
+    submitted_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(check_id, student_reg)
+);
+
+-- 5. SECURE DYNAMIC QR TOKENS TABLE
+CREATE TABLE IF NOT EXISTS hms_qr_tokens (
+    id VARCHAR(50) PRIMARY KEY,
+    token VARCHAR(255) NOT NULL UNIQUE,
+    session_id VARCHAR(50) NOT NULL,
+    student_reg VARCHAR(50) NOT NULL,
+    purpose VARCHAR(20) NOT NULL, -- ENTRY, EXIT
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    used BOOLEAN DEFAULT FALSE,
+    used_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 6. IMMUTABLE DISCIPLINE CREDIT LEDGER TABLE
+CREATE TABLE IF NOT EXISTS hms_credit_ledger (
+    id VARCHAR(50) PRIMARY KEY,
+    student_reg VARCHAR(50) NOT NULL,
+    points_change INT NOT NULL,
+    reason VARCHAR(255) NOT NULL,
+    source_event VARCHAR(100) NOT NULL, -- STUDY_SESSION_PRESENT, STUDY_SESSION_ABSENT, KEYWORD_MISSED, APPROVED_LEAVE, MANUAL_ADJUSTMENT
+    source_id VARCHAR(100) DEFAULT '',
+    balance_after INT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 7. STUDENT RISK & PATTERN ANALYSIS TABLE
+CREATE TABLE IF NOT EXISTS hms_student_risk (
+    id VARCHAR(50) PRIMARY KEY,
+    student_reg VARCHAR(50) NOT NULL UNIQUE,
+    risk_level VARCHAR(20) NOT NULL DEFAULT 'NORMAL', -- NORMAL, WATCH, WARNING, CRITICAL
+    risk_score INT DEFAULT 0,
+    evidence JSONB DEFAULT '[]'::jsonb,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 8. PARENT ALERTS HISTORY TABLE
+CREATE TABLE IF NOT EXISTS hms_parent_alerts (
+    id VARCHAR(50) PRIMARY KEY,
+    student_reg VARCHAR(50) NOT NULL,
+    alert_type VARCHAR(50) NOT NULL, -- RISK_WARNING, UNEXCUSED_ABSENCE, KEYWORD_VIOLATION
+    language VARCHAR(20) NOT NULL DEFAULT 'TAMIL_ENGLISH', -- TAMIL, ENGLISH, TAMIL_ENGLISH
+    message_text TEXT NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING', -- PENDING, APPROVED, SENT
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    sent_at TIMESTAMP WITH TIME ZONE
+);
+
+-- INDEXES FOR ACCELERATED QUERY PERFORMANCE
+CREATE INDEX IF NOT EXISTS idx_hms_study_att_session ON hms_study_attendance(session_id);
+CREATE INDEX IF NOT EXISTS idx_hms_study_att_student ON hms_study_attendance(student_reg);
+CREATE INDEX IF NOT EXISTS idx_hms_qr_tokens_lookup ON hms_qr_tokens(token, purpose);
+CREATE INDEX IF NOT EXISTS idx_hms_credit_ledger_student ON hms_credit_ledger(student_reg);
+CREATE INDEX IF NOT EXISTS idx_hms_student_risk_level ON hms_student_risk(risk_level);

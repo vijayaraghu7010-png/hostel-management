@@ -44,13 +44,13 @@
 
           <!-- Filters & Search Ledger -->
           <div class="glass-card" style="margin-bottom: 1.5rem; padding: 1.25rem 1.5rem;">
-            <div style="display: flex; gap: 1rem; flex-wrap: wrap; justify-content: space-between; align-items: center;">
-              <div style="display: flex; align-items: center; gap: 0.5rem; flex-grow: 1; max-width: 400px;">
+            <div class="filter-bar">
+              <div style="display: flex; align-items: center; gap: 0.5rem; flex-grow: 1; max-width: 400px; min-width: 200px;">
                 <i class="fa-solid fa-magnifying-glass text-muted"></i>
                 <input type="text" id="student-search" class="form-control" placeholder="Search by name, roll number, or room..." style="margin-bottom: 0;">
               </div>
-              <div style="display: flex; gap: 0.75rem; align-items: center;">
-                <label class="form-label" for="filter-dept" style="margin-bottom: 0; font-weight: 600; font-size: 0.8rem;">Branch:</label>
+              <div class="filter-group">
+                <label class="form-label" for="filter-dept" style="margin-bottom: 0; font-weight: 600; font-size: 0.8rem; white-space: nowrap;">Branch:</label>
                 <select id="filter-dept" class="form-control" style="margin-bottom: 0; max-width: 120px; padding: 0.35rem 0.75rem;">
                   <option value="">All</option>
                   <option value="CSE">CSE</option>
@@ -62,7 +62,7 @@
                   <option value="AI & DS">AI & DS</option>
                 </select>
                 
-                <label class="form-label" for="filter-status" style="margin-bottom: 0; font-weight: 600; font-size: 0.8rem;">Status:</label>
+                <label class="form-label" for="filter-status" style="margin-bottom: 0; font-weight: 600; font-size: 0.8rem; white-space: nowrap;">Status:</label>
                 <select id="filter-status" class="form-control" style="margin-bottom: 0; max-width: 130px; padding: 0.35rem 0.75rem;">
                   <option value="">All</option>
                   <option value="Active">Active</option>
@@ -75,7 +75,7 @@
           <!-- Students Data Table -->
           <div class="glass-card" style="padding: 0; overflow: hidden;">
             <div class="table-responsive">
-              <table class="table-custom" style="margin-bottom: 0;">
+              <table class="table-custom" style="margin-bottom: 0; min-width: 850px;">
                 <thead>
                   <tr>
                     <th style="cursor: pointer;" id="sort-reg">Reg No <i class="fa-solid fa-sort"></i></th>
@@ -86,7 +86,7 @@
                     <th>Room</th>
                     <th>Phone</th>
                     <th>Status</th>
-                    <th style="text-align: right; padding-right: 2rem;">Actions</th>
+                    <th style="text-align: right; padding-right: 1.5rem;">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="student-ledger-tbody">
@@ -96,7 +96,7 @@
             </div>
 
             <!-- Table Pagination controls -->
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); flex-wrap: wrap; gap: 0.75rem;">
+            <div class="table-pagination-bar">
               <span style="font-size: 0.8rem; color: var(--text-secondary);" id="pagination-info">Showing 0 to 0 of 0 students</span>
               <div style="display: flex; gap: 0.5rem;" id="pagination-btns">
                 <button class="btn btn-secondary btn-sm" id="btn-prev-page" disabled>Previous</button>

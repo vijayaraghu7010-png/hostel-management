@@ -52,3 +52,10 @@
   font-size: 0.7rem;
   color: var(--text-muted);
 }
+
+@media (max-width: 576px) {
+  .principal-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem;
+  }
+}

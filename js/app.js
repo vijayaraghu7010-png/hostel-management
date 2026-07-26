@@ -184,3 +184,81 @@ async function initializeGlobalUI() {
   // Populate system notification listings initially
   await populateNavbarNotifications();
 }
+
+/* --- REUSABLE HMS MODAL SYSTEM CONTROLLER --- */
+window.HMSModal = {
+  open(modalIdOrElement) {
+    let modal = null;
+    if (typeof modalIdOrElement === 'string') {
+      const cleanId = modalIdOrElement.replace(/^#/, '');
+      modal = document.getElementById(cleanId) || document.querySelector(modalIdOrElement);
+    } else {
+      modal = modalIdOrElement;
+    }
+    if (!modal) return;
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+    modal.classList.remove('hidden');
+    document.body.classList.add('modal-open');
+    
+    // Focus first interactive input inside modal
+    const firstInput = modal.querySelector('input:not([type="hidden"]), select, textarea, button:not(.modal-close)');
+    if (firstInput) {
+      setTimeout(() => firstInput.focus(), 100);
+    }
+  },
+
+  close(modalIdOrElement) {
+    let modal = null;
+    if (typeof modalIdOrElement === 'string') {
+      const cleanId = modalIdOrElement.replace(/^#/, '');
+      modal = document.getElementById(cleanId) || document.querySelector(modalIdOrElement);
+    } else {
+      modal = modalIdOrElement;
+    }
+    if (!modal) return;
+    modal.style.display = 'none';
+    modal.classList.remove('active');
+    modal.classList.add('hidden');
+    
+    // Check if any other modals are active before unlocking scroll
+    const activeModals = document.querySelectorAll('.modal-backdrop.active, .modal-backdrop[style*="display: flex"], .modal-overlay.active, .modal-overlay[style*="display: flex"]');
+    if (!activeModals || activeModals.length === 0) {
+      document.body.classList.remove('modal-open');
+    }
+  },
+
+  setLoading(buttonElement, isLoading, loadingText = 'Processing...') {
+    if (!buttonElement) return;
+    if (isLoading) {
+      buttonElement.dataset.originalHtml = buttonElement.innerHTML;
+      buttonElement.disabled = true;
+      buttonElement.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> <span>${loadingText}</span>`;
+    } else {
+      if (buttonElement.dataset.originalHtml) {
+        buttonElement.innerHTML = buttonElement.dataset.originalHtml;
+      }
+      buttonElement.disabled = false;
+    }
+  }
+};
+
+// Global Keyboard Escape key dismissal for open modals
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const activeModals = document.querySelectorAll('.modal-backdrop, .modal-overlay');
+    activeModals.forEach(m => {
+      if (m.style.display === 'flex' || m.classList.contains('active')) {
+        HMSModal.close(m);
+      }
+    });
+  }
+});
+
+// Global Backdrop click listener
+document.addEventListener('click', (e) => {
+  if (e.target.classList.contains('modal-backdrop') || e.target.classList.contains('modal-overlay')) {
+    HMSModal.close(e.target);
+  }
+});
+

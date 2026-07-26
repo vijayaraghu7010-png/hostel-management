@@ -18,6 +18,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     await initLeaveRequest(currentUser);
   } else if (pagePath.includes('leave-status.html')) {
     await initLeaveStatus(currentUser);
+  } else if (pagePath.includes('outing-request.html')) {
+    await initStudentOutingRequest(currentUser);
+  } else if (pagePath.includes('my-outpasses.html')) {
+    await initStudentMyOutpasses(currentUser);
+  } else if (pagePath.includes('study-hour.html')) {
+    await initStudentStudyHour(currentUser);
+  } else if (pagePath.includes('my-credits.html')) {
+    await initStudentMyCredits(currentUser);
   } else if (pagePath.includes('complaint-status.html')) {
     await initComplaintStatusTimeline(currentUser);
   } else if (pagePath.includes('profile.html')) {
@@ -562,7 +570,7 @@ async function initLeaveStatus(student) {
       const totalDays = Math.round((toDateObj - fromDateObj) / 86400000) + 1;
 
       return `
-        <tr style="cursor: pointer;" onclick="viewLeaveDetails('${l.id}')">
+        <tr style="cursor: pointer;" data-leave-id="${l.id}">
           <td><strong class="text-primary-color">${l.id}</strong></td>
           <td>${formatDateString(l.fromDate)}</td>
           <td>${formatDateString(l.toDate)}</td>
@@ -572,9 +580,36 @@ async function initLeaveStatus(student) {
           <td><span class="badge badge-${badgeClass}">${l.status}</span></td>
           <td>${l.approvedBy || 'Pending'}</td>
           <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${l.remarks || 'Awaiting Review'}</td>
+          <td style="text-align: right; padding-right: 1.5rem;">
+            ${l.status === 'Approved' ? `
+              <button class="btn btn-success btn-sm" data-action="view-outpass" data-leave-id="${l.id}">
+                <i class="fa-solid fa-qrcode"></i> View Outpass
+              </button>
+            ` : `<span class="text-muted" style="font-size: 0.78rem;">${l.status === 'Pending' ? 'Awaiting Review' : l.status}</span>`}
+          </td>
         </tr>
       `;
     }).join('');
+
+    if (tbody && !tbody.dataset.listenerBound) {
+      tbody.dataset.listenerBound = 'true';
+      tbody.addEventListener('click', (e) => {
+        const outpassBtn = e.target.closest('[data-action="view-outpass"]');
+        if (outpassBtn) {
+          e.stopPropagation();
+          const leaveId = outpassBtn.dataset.leaveId;
+          if (leaveId) {
+            window.openOutpassModalForLeave(leaveId);
+          }
+          return;
+        }
+
+        const row = e.target.closest('tr[data-leave-id]');
+        if (row) {
+          window.viewLeaveDetails(row.dataset.leaveId);
+        }
+      });
+    }
   }
 
   // Interactive sorting
@@ -707,6 +742,14 @@ async function initLeaveStatus(student) {
             <span class="timeline-desc">${step3Desc}</span>
           </div>
         </div>
+
+        ${l.status === 'Approved' ? `
+          <div style="margin-top: 1.25rem; text-align: center; border-top: 1px dashed var(--border-color); padding-top: 1rem;">
+            <button type="button" class="btn btn-success" onclick="openOutpassModalForLeave('${l.id}')">
+              <i class="fa-solid fa-qrcode"></i> View Digital Outpass & QR Code
+            </button>
+          </div>
+        ` : ''}
       `;
     }
 
@@ -726,3 +769,725 @@ async function initLeaveStatus(student) {
     clearInterval(pollInterval);
   });
 }
+
+// 7. Student Study Hour & Presence Verification Portal
+async function initStudentStudyHour(student) {
+  const sessionBanner = document.getElementById('active-session-banner');
+  const sessionBadge = document.getElementById('session-status-badge');
+  const sessionTitle = document.getElementById('session-title-text');
+  const sessionTiming = document.getElementById('session-timing-text');
+  const btnRefresh = document.getElementById('btn-refresh-session');
+
+  const keywordCard = document.getElementById('keyword-prompt-card');
+  const keywordTimerEl = document.getElementById('keyword-countdown-timer');
+  const keywordForm = document.getElementById('keyword-verify-form');
+  const keywordInput = document.getElementById('input-warden-keyword');
+  const keywordCheckIdInput = document.getElementById('active-check-id');
+  const keywordMsg = document.getElementById('keyword-response-msg');
+
+  const entryQrContainer = document.getElementById('entry-qr-container');
+  const exitQrContainer = document.getElementById('exit-qr-container');
+  const entryStatusBadge = document.getElementById('entry-status-badge');
+  const exitStatusBadge = document.getElementById('exit-status-badge');
+  const btnRegenEntry = document.getElementById('btn-regen-entry-qr');
+  const btnRegenExit = document.getElementById('btn-regen-exit-qr');
+  const historyTbody = document.getElementById('student-study-history-tbody');
+
+  let entryQrInstance = null;
+  let exitQrInstance = null;
+  let currentActiveSession = null;
+  let keywordCountdownInterval = null;
+
+  async function renderEntryQR(sessionId) {
+    if (!entryQrContainer) return;
+    try {
+      const token = await HostelDB.generateStudentQRToken(student.regNo, sessionId, 'ENTRY');
+      entryQrContainer.innerHTML = '';
+      if (typeof QRCode !== 'undefined') {
+        new QRCode(entryQrContainer, { text: token, width: 200, height: 200 });
+      } else {
+        entryQrContainer.innerHTML = `<div style="padding: 1rem; word-break: break-all; font-family: monospace; font-size: 0.75rem;">${token}</div>`;
+      }
+    } catch (e) {
+      console.error('Error generating Entry QR:', e);
+    }
+  }
+
+  async function renderExitQR(sessionId) {
+    if (!exitQrContainer) return;
+    try {
+      const token = await HostelDB.generateStudentQRToken(student.regNo, sessionId, 'EXIT');
+      exitQrContainer.innerHTML = '';
+      if (typeof QRCode !== 'undefined') {
+        new QRCode(exitQrContainer, { text: token, width: 200, height: 200 });
+      } else {
+        exitQrContainer.innerHTML = `<div style="padding: 1rem; word-break: break-all; font-family: monospace; font-size: 0.75rem;">${token}</div>`;
+      }
+    } catch (e) {
+      console.error('Error generating Exit QR:', e);
+    }
+  }
+
+  async function refreshSessionState() {
+    try {
+      currentActiveSession = await HostelDB.getActiveStudySession();
+
+      if (currentActiveSession) {
+        if (sessionBadge) {
+          sessionBadge.textContent = 'ACTIVE SESSION';
+          sessionBadge.className = 'badge badge-present';
+        }
+        if (sessionTitle) sessionTitle.textContent = currentActiveSession.sessionTitle;
+        if (sessionTiming) sessionTiming.textContent = `Date: ${currentActiveSession.date} | Timings: ${currentActiveSession.startTime} - ${currentActiveSession.endTime}`;
+
+        // Render QR codes if not already rendered
+        if (entryQrContainer && entryQrContainer.children.length === 0) {
+          await renderEntryQR(currentActiveSession.id);
+        }
+        if (exitQrContainer && exitQrContainer.children.length === 0) {
+          await renderExitQR(currentActiveSession.id);
+        }
+
+        // Check Attendance status for student
+        const attList = await HostelDB.getStudyAttendance(currentActiveSession.id, student.regNo);
+        if (attList && attList.length > 0) {
+          const att = attList[0];
+          if (entryStatusBadge) {
+            entryStatusBadge.textContent = att.entryStatus === 'PASS' ? 'Entry Verified ✓' : 'Entry Pending';
+            entryStatusBadge.className = att.entryStatus === 'PASS' ? 'badge badge-present' : 'badge badge-pending';
+          }
+          if (exitStatusBadge) {
+            exitStatusBadge.textContent = att.exitStatus === 'PASS' ? 'Exit Verified ✓' : 'Exit Pending';
+            exitStatusBadge.className = att.exitStatus === 'PASS' ? 'badge badge-present' : 'badge badge-pending';
+          }
+        }
+
+        // Check for active Keyword Verification Check
+        const checks = await HostelDB.getKeywordChecks(currentActiveSession.id);
+        const now = new Date();
+        const activeCheck = checks.find(c => new Date(c.expiresAt) > now);
+
+        if (activeCheck) {
+          // Check if student has already responded to this check
+          const responses = await HostelDB.getKeywordResponses(currentActiveSession.id, activeCheck.id);
+          const myResp = responses.find(r => r.studentReg === student.regNo);
+
+          if (!myResp) {
+            if (keywordCard) keywordCard.style.display = 'block';
+            if (keywordCheckIdInput) keywordCheckIdInput.value = activeCheck.id;
+
+            // Setup countdown timer
+            if (keywordTimerEl) {
+              const secondsLeft = Math.max(0, Math.floor((new Date(activeCheck.expiresAt) - now) / 1000));
+              keywordTimerEl.textContent = `00:${secondsLeft < 10 ? '0' + secondsLeft : secondsLeft}`;
+            }
+          } else {
+            if (keywordCard) keywordCard.style.display = 'none';
+          }
+        } else {
+          if (keywordCard) keywordCard.style.display = 'none';
+        }
+
+      } else {
+        if (sessionBadge) {
+          sessionBadge.textContent = 'NO ACTIVE SESSION';
+          sessionBadge.className = 'badge badge-secondary';
+        }
+        if (sessionTitle) sessionTitle.textContent = 'No Active Study Hour Session';
+        if (sessionTiming) sessionTiming.textContent = 'Warden has not started a session currently.';
+        if (entryQrContainer) entryQrContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 0.85rem; padding: 2rem;">No Active Session</div>';
+        if (exitQrContainer) exitQrContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 0.85rem; padding: 2rem;">No Active Session</div>';
+        if (keywordCard) keywordCard.style.display = 'none';
+      }
+
+      await renderStudyHistory();
+    } catch (e) {
+      console.error('Error refreshing study session state:', e);
+    }
+  }
+
+  async function renderStudyHistory() {
+    if (!historyTbody) return;
+    const allSessions = await HostelDB.getStudySessions();
+    if (allSessions.length === 0) {
+      historyTbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted" style="padding: 2rem;">No previous study hour sessions recorded.</td></tr>';
+      return;
+    }
+
+    let rowsHtml = '';
+    for (const s of allSessions) {
+      const attList = await HostelDB.getStudyAttendance(s.id, student.regNo);
+      const att = attList.length > 0 ? attList[0] : null;
+
+      let badgeClass = 'badge-pending';
+      let statusStr = att ? att.finalStatus : 'ABSENT';
+      if (statusStr === 'PRESENT') badgeClass = 'badge-present';
+      if (statusStr === 'PARTIAL') badgeClass = 'badge-primary';
+      if (statusStr === 'ABSENT') badgeClass = 'badge-absent';
+      if (statusStr === 'EXCUSED') badgeClass = 'badge-warning';
+
+      rowsHtml += `
+        <tr>
+          <td><strong>${s.date}</strong> (${s.startTime} - ${s.endTime})</td>
+          <td>${att && att.entryStatus === 'PASS' ? '<span class="text-success"><i class="fa-solid fa-circle-check"></i> Verified</span>' : '<span class="text-muted">Missed</span>'}</td>
+          <td>${att && att.exitStatus === 'PASS' ? '<span class="text-success"><i class="fa-solid fa-circle-check"></i> Verified</span>' : '<span class="text-muted">Missed</span>'}</td>
+          <td><span class="badge ${badgeClass}">${statusStr}</span></td>
+          <td>${att ? (att.notes || 'Recorded') : 'Unexcused Absence'}</td>
+        </tr>
+      `;
+    }
+    historyTbody.innerHTML = rowsHtml;
+  }
+
+  // Event Handlers
+  if (btnRegenEntry) {
+    btnRegenEntry.addEventListener('click', async () => {
+      if (currentActiveSession) {
+        await renderEntryQR(currentActiveSession.id);
+        showToast('Entry QR Code refreshed.', 'info');
+      }
+    });
+  }
+
+  if (btnRegenExit) {
+    btnRegenExit.addEventListener('click', async () => {
+      if (currentActiveSession) {
+        await renderExitQR(currentActiveSession.id);
+        showToast('Exit QR Code refreshed.', 'info');
+      }
+    });
+  }
+
+  if (btnRefresh) {
+    btnRefresh.addEventListener('click', async () => {
+      await refreshSessionState();
+      showToast('Study session state synced.', 'success');
+    });
+  }
+
+  if (keywordForm) {
+    keywordForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const checkId = keywordCheckIdInput.value;
+      const val = (keywordInput ? keywordInput.value : '').trim();
+      if (!val || !currentActiveSession || !checkId) return;
+
+      try {
+        const res = await HostelDB.submitKeywordResponse(checkId, currentActiveSession.id, student.regNo, val);
+        if (keywordMsg) {
+          keywordMsg.textContent = res.message;
+          keywordMsg.style.color = res.success ? 'var(--success)' : 'var(--danger)';
+        }
+        if (res.success) {
+          showToast('Presence keyword verified successfully!', 'success');
+          setTimeout(() => { if (keywordCard) keywordCard.style.display = 'none'; }, 1500);
+        } else {
+          showToast('Incorrect verification keyword.', 'danger');
+        }
+      } catch (err) {
+        if (keywordMsg) {
+          keywordMsg.textContent = err.message || 'Verification error.';
+          keywordMsg.style.color = 'var(--danger)';
+        }
+      }
+    });
+  }
+
+  await refreshSessionState();
+  const sessionPoll = setInterval(refreshSessionState, 4000);
+  window.addEventListener('beforeunload', () => clearInterval(sessionPoll));
+}
+
+// 8. Student Discipline Credit Portal
+async function initStudentMyCredits(student) {
+  const scoreNum = document.getElementById('credit-score-num');
+  const tierBadge = document.getElementById('credit-tier-badge');
+  const progressBar = document.getElementById('credit-progress-bar');
+  const riskAlert = document.getElementById('credit-risk-alert');
+  const riskTitle = document.getElementById('risk-alert-title');
+  const riskDesc = document.getElementById('risk-alert-desc');
+  const ledgerTbody = document.getElementById('credit-ledger-tbody');
+
+  async function loadCreditData() {
+    try {
+      const balance = await HostelDB.getCreditBalance(student.regNo);
+      if (scoreNum) scoreNum.textContent = balance;
+
+      const evalTier = HostelDB.evaluateRatingTier(balance);
+      if (tierBadge) {
+        tierBadge.textContent = evalTier.tier;
+        tierBadge.className = `badge ${evalTier.badgeClass}`;
+        tierBadge.style.backgroundColor = evalTier.color;
+      }
+
+      if (progressBar) {
+        const pct = Math.max(0, Math.min(100, (balance / 1000) * 100));
+        progressBar.style.width = `${pct}%`;
+      }
+
+      // Risk Profile Check
+      const riskProfile = await HostelDB.getStudentRiskProfile(student.regNo);
+      if (riskProfile && (riskProfile.riskLevel === 'WATCH' || riskProfile.riskLevel === 'WARNING' || riskProfile.riskLevel === 'CRITICAL')) {
+        if (riskAlert) riskAlert.style.display = 'block';
+        if (riskTitle) riskTitle.textContent = `Attention: Discipline ${riskProfile.riskLevel} Tier Active`;
+        if (riskDesc) {
+          const evidenceStr = riskProfile.evidence && riskProfile.evidence.length > 0 ? riskProfile.evidence.join('; ') : 'Study hour compliance drop detected.';
+          riskDesc.textContent = `Reasons: ${evidenceStr}. Maintain regular attendance to restore your rating tier.`;
+        }
+      } else {
+        if (riskAlert) riskAlert.style.display = 'none';
+      }
+
+      // Render Ledger Table
+      const ledger = await HostelDB.getCreditLedger(student.regNo);
+      if (!ledgerTbody) return;
+
+      if (ledger.length === 0) {
+        ledgerTbody.innerHTML = `
+          <tr>
+            <td colspan="5" class="text-center text-muted" style="padding: 2rem;">
+              No discipline credit transactions recorded yet. Starting balance: 1000 Credits.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      ledgerTbody.innerHTML = ledger.map(item => {
+        const isPos = item.pointsChange > 0;
+        const changeStr = isPos ? `+${item.pointsChange}` : `${item.pointsChange}`;
+        const changeClass = isPos ? 'text-success' : (item.pointsChange < 0 ? 'text-danger' : 'text-muted');
+
+        return `
+          <tr>
+            <td>${formatDateString(item.createdAt)}</td>
+            <td><strong class="text-primary-color">${item.sourceEvent}</strong></td>
+            <td>${item.reason}</td>
+            <td><strong class="${changeClass}">${changeStr} pts</strong></td>
+            <td><strong>${item.balanceAfter} / 1000</strong></td>
+          </tr>
+        `;
+      }).join('');
+
+    } catch (e) {
+      console.error('Error loading credit ledger:', e);
+    }
+  }
+
+  await loadCreditData();
+}
+
+// 8. Student Short Outing Request Controller
+async function initStudentOutingRequest(student) {
+  const openModalBtn = document.getElementById('btn-open-outing-modal');
+  const modal = document.getElementById('modal-outing-request');
+  const closeModalBtn = document.getElementById('modal-outing-close');
+  const cancelModalBtn = document.getElementById('btn-cancel-outing');
+  const form = document.getElementById('form-outing-request');
+  const tbody = document.getElementById('student-outing-tbody');
+
+  const exitTimeInput = document.getElementById('outing-exit-time');
+  const returnTimeInput = document.getElementById('outing-return-time');
+  const durationBadge = document.getElementById('outing-duration-badge');
+  const policyAlert = document.getElementById('outing-policy-alert');
+
+  // Set minimum date to today
+  const dateInput = document.getElementById('outing-date');
+  if (dateInput) {
+    dateInput.value = new Date().toISOString().split('T')[0];
+    dateInput.min = new Date().toISOString().split('T')[0];
+  }
+
+  // Calculate Outing Duration helper
+  const calculateDuration = () => {
+    if (!exitTimeInput || !returnTimeInput) return { mins: 0, valid: true };
+    const exitVal = exitTimeInput.value;
+    const returnVal = returnTimeInput.value;
+    if (!exitVal || !returnVal) return { mins: 0, valid: true };
+
+    const [eH, eM] = exitVal.split(':').map(Number);
+    const [rH, rM] = returnVal.split(':').map(Number);
+    const exitMins = eH * 60 + eM;
+    const returnMins = rH * 60 + rM;
+
+    let diffMins = returnMins - exitMins;
+    if (diffMins < 0) diffMins += 24 * 60; // Overnight wrap guard
+
+    const hours = Math.floor(diffMins / 60);
+    const mins = diffMins % 60;
+
+    if (durationBadge) {
+      durationBadge.textContent = `${hours} Hours ${mins} Mins`;
+    }
+
+    // Policy Rule: Max 4 hours (240 mins)
+    const MAX_OUTING_MINUTES = 240;
+    if (diffMins > MAX_OUTING_MINUTES) {
+      if (policyAlert) policyAlert.style.display = 'block';
+      if (durationBadge) durationBadge.style.color = 'var(--danger)';
+      return { mins: diffMins, valid: false };
+    } else {
+      if (policyAlert) policyAlert.style.display = 'none';
+      if (durationBadge) durationBadge.style.color = 'var(--primary)';
+      return { mins: diffMins, valid: true };
+    }
+  };
+
+  if (exitTimeInput && returnTimeInput) {
+    exitTimeInput.addEventListener('input', calculateDuration);
+    returnTimeInput.addEventListener('input', calculateDuration);
+    calculateDuration();
+  }
+
+  if (openModalBtn) {
+    openModalBtn.addEventListener('click', () => {
+      HMSModal.open('#modal-outing-request');
+    });
+  }
+
+  if (closeModalBtn) closeModalBtn.addEventListener('click', () => HMSModal.close('#modal-outing-request'));
+  if (cancelModalBtn) cancelModalBtn.addEventListener('click', () => HMSModal.close('#modal-outing-request'));
+
+  // Load Outings Table
+  const loadOutings = async () => {
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading outings...</td></tr>';
+    try {
+      const allOutings = await HostelDB.getOutingRequests();
+      const myOutings = allOutings.filter(o => o.studentReg === student.regNo);
+
+      if (myOutings.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No short outing applications submitted yet.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = myOutings.map(o => {
+        let parentBadge = '<span class="badge badge-pending">Pending</span>';
+        if (o.parentApprovalStatus === 'Approved') parentBadge = '<span class="badge badge-present">Approved</span>';
+        if (o.parentApprovalStatus === 'Rejected') parentBadge = '<span class="badge badge-absent">Rejected</span>';
+
+        let wardenBadge = '<span class="badge badge-pending">Pending</span>';
+        if (o.wardenApprovalStatus === 'Approved') wardenBadge = '<span class="badge badge-present">Approved</span>';
+        if (o.wardenApprovalStatus === 'Rejected') wardenBadge = '<span class="badge badge-absent">Rejected</span>';
+
+        const parentApprovalUrl = `${window.location.origin}/pages/parent/outpass-approval.html?token=${o.parentToken}`;
+
+        return `
+          <tr>
+            <td><strong>${o.id}</strong></td>
+            <td>${formatDateString(o.outingDate)}</td>
+            <td>${o.requestedExitTime} - ${o.expectedReturnTime}</td>
+            <td><span class="badge badge-secondary">${o.destination}</span></td>
+            <td>${o.reason}</td>
+            <td>${parentBadge}</td>
+            <td>${wardenBadge}</td>
+            <td style="text-align: right;">
+              ${o.status === 'Pending Parent' ? `
+                <button class="btn btn-secondary btn-sm" data-action="copy-parent-link" data-url="${parentApprovalUrl}" title="Copy Parent Link">
+                  <i class="fa-solid fa-link"></i> Parent Link
+                </button>
+              ` : ''}
+              ${o.status === 'Approved' ? `
+                <button class="btn btn-success btn-sm" data-action="view-outpass" data-outing-id="${o.id}">
+                  <i class="fa-solid fa-qrcode"></i> View Outpass
+                </button>
+              ` : ''}
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      if (tbody && !tbody.dataset.listenerBound) {
+        tbody.dataset.listenerBound = 'true';
+        tbody.addEventListener('click', (e) => {
+          const parentBtn = e.target.closest('[data-action="copy-parent-link"]');
+          if (parentBtn) {
+            window.copyParentLink(parentBtn.dataset.url);
+            return;
+          }
+          const outpassBtn = e.target.closest('[data-action="view-outpass"]');
+          if (outpassBtn) {
+            window.openOutpassModalForOuting(outpassBtn.dataset.outingId);
+          }
+        });
+      }
+    } catch (e) {
+      console.error('Error loading student outings:', e);
+    }
+  };
+
+  window.copyParentLink = function(url) {
+    navigator.clipboard.writeText(url).then(() => {
+      showToast('Parent Approval Link copied to clipboard! Share this link with your parent.', 'success');
+    }).catch(() => {
+      prompt('Copy this Parent Approval Link:', url);
+    });
+  };
+
+  window.openOutpassModalForOuting = async function(outingId) {
+    const passes = await HostelDB.getOutpasses();
+    const pass = passes.find(p => p.sourceOutingId === outingId);
+    if (pass) {
+      window.openOutpassModal(pass.id);
+    } else {
+      showToast('Outpass generating... Please refresh in a moment.', 'warning');
+    }
+  };
+
+  if (form) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const durationCheck = calculateDuration();
+      if (!durationCheck.valid) {
+        showToast(durationCheck.msg || 'Normal outing permission cannot exceed 4 hours.', 'danger');
+        return;
+      }
+
+      const submitBtn = form.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Submitting...';
+
+      try {
+        const outingDate = document.getElementById('outing-date').value;
+        const requestedExitTime = document.getElementById('outing-exit-time').value;
+        const expectedReturnTime = document.getElementById('outing-return-time').value;
+        const destination = document.getElementById('outing-destination').value.trim();
+        const reason = document.getElementById('outing-reason').value.trim();
+        const emergencyContact = document.getElementById('outing-emergency').value.trim();
+
+        if (!outingDate || !requestedExitTime || !expectedReturnTime || !destination || !reason) {
+          showToast('Please fill out all required fields (Date, Exit Time, Return Time, Destination, and Reason).', 'warning');
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Submit Request';
+          return;
+        }
+
+        const req = {
+          studentReg: student.regNo,
+          outingDate,
+          requestedExitTime,
+          expectedReturnTime,
+          destination,
+          reason,
+          emergencyContact
+        };
+
+        const newReq = await HostelDB.addOutingRequest(req);
+        HMSModal.close('#modal-outing-request');
+        form.reset();
+
+        const parentUrl = `${window.location.origin}/pages/parent/outpass-approval.html?token=${newReq.parentToken}`;
+        showToast(`Outing Request ${newReq.id} submitted! Share the Parent Link with your parent.`, 'success');
+        window.copyParentLink(parentUrl);
+        await loadOutings();
+      } catch (err) {
+        console.error('Failed to submit outing request:', err);
+        showToast('Failed to submit request.', 'danger');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Submit Request';
+      }
+    });
+  }
+
+  await loadOutings();
+}
+
+// 9. Student Digital Outpass Wallet Controller
+async function initStudentMyOutpasses(student) {
+  const tbody = document.getElementById('student-outpasses-tbody');
+  if (!tbody) return;
+
+  tbody.innerHTML = '<tr><td colspan="8" class="text-center"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading Digital Outpasses...</td></tr>';
+  try {
+    const allPasses = await HostelDB.getOutpasses();
+    const myPasses = allPasses.filter(p => p.studentReg === student.regNo);
+
+    if (myPasses.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted" style="padding: 2.5rem;">No Digital Outpasses generated yet. Approved Home Leaves and Short Outings automatically appear here.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = myPasses.map(p => {
+      let statusBadge = '<span class="badge badge-present">VALID</span>';
+      if (p.status === 'NOT_YET_VALID') statusBadge = '<span class="badge badge-warning">NOT YET VALID</span>';
+      if (p.status === 'EXIT_RECORDED') statusBadge = '<span class="badge badge-primary">EXIT RECORDED</span>';
+      if (p.status === 'RETURNED') statusBadge = '<span class="badge badge-info">RETURNED</span>';
+      if (p.status === 'EXPIRED') statusBadge = '<span class="badge badge-secondary">EXPIRED</span>';
+      if (p.status === 'REVOKED') statusBadge = '<span class="badge badge-danger">REVOKED</span>';
+
+      return `
+        <tr>
+          <td><strong class="text-primary-color">${p.id}</strong></td>
+          <td><span class="badge badge-secondary">${p.passType === 'HOME_LEAVE' ? 'HOME LEAVE' : 'SHORT OUTING'}</span></td>
+          <td>${p.validFrom}</td>
+          <td>${p.validUntil}</td>
+          <td>${p.actualExitTime ? formatDateString(p.actualExitTime) : '<span class="text-muted">-</span>'}</td>
+          <td>${p.actualReturnTime ? formatDateString(p.actualReturnTime) : '<span class="text-muted">-</span>'}</td>
+          <td>${statusBadge}</td>
+          <td style="text-align: right;">
+            <button class="btn btn-primary btn-sm" data-action="view-outpass" data-outpass-id="${p.id}">
+              <i class="fa-solid fa-qrcode"></i> View Pass & QR
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    if (!tbody.dataset.listenerBound) {
+      tbody.dataset.listenerBound = 'true';
+      tbody.addEventListener('click', (e) => {
+        const outpassBtn = e.target.closest('[data-action="view-outpass"]');
+        if (outpassBtn) {
+          const passId = outpassBtn.dataset.outpassId;
+          if (passId) {
+            window.openOutpassModal(passId);
+          }
+        }
+      });
+    }
+  } catch (e) {
+    console.error('Failed to load outpasses:', e);
+  }
+}
+
+// Global Outpass Viewer Modal Controller
+window.openOutpassModal = async function(passId) {
+  try {
+    const passes = await HostelDB.getOutpasses();
+    const pass = passes.find(p => p.id === passId);
+    if (!pass) {
+      showToast('Outpass not found.', 'danger');
+      return;
+    }
+
+    const currentUser = HMSAuth.getCurrentUser();
+    const students = await HostelDB.getStudents();
+    const student = students.find(s => s.regNo === pass.studentReg) || currentUser || { name: 'Student', regNo: pass.studentReg, dept: 'CSE', room: '-' };
+
+    let details = {};
+    if (pass.passType === 'SHORT_OUTING' && pass.sourceOutingId) {
+      const outings = await HostelDB.getOutingRequests();
+      details = outings.find(o => o.id === pass.sourceOutingId) || {};
+    } else if (pass.passType === 'HOME_LEAVE' && pass.sourceLeaveId) {
+      const leaves = await HostelDB.getLeaves();
+      details = leaves.find(l => l.id === pass.sourceLeaveId) || {};
+    }
+
+    const container = document.getElementById('outpass-card-content');
+    if (!container) return;
+
+    let statusBadgeClass = 'present';
+    if (pass.status === 'NOT_YET_VALID') statusBadgeClass = 'warning';
+    if (pass.status === 'EXPIRED') statusBadgeClass = 'secondary';
+    if (pass.status === 'REVOKED') statusBadgeClass = 'absent';
+    if (pass.status === 'RETURNED') statusBadgeClass = 'secondary';
+
+    container.innerHTML = `
+      <div style="border: 2px solid var(--primary); border-radius: var(--border-radius-md); padding: 1.25rem; background: var(--bg-secondary);">
+        <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem; margin-bottom: 1rem;">
+          <h4 style="font-size: 0.75rem; font-weight: 800; letter-spacing: 1px; color: var(--primary); text-transform: uppercase; margin: 0;">KVCET SMART HOSTEL SYSTEM</h4>
+          <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--text-primary); margin: 0.2rem 0 0 0;">
+            ${pass.passType === 'HOME_LEAVE' ? 'DIGITAL LEAVE OUTPASS' : 'DIGITAL OUTING PASS'}
+          </h3>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; text-align: left; font-size: 0.82rem; margin-bottom: 1rem;">
+          <div><span style="color: var(--text-muted); font-size: 0.72rem; display: block;">STUDENT NAME</span><strong>${student.name}</strong></div>
+          <div><span style="color: var(--text-muted); font-size: 0.72rem; display: block;">REGISTER NO</span><strong>${student.regNo}</strong></div>
+          <div><span style="color: var(--text-muted); font-size: 0.72rem; display: block;">DEPARTMENT</span><strong>${student.dept || 'CSE'}</strong></div>
+          <div><span style="color: var(--text-muted); font-size: 0.72rem; display: block;">ROOM NUMBER</span><strong>${student.room || '-'}</strong></div>
+        </div>
+
+        <div style="background: var(--bg-primary); border-radius: var(--border-radius-sm); padding: 0.75rem; font-size: 0.82rem; text-align: left; margin-bottom: 1rem; border: 1px solid var(--border-color);">
+          <div style="margin-bottom: 0.4rem;"><strong>DESTINATION:</strong> ${details.destination || details.reason || 'Home'}</div>
+          <div style="margin-bottom: 0.4rem;"><strong>PERMITTED EXIT:</strong> ${pass.validFrom}</div>
+          <div><strong>RETURN BEFORE:</strong> ${pass.validUntil}</div>
+        </div>
+
+        <!-- Scanner-Safe QR Code Card Wrapper -->
+        <div class="outpass-qr-container" style="background: #ffffff; padding: 12px; border-radius: 12px; display: flex; align-items: center; justify-content: center; width: 204px; height: 204px; margin: 0.85rem auto; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+          <div id="outpass-qr-canvas" style="width: 180px; height: 180px; display: flex; align-items: center; justify-content: center;"></div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; border-top: 1px solid var(--border-color); padding-top: 0.75rem;">
+          <span style="font-family: monospace; font-weight: 700; color: var(--text-primary);">PASS ID: ${pass.id}</span>
+          <span class="badge badge-${statusBadgeClass}">${pass.status}</span>
+        </div>
+      </div>
+    `;
+
+    // Bind close listeners for outpass viewer modal
+    const closeBtn = document.getElementById('modal-outpass-close');
+    const closeFooterBtn = document.getElementById('btn-close-outpass-modal');
+    const backdrop = document.getElementById('modal-outpass-backdrop');
+
+    if (closeBtn) closeBtn.onclick = () => HMSModal.close('#modal-view-outpass');
+    if (closeFooterBtn) closeFooterBtn.onclick = () => HMSModal.close('#modal-view-outpass');
+    if (backdrop) backdrop.onclick = () => HMSModal.close('#modal-view-outpass');
+
+    const renderQR = () => {
+      const qrTarget = document.getElementById('outpass-qr-canvas');
+      if (!qrTarget) return;
+
+      qrTarget.innerHTML = '';
+      const payloadStr = JSON.stringify({ op: pass.id, tok: pass.secureToken });
+      console.log("QR VALUE:", payloadStr);
+
+      if (typeof QRCode !== 'undefined') {
+        try {
+          new QRCode(qrTarget, {
+            text: payloadStr,
+            width: 180,
+            height: 180,
+            colorDark: "#000000",
+            colorLight: "#ffffff"
+          });
+        } catch (err) {
+          console.warn("QRCode canvas render warning, trying fallback:", err);
+        }
+      }
+
+      // Verify canvas rendered properly; if not, generate fallback QR image matrix
+      const canvas = qrTarget.querySelector('canvas');
+      if (canvas) {
+        canvas.style.width = '180px';
+        canvas.style.height = '180px';
+        canvas.style.display = 'block';
+        canvas.style.margin = '0 auto';
+      } else {
+        const encoded = encodeURIComponent(payloadStr);
+        qrTarget.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encoded}" alt="Outpass QR" style="width: 180px; height: 180px; display: block; margin: 0 auto;">`;
+      }
+    };
+
+    // Render immediately and on modal transition micro-task
+    renderQR();
+    setTimeout(renderQR, 50);
+
+    HMSModal.open('#modal-view-outpass');
+  } catch (e) {
+    console.error('Failed to open outpass modal:', e);
+    showToast('Failed to load outpass details.', 'danger');
+  }
+};
+
+window.openOutpassModalForLeave = async function(leaveId) {
+  try {
+    const pass = await HostelDB.createOrGetLeaveOutpass(leaveId);
+    if (pass) {
+      if (typeof viewLeaveDetails !== 'undefined') {
+        const modal = document.getElementById('leave-details-modal');
+        if (modal) modal.style.display = 'none';
+      }
+      window.openOutpassModal(pass.id);
+    } else {
+      showToast('Outpass not generated for this leave yet.', 'warning');
+    }
+  } catch (err) {
+    console.error('Error viewing leave outpass:', err);
+    showToast('Failed to load leave outpass.', 'danger');
+  }
+};
+
+

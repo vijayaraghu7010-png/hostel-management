@@ -62,3 +62,34 @@
 .room-detail-value {
   font-weight: 600;
 }
+
+/* Study Hour & Camera Scanner Responsive Overrides */
+#qr-camera-viewfinder {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto;
+  min-height: 240px;
+  overflow: hidden;
+  border-radius: var(--border-radius-sm);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+#qr-camera-viewfinder video {
+  width: 100% !important;
+  height: auto !important;
+  object-fit: cover;
+  border-radius: var(--border-radius-sm);
+}
+
+/* Responsive Tab Controls */
+.nav-tabs, [style*="display: flex; gap: 0.5rem; border-bottom"] {
+  flex-wrap: wrap !important;
+  gap: 0.5rem !important;
+}
+
+@media (max-width: 576px) {
+  .room-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem;
+  }
+}
