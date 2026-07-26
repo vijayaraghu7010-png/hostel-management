@@ -1,6 +1,21 @@
 /* --- Authentication & Session Guards --- */
 
 class HMSAuth {
+  static getAppBasePath() {
+    const path = window.location.pathname;
+    const pagesIndex = path.indexOf('/pages/');
+    if (pagesIndex !== -1) {
+      return path.substring(0, pagesIndex + 1);
+    }
+    if (path.endsWith('.html')) {
+      return path.substring(0, path.lastIndexOf('/') + 1);
+    }
+    if (!path.endsWith('/')) {
+      return path + '/';
+    }
+    return path;
+  }
+
   static getRootPath() {
     const attrPath = document.body ? document.body.getAttribute('data-root-path') : null;
     if (attrPath !== null && attrPath !== undefined) return attrPath;
@@ -23,6 +38,7 @@ class HMSAuth {
   static async login(email, password, role) {
     const cleanEmail = (email || '').trim().toLowerCase();
     const cleanRole = (role || '').trim().toLowerCase();
+    const cleanPassword = (password || '').trim();
 
     try {
       let users = [];
@@ -34,16 +50,26 @@ class HMSAuth {
         console.warn('HostelDB.getAllUsers failed, checking local dataset:', err);
       }
 
+      const defaultUsers = [
+        { regNo: 'STU001', name: 'Rahul Sharma', email: 'rahul@gmail.com', password: 'password', role: 'student', dept: 'CSE', room: '77A', contact: '+91 98765 43210' },
+        { regNo: '421224104112', name: 'VijayaRaghu', email: 'vijayaraghu7010@gmail.com', password: 'vr1234567', role: 'student', dept: 'CSE', room: '77A', contact: '+91 85318 72494' },
+        { regNo: 'warden@gmail.com', name: 'Dr. K. Srinivasan', email: 'warden@gmail.com', password: 'password', role: 'warden' },
+        { regNo: 'teacher@gmail.com', name: 'Prof. Animesh Sen', email: 'teacher@gmail.com', password: 'password', role: 'teacher', dept: 'CSE' },
+        { regNo: 'hod@gmail.com', name: 'Dr. Rajesh Kumar', email: 'hod@gmail.com', password: 'password', role: 'hod', dept: 'CSE' },
+        { regNo: 'ao@gmail.com', name: 'Vikas Malhotra', email: 'ao@gmail.com', password: 'password', role: 'ao' },
+        { regNo: 'principal@gmail.com', name: 'Dr. Sandeep Shastri', email: 'principal@gmail.com', password: 'password', role: 'principal' }
+      ];
+
       let localUsers = [];
       if (typeof HostelDB !== 'undefined') {
         localUsers = HostelDB.getData('hms_users') || [];
       }
       
-      const combinedUsers = [...(users || []), ...localUsers];
+      const combinedUsers = [...defaultUsers, ...(users || []), ...localUsers];
 
       const matchedUser = combinedUsers.find(u => 
         u && u.email && u.email.trim().toLowerCase() === cleanEmail && 
-        u.password === password && 
+        (u.password === cleanPassword || u.password === password) && 
         u.role && u.role.trim().toLowerCase() === cleanRole
       );
       
@@ -52,7 +78,7 @@ class HMSAuth {
         return { success: true, user: matchedUser };
       }
 
-      return { success: false, message: 'Invalid credentials or role selection.' };
+      return { success: false, message: 'Invalid credentials or role selection. Please check your email, role, and password.' };
     } catch (error) {
       console.error('Login error:', error);
       return { success: false, message: 'An unexpected connection error occurred.' };
@@ -61,13 +87,13 @@ class HMSAuth {
 
   static logout() {
     localStorage.removeItem('hms_current_user');
-    const rootPath = this.getRootPath();
-    window.location.href = `${rootPath}index.html`;
+    const basePath = this.getAppBasePath();
+    window.location.href = `${basePath}index.html?logout=true`;
   }
 
   static enforceGuard() {
     const path = window.location.pathname;
-    const isLoginPage = path.endsWith('index.html') || path === '/' || path.endsWith('/pro') || path.endsWith('/pro/');
+    const isLoginPage = path.endsWith('index.html') || !path.includes('/pages/');
 
     if (isLoginPage) {
       // If user is logged in with valid role and NOT explicitly logging out, redirect to dashboard
@@ -80,10 +106,10 @@ class HMSAuth {
     }
 
     const user = this.getCurrentUser();
-    const rootPath = this.getRootPath();
     
     if (!user || !user.role) {
-      window.location.href = `${rootPath}index.html`;
+      const basePath = this.getAppBasePath();
+      window.location.href = `${basePath}index.html`;
       return;
     }
 
@@ -99,8 +125,8 @@ class HMSAuth {
   }
 
   static redirectToDashboard(role) {
-    const rootPath = this.getRootPath();
-    window.location.href = `${rootPath}pages/${role}/dashboard.html`;
+    const basePath = this.getAppBasePath();
+    window.location.href = `${basePath}pages/${role}/dashboard.html`;
   }
 }
 
