@@ -1,57 +1,78 @@
 /* --- Login Controller --- */
 
-document.addEventListener('DOMContentLoaded', () => {
+const initLoginPage = () => {
   const loginForm = document.getElementById('login-form');
   const togglePasswordBtn = document.getElementById('toggle-password');
   const passwordInput = document.getElementById('password');
 
   // 1. Password Visibility Toggle
   if (togglePasswordBtn && passwordInput) {
-    togglePasswordBtn.addEventListener('click', () => {
+    togglePasswordBtn.addEventListener('click', (e) => {
+      e.preventDefault();
       const isPassword = passwordInput.getAttribute('type') === 'password';
       passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
       togglePasswordBtn.innerHTML = isPassword ? '<i class="fa-solid fa-eye-slash"></i>' : '<i class="fa-solid fa-eye"></i>';
     });
   }
 
-  // 2. Demo Credentials Autofill Helper
+  // 2. Demo Credentials Autofill & Auto-Submit Helper for Mobile & Desktop
   const autofillButtons = document.querySelectorAll('.demo-autofill-btn');
   autofillButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
+    const handleAutofill = (e) => {
+      e.preventDefault();
       const email = btn.getAttribute('data-email');
       const role = btn.getAttribute('data-role');
       
-      document.getElementById('email').value = email;
-      passwordInput.value = 'password';
-      document.getElementById('role').value = role;
+      const emailInput = document.getElementById('email');
+      const roleInput = document.getElementById('role');
+
+      if (emailInput) emailInput.value = email;
+      if (passwordInput) passwordInput.value = 'password';
+      if (roleInput) roleInput.value = role;
       
-      showToast(`Autofilled credentials for ${role.toUpperCase()}. Click Enter!`, 'success');
-    });
+      showToast(`Logging in as ${role.toUpperCase()}...`, 'info');
+
+      // Auto-trigger form submission for seamless 1-tap mobile login
+      if (loginForm) {
+        if (typeof loginForm.requestSubmit === 'function') {
+          loginForm.requestSubmit();
+        } else {
+          loginForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+        }
+      }
+    };
+
+    btn.addEventListener('click', handleAutofill);
   });
 
-  // 2. Login Form Submission Handler
+  // 3. Login Form Submission Handler
   if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       
-      const email = document.getElementById('email').value.trim();
-      const password = passwordInput.value;
-      const role = document.getElementById('role').value;
+      const emailInput = document.getElementById('email');
+      const roleInput = document.getElementById('role');
+
+      const email = emailInput ? emailInput.value.trim() : '';
+      const password = passwordInput ? passwordInput.value : '';
+      const role = roleInput ? roleInput.value : '';
       const submitBtn = loginForm.querySelector('button[type="submit"]');
-      const originalBtnHtml = submitBtn.innerHTML;
+      const originalBtnHtml = submitBtn ? submitBtn.innerHTML : 'Enter Dashboard';
 
       // Simple Validation
       if (!email || !password || !role) {
-        showToast('Please fill in all fields.', 'warning');
+        showToast('Please fill in all fields (Role, Email, Password).', 'warning');
         return;
       }
 
       // Enter loading state
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = `
-        <span>Verifying...</span>
-        <i class="fa-solid fa-circle-notch fa-spin"></i>
-      `;
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `
+          <span>Verifying...</span>
+          <i class="fa-solid fa-circle-notch fa-spin"></i>
+        `;
+      }
 
       try {
         if (typeof HostelDB !== 'undefined') {
@@ -66,18 +87,28 @@ document.addEventListener('DOMContentLoaded', () => {
           // Redirect with a tiny delay for user feedback
           setTimeout(() => {
             HMSAuth.redirectToDashboard(role);
-          }, 800);
+          }, 600);
         } else {
-          showToast(result.message, 'danger');
-          submitBtn.disabled = false;
-          submitBtn.innerHTML = originalBtnHtml;
+          showToast(result.message || 'Invalid credentials or role selection.', 'danger');
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnHtml;
+          }
         }
       } catch (error) {
         console.error('Login process failed:', error);
         showToast('An unexpected connection error occurred.', 'danger');
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalBtnHtml;
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalBtnHtml;
+        }
       }
     });
   }
-});
+};
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initLoginPage);
+} else {
+  initLoginPage();
+}
