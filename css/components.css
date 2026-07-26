@@ -497,33 +497,45 @@
     background: transparent !important;
     margin-top: 0.5rem;
     border-radius: 0;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 0 !important;
   }
 
   /* Table becomes a block layout container. Override any inline min-width. */
   .table-custom {
-    display: block;
-    border-collapse: unset;
+    display: block !important;
+    border-collapse: unset !important;
     min-width: 0 !important;
     width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
   }
-
 
   /* Hide the desktop header row entirely (screen-reader accessible via data-label) */
   .table-custom thead {
-    display: none;
+    display: none !important;
   }
 
   /* tbody becomes a flex column */
   .table-custom tbody {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.75rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   /* Each row is now a standalone card */
   .table-custom tbody tr {
-    display: flex;
-    flex-direction: column;
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: 14px;
@@ -540,7 +552,8 @@
 
   /* Special row for colspan empty/loading states — keep as single block */
   .table-custom tbody tr td[colspan] {
-    text-align: center;
+    text-align: center !important;
+    justify-content: center !important;
     padding: 2rem 1rem !important;
     white-space: normal !important;
     display: block !important;
@@ -548,20 +561,24 @@
     background: var(--bg-secondary);
     border-radius: 14px;
     border: 1px solid var(--border-color);
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   /* Each cell becomes a label-value row (label on left, value on right) */
   .table-custom td {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 0.75rem;
-    padding: 0.65rem 1rem;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 0.75rem !important;
+    padding: 0.65rem 1rem !important;
     border-bottom: 1px solid var(--border-color);
-    white-space: normal;
+    white-space: normal !important;
     font-size: 0.875rem;
-    min-height: 40px;
-    text-align: right;
+    min-height: 44px;
+    text-align: right !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   /* Last cell in card has no bottom border */
@@ -572,16 +589,16 @@
   /* Label prefix from data-label attribute — always left-aligned */
   .table-custom td::before {
     content: attr(data-label);
-    font-size: 0.7rem;
+    font-size: 0.725rem;
     font-weight: 700;
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.6px;
+    letter-spacing: 0.5px;
     white-space: nowrap;
-    min-width: 90px;
+    min-width: 95px;
     flex-shrink: 0;
     padding-top: 0.1rem;
-    text-align: left;
+    text-align: left !important;
   }
 
   /* Badges stay inline */
@@ -600,15 +617,15 @@
   .table-custom td[data-label="Actions"],
   .table-custom td[data-label="Action"],
   .table-custom td:last-child {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.4rem;
-    padding: 0.75rem 1rem;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.4rem !important;
+    padding: 0.75rem 1rem !important;
   }
 
   .table-custom td[data-label="Actions"]::before,
   .table-custom td[data-label="Action"]::before {
-    display: none;
+    display: none !important;
   }
 
   /* Radio inputs in attendance table — show side by side */
@@ -621,6 +638,8 @@
     flex-wrap: wrap !important;
     gap: 0.5rem !important;
     padding: 0.75rem 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 }
 
@@ -1154,13 +1173,18 @@ body.modal-open {
     display: flex !important;
   }
   
-  /* Sidebar Off-canvas display */
+  /* Sidebar Off-canvas display — collapse flex layout footprint to 0 so main-content starts at left:0 */
   #sidebar-container {
     position: fixed !important;
     top: 0 !important;
     left: 0 !important;
     bottom: 0 !important;
     width: var(--sidebar-width) !important;
+    flex: 0 0 0px !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
     transform: translateX(-100%);
     transition: transform var(--transition-normal);
     z-index: var(--z-sidebar, 1001) !important;
@@ -1192,11 +1216,15 @@ body.modal-open {
     pointer-events: auto !important;
   }
   
-  /* Main content adjust */
+  /* Main content adjust — full 100% width, zero left offset */
   .main-content {
     width: 100% !important;
     max-width: 100% !important;
+    min-width: 0 !important;
+    flex: 1 1 100% !important;
     padding-left: 0 !important;
+    margin-left: 0 !important;
+    box-sizing: border-box !important;
   }
 
   .col-md-3, .col-md-4, .col-md-6, .col-md-8 {
