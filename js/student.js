@@ -1003,8 +1003,16 @@ async function initStudentStudyHour(student) {
   }
 
   await refreshSessionState();
-  const sessionPoll = setInterval(refreshSessionState, 4000);
-  window.addEventListener('beforeunload', () => clearInterval(sessionPoll));
+  // Non-overlapping poll: next poll starts only after previous completes
+  let _studentPollTimer = null;
+  function scheduleStudentPoll() {
+    _studentPollTimer = setTimeout(async () => {
+      await refreshSessionState();
+      scheduleStudentPoll();
+    }, 4000);
+  }
+  scheduleStudentPoll();
+  window.addEventListener('beforeunload', () => { if (_studentPollTimer) clearTimeout(_studentPollTimer); });
 }
 
 // 8. Student Discipline Credit Portal

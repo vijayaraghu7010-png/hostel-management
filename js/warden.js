@@ -2293,7 +2293,12 @@ async function initWardenStudyHour() {
 
 
   async function refreshKeywordResponses() {
-    if (!tableKeywordResponsesTbody || !activeSession) return;
+    if (!tableKeywordResponsesTbody) return;
+    if (!activeSession) {
+      tableKeywordResponsesTbody.innerHTML = '<tr><td colspan="6"><div class="sh-table-empty"><i class="fa-solid fa-key"></i><p>No active session.</p></div></td></tr>';
+      return;
+    }
+    try {
     const checks = await HostelDB.getKeywordChecks(activeSession.id);
     const responses = await HostelDB.getKeywordResponses(activeSession.id);
 
@@ -2322,57 +2327,63 @@ async function initWardenStudyHour() {
         </tr>
       `;
     }).join('');
+    } catch (e) { console.warn('refreshKeywordResponses error:', e); }
   }
 
   // Refresh Roster View
   async function refreshRosterView() {
-    if (!tableSessionRosterTbody || !activeSession) return;
-    const attList = await HostelDB.getStudyAttendance(activeSession.id);
-    const students = await HostelDB.getStudents();
-
-    const searchTerm = (filterRosterSearch ? filterRosterSearch.value : '').toLowerCase();
-    const statusTerm = filterRosterStatus ? filterRosterStatus.value : '';
-
-    const filteredStudents = students.filter(s => {
-      const att = attList.find(a => a.studentReg === s.regNo);
-      const attStatus = att ? att.finalStatus : 'PENDING';
-
-      const matchSearch = s.name.toLowerCase().includes(searchTerm) || s.regNo.toLowerCase().includes(searchTerm) || (s.dept || '').toLowerCase().includes(searchTerm);
-      const matchStatus = !statusTerm || attStatus === statusTerm;
-      return matchSearch && matchStatus;
-    });
-
-    if (filteredStudents.length === 0) {
-      tableSessionRosterTbody.innerHTML = '<tr><td colspan="7"><div class="sh-table-empty"><i class="fa-solid fa-users-slash"></i><p>No matching students found.</p></div></td></tr>';
-
+    if (!tableSessionRosterTbody) return;
+    if (!activeSession) {
+      tableSessionRosterTbody.innerHTML = '<tr><td colspan="7"><div class="sh-table-empty"><i class="fa-solid fa-users-slash"></i><p>No active session.</p></div></td></tr>';
       return;
     }
+    try {
+      const attList = await HostelDB.getStudyAttendance(activeSession.id);
+      const students = await HostelDB.getStudents();
 
-    tableSessionRosterTbody.innerHTML = filteredStudents.map(s => {
-      const att = attList.find(a => a.studentReg === s.regNo);
-      const entryPass = att && att.entryStatus === 'PASS';
-      const exitPass = att && att.exitStatus === 'PASS';
-      const finalStatus = att ? att.finalStatus : 'PENDING';
+      const searchTerm = (filterRosterSearch ? filterRosterSearch.value : '').toLowerCase();
+      const statusTerm = filterRosterStatus ? filterRosterStatus.value : '';
 
-      let statusBadge = `<span class="sh-badge sh-badge--pending">${finalStatus}</span>`;
-      if (finalStatus === 'PRESENT') statusBadge = '<span class="sh-badge sh-badge--present"><i class="fa-solid fa-check"></i> PRESENT</span>';
-      if (finalStatus === 'PARTIAL') statusBadge = '<span class="sh-badge sh-badge--partial"><i class="fa-solid fa-circle-half-stroke"></i> PARTIAL</span>';
-      if (finalStatus === 'ABSENT')  statusBadge = '<span class="sh-badge sh-badge--absent"><i class="fa-solid fa-xmark"></i> ABSENT</span>';
-      if (finalStatus === 'EXCUSED') statusBadge = '<span class="sh-badge sh-badge--excused"><i class="fa-solid fa-circle-info"></i> EXCUSED</span>';
+      const filteredStudents = students.filter(s => {
+        const att = attList.find(a => a.studentReg === s.regNo);
+        const attStatus = att ? att.finalStatus : 'PENDING';
+
+        const matchSearch = s.name.toLowerCase().includes(searchTerm) || s.regNo.toLowerCase().includes(searchTerm) || (s.dept || '').toLowerCase().includes(searchTerm);
+        const matchStatus = !statusTerm || attStatus === statusTerm;
+        return matchSearch && matchStatus;
+      });
+
+      if (filteredStudents.length === 0) {
+        tableSessionRosterTbody.innerHTML = '<tr><td colspan="7"><div class="sh-table-empty"><i class="fa-solid fa-users-slash"></i><p>No matching students found.</p></div></td></tr>';
+        return;
+      }
+
+      tableSessionRosterTbody.innerHTML = filteredStudents.map(s => {
+        const att = attList.find(a => a.studentReg === s.regNo);
+        const entryPass = att && att.entryStatus === 'PASS';
+        const exitPass = att && att.exitStatus === 'PASS';
+        const finalStatus = att ? att.finalStatus : 'PENDING';
+
+        let statusBadge = `<span class="sh-badge sh-badge--pending">${finalStatus}</span>`;
+        if (finalStatus === 'PRESENT') statusBadge = '<span class="sh-badge sh-badge--present"><i class="fa-solid fa-check"></i> PRESENT</span>';
+        if (finalStatus === 'PARTIAL') statusBadge = '<span class="sh-badge sh-badge--partial"><i class="fa-solid fa-circle-half-stroke"></i> PARTIAL</span>';
+        if (finalStatus === 'ABSENT')  statusBadge = '<span class="sh-badge sh-badge--absent"><i class="fa-solid fa-xmark"></i> ABSENT</span>';
+        if (finalStatus === 'EXCUSED') statusBadge = '<span class="sh-badge sh-badge--excused"><i class="fa-solid fa-circle-info"></i> EXCUSED</span>';
 
 
-      return `
-        <tr>
-          <td data-label="Reg No"><strong>${s.regNo}</strong></td>
-          <td data-label="Name">${s.name}</td>
-          <td data-label="Dept &amp; Room">${s.dept || 'N/A'} · Room ${s.room || 'N/A'}</td>
-          <td data-label="Entry">${entryPass ? '<span style="color:var(--success); font-size:.8rem;"><i class="fa-solid fa-circle-check"></i> ' + new Date(att.entryTime).toLocaleTimeString() + '</span>' : '<span style="color:var(--text-muted); font-size:.8rem;">Pending</span>'}</td>
-          <td data-label="Exit">${exitPass ? '<span style="color:var(--success); font-size:.8rem;"><i class="fa-solid fa-circle-check"></i> ' + new Date(att.exitTime).toLocaleTimeString() + '</span>' : '<span style="color:var(--text-muted); font-size:.8rem;">Pending</span>'}</td>
-          <td data-label="Status">${statusBadge}</td>
-          <td data-label="Notes"><span style="font-size:0.78rem; color:var(--text-secondary);">${att ? att.notes : 'Active'}</span></td>
-        </tr>
-      `;
-    }).join('');
+        return `
+          <tr>
+            <td data-label="Reg No"><strong>${s.regNo}</strong></td>
+            <td data-label="Name">${s.name}</td>
+            <td data-label="Dept &amp; Room">${s.dept || 'N/A'} · Room ${s.room || 'N/A'}</td>
+            <td data-label="Entry">${entryPass ? '<span style="color:var(--success); font-size:.8rem;"><i class="fa-solid fa-circle-check"></i> ' + new Date(att.entryTime).toLocaleTimeString() + '</span>' : '<span style="color:var(--text-muted); font-size:.8rem;">Pending</span>'}</td>
+            <td data-label="Exit">${exitPass ? '<span style="color:var(--success); font-size:.8rem;"><i class="fa-solid fa-circle-check"></i> ' + new Date(att.exitTime).toLocaleTimeString() + '</span>' : '<span style="color:var(--text-muted); font-size:.8rem;">Pending</span>'}</td>
+            <td data-label="Status">${statusBadge}</td>
+            <td data-label="Notes"><span style="font-size:0.78rem; color:var(--text-secondary);">${att ? att.notes : 'Active'}</span></td>
+          </tr>
+        `;
+      }).join('');
+    } catch (e) { console.warn('refreshRosterView error:', e); }
   }
 
   // Refresh Risk View
@@ -2380,7 +2391,6 @@ async function initWardenStudyHour() {
     if (!tableStudentRiskTbody) return;
     const students = await HostelDB.getStudents();
     const filterTier = filterRiskLevel ? filterRiskLevel.value : '';
-
     let rowsHtml = '';
     for (const s of students) {
       const balance = await HostelDB.getCreditBalance(s.regNo);
@@ -2770,7 +2780,11 @@ async function initWardenStudyHour() {
   }
 
   // ── Enterprise Master Refresh ──────────────────────────────
+  let _refreshInProgress = false;
   async function refreshAllWardenViews() {
+    if (_refreshInProgress) return;
+    _refreshInProgress = true;
+    try {
     activeSession = await HostelDB.getActiveStudySession();
 
     if (activeSession) {
@@ -2780,7 +2794,7 @@ async function initWardenStudyHour() {
       if (sessionDetails) sessionDetails.textContent = `${activeSession.date}  ·  ${activeSession.startTime} – ${activeSession.endTime}  ·  by ${activeSession.createdBy}`;
 
       // — Status pill
-      if (statusPill) { statusPill.className = 'sh-status-pill active'; statusPill.querySelector('.sh-pulse-dot').style.cssText = ''; }
+      if (statusPill) { statusPill.className = 'sh-status-pill active'; const _dot = statusPill.querySelector('.sh-pulse-dot'); if (_dot) _dot.style.cssText = ''; }
       if (statusText) statusText.textContent = activeSession.config && activeSession.config.paused ? 'Session Paused' : 'Session Active';
 
       // — Header buttons
@@ -2866,11 +2880,24 @@ async function initWardenStudyHour() {
     await refreshRosterView();
     await refreshRiskView();
     await refreshParentAlertsView();
+    } catch (e) {
+      console.error('refreshAllWardenViews error:', e);
+    } finally {
+      _refreshInProgress = false;
+    }
   }
 
   await refreshAllWardenViews();
-  const wardenPoll = setInterval(refreshAllWardenViews, 5000);
-  window.addEventListener('beforeunload', () => clearInterval(wardenPoll));
+  // Non-overlapping poll: next poll starts only after previous completes
+  let _pollTimer = null;
+  function scheduleNextPoll() {
+    _pollTimer = setTimeout(async () => {
+      await refreshAllWardenViews();
+      scheduleNextPoll();
+    }, 5000);
+  }
+  scheduleNextPoll();
+  window.addEventListener('beforeunload', () => { if (_pollTimer) clearTimeout(_pollTimer); });
 }
 
 // 10. Warden Outing Requests Management Controller
