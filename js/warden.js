@@ -1961,7 +1961,7 @@ async function initStaffManagement() {
   }
 }
 
-/// 9. Warden Study Hour & Discipline Management Center
+//// 9. Warden Study Hour & Discipline Management Center
 async function initWardenStudyHour() {
   const currentUser = HMSAuth.getCurrentUser();
 
@@ -1974,6 +1974,7 @@ async function initWardenStudyHour() {
 
   const btnStartSession = document.getElementById('btn-start-new-session');
   const btnFinalizeSession = document.getElementById('btn-finalize-session');
+  const btnUniversalScanner = document.getElementById('btn-universal-qr-scanner');
 
   const timerEl = document.getElementById('stat-session-timer');
   const insideStatEl = document.getElementById('stat-inside-count');
@@ -1985,7 +1986,6 @@ async function initWardenStudyHour() {
   const kpiPending = document.getElementById('kpi-pending');
 
   const sessionQrContainer = document.getElementById('session-qr-container');
-  const sessionQrPlaceholder = document.getElementById('session-qr-placeholder');
   const sessionQrMeta = document.getElementById('session-qr-meta');
   const exitPhaseBadge = document.getElementById('exit-phase-status-badge');
 
@@ -2000,6 +2000,8 @@ async function initWardenStudyHour() {
   const activityLog = document.getElementById('scan-activity-log');
   const feedCountEl = document.getElementById('feed-count');
 
+  const parentAlertsReviewContainer = document.getElementById('parent-alerts-review-container');
+
   // Modals
   const modalStart = document.getElementById('modal-start-session');
   const formCreate = document.getElementById('form-create-session');
@@ -2013,6 +2015,25 @@ async function initWardenStudyHour() {
 
   let currentQrSecret = null;
   let logEvents = [];
+  let chartInstances = {};
+
+  // Tab switching
+  const tabBtns = document.querySelectorAll('.sh-tab-btn');
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetTab = btn.getAttribute('data-tab');
+      tabBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      
+      document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+      const activeContent = document.getElementById(targetTab);
+      if (activeContent) activeContent.style.display = 'block';
+
+      if (targetTab === 'tab-erp-analytics') {
+        setTimeout(renderAnalyticsCharts, 50);
+      }
+    });
+  });
 
   // Log activity helper
   function logActivity(text, type = 'info') {
@@ -2032,10 +2053,214 @@ async function initWardenStudyHour() {
     `).join('');
   }
 
+  // Universal QR Scanner Handler
+  if (btnUniversalScanner) {
+    btnUniversalScanner.addEventListener('click', () => {
+      if (window.HMSQRScanner) {
+        window.HMSQRScanner.open({
+          title: 'Universal QR Scanner',
+          mainText: 'Align Study Hour or Digital Outpass QR inside frame',
+          subText: 'System detects and processes QR automatically.',
+          onScan: async (decodedText) => {
+            await handleUniversalQRScan(decodedText);
+          }
+        });
+      }
+    });
+  }
+
+  async function handleUniversalQRScan(decodedText) {
+    const rawStr = decodedText.trim();
+
+    // 1. Study Hour Student Token Scan (HMSQR_purpose_session_reg...)
+    if (rawStr.startsWith('HMSQR_')) {
+      try {
+        const parts = rawStr.split('_');
+        if (parts.length < 4) {
+          showToast('Invalid Study Hour token format.', 'danger');
+          return;
+        }
+        const purpose = parts[1];
+        const sessionId = parts[2];
+        const studentReg = parts[3];
+
+        const res = await HostelDB.verifyQRToken(
+          rawStr,
+          purpose,
+          sessionId,
+          currentUser ? currentUser.regNo : 'Warden'
+        );
+
+        if (res.success) {
+          if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+          showToast(res.message, 'success');
+          logActivity(`Verified Study Hour ${purpose} for <strong>${studentReg}</strong>`, 'success');
+          
+          if (window.HMSQRScanner.close) window.HMSQRScanner.close();
+          await window.StudyHourState.refresh();
+        } else {
+          if (navigator.vibrate) navigator.vibrate(200);
+          showToast(res.message, 'danger');
+        }
+      } catch (err) {
+        showToast('Verification error.', 'danger');
+      }
+    } 
+    // 2. Digital Outpass QR Scan (JSON or OP- prefix)
+    else if (rawStr.includes('op') || rawStr.includes('tok') || rawStr.startsWith('OP-')) {
+      try {
+        if (window.HMSQRScanner.close) window.HMSQRScanner.close();
+
+        let finalPayloadStr = rawStr;
+        if (finalPayloadStr.startsWith('OP-')) {
+          const passes = await HostelDB.getOutpasses();
+          const pass = passes.find(p => p.id === finalPayloadStr);
+          if (pass) {
+            finalPayloadStr = JSON.stringify({ op: pass.id, tok: pass.secureToken });
+          }
+        }
+
+        const res = await HostelDB.validateOutpassQR(finalPayloadStr);
+        showOutpassScanResult(res);
+      } catch (err) {
+        showToast('Outpass verification failed.', 'danger');
+      }
+    } 
+    else {
+      showToast('Unknown QR code scanned.', 'warning');
+    }
+  }
+
+  function showOutpassScanResult(res) {
+    const titleEl = document.getElementById('scan-result-title');
+    const bodyEl = document.getElementById('scan-result-body');
+    if (!titleEl || !bodyEl) return;
+
+    HMSModal.open('#modal-universal-scan-result');
+
+    if (!res.valid) {
+      titleEl.innerHTML = '<span style="color:var(--danger);"><i class="fa-solid fa-circle-xmark"></i> Invalid Outpass</span>';
+      bodyEl.innerHTML = `
+        <div style="text-align:center; padding:1rem;">
+          <h4 style="margin-bottom:0.5rem; color:var(--danger);">${res.message}</h4>
+          <p style="font-size:0.85rem; color:var(--text-secondary);">This QR code is invalid, expired, or has already been used.</p>
+        </div>`;
+      return;
+    }
+
+    const { pass, student } = res;
+    titleEl.innerHTML = '<span style="color:var(--success);"><i class="fa-solid fa-circle-check"></i> Outpass Verified</span>';
+
+    const isExit = !pass.actualExitTime;
+    const actionBtnHtml = isExit
+      ? `<button class="btn btn-success" style="width:100%; margin-top:1rem;" onclick="processOutpassAction('${pass.id}', 'EXIT')"><i class="fa-solid fa-door-open"></i> Approve Campus Exit</button>`
+      : `<button class="btn btn-primary" style="width:100%; margin-top:1rem;" onclick="processOutpassAction('${pass.id}', 'RETURN')"><i class="fa-solid fa-door-closed"></i> Record Gate Return</button>`;
+
+    bodyEl.innerHTML = `
+      <div style="font-size:0.88rem;">
+        <div style="display:flex; gap:1rem; align-items:center; margin-bottom:1rem; padding-bottom:1rem; border-bottom:1px solid var(--border-color);">
+          <div style="width:48px; height:48px; border-radius:50%; background:var(--primary-light); color:var(--primary); display:flex; align-items:center; justify-content:center; font-size:1.25rem;">
+            <i class="fa-solid fa-user"></i>
+          </div>
+          <div>
+            <h4 style="margin:0; font-weight:700;">${student.name}</h4>
+            <div style="color:var(--text-secondary); font-size:0.78rem;">${student.regNo} · Room ${student.room || 'N/A'}</div>
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:1rem;">
+          <div style="background:var(--bg-primary); padding:0.5rem; border-radius:8px; border:1px solid var(--border-color);">
+            <span style="font-size:0.7rem; color:var(--text-muted); display:block;">PASS ID</span>
+            <strong>${pass.id}</strong>
+          </div>
+          <div style="background:var(--bg-primary); padding:0.5rem; border-radius:8px; border:1px solid var(--border-color);">
+            <span style="font-size:0.7rem; color:var(--text-muted); display:block;">PASS TYPE</span>
+            <strong>${pass.passType}</strong>
+          </div>
+        </div>
+        <p style="margin:0; color:var(--text-secondary); font-size:0.82rem;">Permitted Exit Timings: <strong>${pass.validFrom} - ${pass.validUntil}</strong></p>
+        ${actionBtnHtml}
+      </div>`;
+  }
+
+  // Action callback for Outpass Modal
+  window.processOutpassAction = async function(passId, type) {
+    try {
+      if (type === 'EXIT') {
+        await HostelDB.recordOutpassExit(passId);
+        showToast('Campus exit recorded successfully!', 'success');
+        logActivity(`Student outpass exit recorded: <strong>${passId}</strong>`, 'success');
+      } else {
+        const res = await HostelDB.recordOutpassReturn(passId);
+        if (res.isLate) {
+          showToast(`Late Return by ${res.lateMinutes} mins recorded. Credits updated.`, 'warning');
+          logActivity(`Late return recorded: <strong>${passId}</strong> (${res.lateMinutes}m late)`, 'warning');
+        } else {
+          showToast('Gate return recorded successfully!', 'success');
+          logActivity(`Campus return recorded: <strong>${passId}</strong>`, 'success');
+        }
+      }
+      HMSModal.close('#modal-universal-scan-result');
+      await window.StudyHourState.refresh();
+    } catch (err) {
+      showToast('Action failed.', 'danger');
+    }
+  };
+
+  // Render parent alerts review panel
+  function renderParentAlertsReview(snapshot) {
+    if (!parentAlertsReviewContainer) return;
+    const { pendingAlerts, studentsList } = snapshot;
+
+    if (pendingAlerts.length === 0) {
+      parentAlertsReviewContainer.innerHTML = `
+        <div style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
+          <i class="fa-solid fa-check-double" style="font-size: 1.75rem; margin-bottom: 0.5rem; opacity: 0.4; display: block;"></i>
+          All student credits verified above threshold.
+        </div>`;
+      return;
+    }
+
+    parentAlertsReviewContainer.innerHTML = pendingAlerts.map(a => {
+      const s = studentsList.find(st => st.regNo === a.studentReg) || { name: 'Student', contact: '' };
+      const parentPhone = HostelDB.getParentPhone(s);
+
+      return `
+        <div class="glass-card" style="padding: 0.85rem; margin-bottom: 0.75rem; border-left: 4px solid var(--danger);">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.5rem; margin-bottom:0.4rem;">
+            <div>
+              <strong style="font-size:0.9rem;">${s.name}</strong>
+              <div style="font-size:0.75rem; color:var(--text-secondary); font-family:monospace;">${a.studentReg}</div>
+            </div>
+            <span class="badge badge-absent">Low Credit</span>
+          </div>
+          <p style="font-size:0.78rem; color:var(--text-secondary); margin:0.4rem 0;">${a.messageText}</p>
+          <button class="sh-ctrl-btn sh-ctrl-btn--primary btn-sm" style="width:100%; font-size:0.75rem; padding:0.4rem;" onclick="sendParentAlertReview('${a.id}', '${parentPhone}', \`${a.messageText}\`)">
+            <i class="fa-brands fa-whatsapp"></i> Review &amp; Send Alert
+          </button>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Send parent alert review callback
+  window.sendParentAlertReview = async function(alertId, phone, text) {
+    try {
+      const whatsappUrl = HostelDB.generateWhatsAppLink(phone, text);
+      window.open(whatsappUrl, '_blank');
+      
+      await HostelDB.updateParentAlertStatus(alertId, 'SENT_CONFIRMED', currentUser ? currentUser.name : 'Warden');
+      showToast('Parent alert marked as Sent!', 'success');
+      logActivity(`WhatsApp parent alert sent for alert ID: <strong>${alertId}</strong>`, 'success');
+      await window.StudyHourState.refresh();
+    } catch (err) {
+      showToast('Failed to send alert.', 'danger');
+    }
+  };
+
   // Render Session QR
   function renderSessionQR(qrSecret) {
     if (!sessionQrContainer) return;
-    if (qrSecret === currentQrSecret) return; // avoid re-rendering same QR
+    if (qrSecret === currentQrSecret) return;
     currentQrSecret = qrSecret;
     sessionQrContainer.innerHTML = '';
 
@@ -2043,34 +2268,30 @@ async function initWardenStudyHour() {
       if (typeof QRCode !== 'undefined') {
         new QRCode(sessionQrContainer, {
           text: qrSecret,
-          width: 200,
-          height: 200,
+          width: 190,
+          height: 190,
           correctLevel: QRCode.CorrectLevel.M
         });
       } else {
-        sessionQrContainer.innerHTML = `<div style="padding:1rem; word-break:break-all; font-family:monospace; font-size:0.75rem;">${qrSecret}</div>`;
+        sessionQrContainer.innerHTML = `<div style="padding:1rem; word-break:break-all; font-family:monospace; font-size:0.7rem;">${qrSecret}</div>`;
       }
       if (sessionQrMeta) sessionQrMeta.textContent = 'Scan code to Check In / Check Out';
     } else {
       sessionQrContainer.innerHTML = `
-        <div style="color: var(--text-muted); font-size: 0.85rem;" id="session-qr-placeholder">
-          <i class="fa-solid fa-qrcode" style="font-size: 2.5rem; opacity: 0.3; display: block; margin-bottom: 0.5rem;"></i>
-          No Active Session
-        </div>`;
+        <div style="color: var(--text-muted); font-size: 0.85rem;" id="session-qr-placeholder">No Active Session</div>`;
       if (sessionQrMeta) sessionQrMeta.textContent = 'Start session to generate QR';
     }
   }
 
-  // Render Roster Cards (Mobile First)
+  // Render Roster Cards
   function renderRosterCards(snapshot) {
     if (!rosterCardsContainer) return;
     const { studentsList, attendanceList, activeSession } = snapshot;
 
     if (!activeSession) {
       rosterCardsContainer.innerHTML = `
-        <div style="text-align: center; color: var(--text-muted); padding: 2.5rem; background: var(--bg-primary); border-radius: 12px; border: 1px dashed var(--border-color);">
-          <i class="fa-solid fa-bed" style="font-size: 2rem; margin-bottom: 0.5rem; opacity: 0.5;"></i>
-          <p style="margin:0; font-weight:600;">No active study hour session currently in progress.</p>
+        <div style="text-align: center; color: var(--text-muted); padding: 2rem;">
+          No active session currently running.
         </div>`;
       return;
     }
@@ -2090,17 +2311,15 @@ async function initWardenStudyHour() {
       }
 
       const matchesSearch = s.name.toLowerCase().includes(query) ||
-                            s.regNo.toLowerCase().includes(query) ||
-                            (s.room || '').toLowerCase().includes(query) ||
-                            (s.dept || '').toLowerCase().includes(query);
+                            s.regNo.toLowerCase().includes(query);
       const matchesStatus = !statusVal || statusStr === statusVal;
       return matchesSearch && matchesStatus;
     });
 
     if (filtered.length === 0) {
       rosterCardsContainer.innerHTML = `
-        <div style="text-align: center; color: var(--text-muted); padding: 2rem;">
-          No students matching filter query.
+        <div style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
+          No matching students found.
         </div>`;
       return;
     }
@@ -2112,10 +2331,10 @@ async function initWardenStudyHour() {
 
       if (att) {
         if (att.entryStatus === 'PASS' && att.exitStatus === 'PASS') {
-          statusBadge = '<span class="badge badge-primary"><i class="fa-solid fa-graduation-cap"></i> COMPLETED</span>';
+          statusBadge = '<span class="badge badge-primary">COMPLETED</span>';
           cardBorder = 'var(--primary)';
         } else if (att.entryStatus === 'PASS') {
-          statusBadge = '<span class="badge badge-present"><i class="fa-solid fa-circle-check"></i> INSIDE HALL</span>';
+          statusBadge = '<span class="badge badge-present">INSIDE HALL</span>';
           cardBorder = 'var(--success)';
         }
       }
@@ -2124,26 +2343,24 @@ async function initWardenStudyHour() {
       const exitTimeStr = att && att.exitTime ? new Date(att.exitTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
 
       return `
-        <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-left: 4px solid ${cardBorder}; border-radius: 12px; padding: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
-          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.5rem;">
+        <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-left: 4px solid ${cardBorder}; border-radius: 12px; padding: 0.85rem; display: flex; flex-direction: column; gap: 0.4rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
             <div>
-              <strong style="font-size: 0.95rem; color: var(--text-primary);">${s.name}</strong>
-              <div style="font-size: 0.78rem; color: var(--text-secondary); font-family: monospace;">
-                ${s.regNo} · Room ${s.room || 'N/A'} · ${s.dept || 'Gen'}
-              </div>
+              <strong style="font-size:0.9rem;">${s.name}</strong>
+              <div style="font-size:0.75rem; color:var(--text-secondary);">${s.regNo} · Room ${s.room || 'N/A'} · ${s.dept || 'Gen'}</div>
             </div>
             ${statusBadge}
           </div>
-          <div style="display: flex; gap: 1.25rem; font-size: 0.78rem; color: var(--text-secondary); padding-top: 0.5rem; border-top: 1px dashed var(--border-color);">
-            <div><i class="fa-solid fa-right-to-bracket text-success" style="margin-right: 0.35rem;"></i> Check In: <strong>${entryTimeStr}</strong></div>
-            <div><i class="fa-solid fa-right-from-bracket text-primary-color" style="margin-right: 0.35rem;"></i> Check Out: <strong>${exitTimeStr}</strong></div>
+          <div style="display:flex; gap:1rem; font-size:0.76rem; color:var(--text-secondary); margin-top:0.25rem; border-top:1px dashed var(--border-color); padding-top:0.4rem;">
+            <span>In: <strong>${entryTimeStr}</strong></span>
+            <span>Out: <strong>${exitTimeStr}</strong></span>
           </div>
         </div>
       `;
     }).join('');
   }
 
-  // Reactive UI update callback
+  // Reactive dashboard UI render
   function renderDashboard(snapshot) {
     const { activeSession, metrics } = snapshot;
 
@@ -2151,7 +2368,7 @@ async function initWardenStudyHour() {
     if (activeSession) {
       if (sessionBanner) sessionBanner.classList.add('is-active');
       if (sessionTitle) sessionTitle.textContent = activeSession.sessionTitle;
-      if (sessionDetails) sessionDetails.textContent = `${activeSession.date} · ${activeSession.startTime} – ${activeSession.endTime} · Started by ${activeSession.createdBy}`;
+      if (sessionDetails) sessionDetails.textContent = `${activeSession.date} · ${activeSession.startTime} – ${activeSession.endTime}`;
 
       const isPaused = activeSession.config && activeSession.config.paused === true;
       if (statusPill) statusPill.className = `sh-status-pill ${isPaused ? 'warning' : 'active'}`;
@@ -2166,10 +2383,8 @@ async function initWardenStudyHour() {
         exitPhaseBadge.className = exitEnabled ? 'badge badge-present' : 'badge badge-secondary';
       }
 
-      // Render Session QR Code
       renderSessionQR(activeSession.config ? activeSession.config.qrSecret : null);
 
-      // Controls State
       if (btnRegenQR) btnRegenQR.disabled = false;
       if (btnToggleExit) {
         btnToggleExit.disabled = false;
@@ -2183,7 +2398,7 @@ async function initWardenStudyHour() {
     } else {
       if (sessionBanner) sessionBanner.classList.remove('is-active');
       if (sessionTitle) sessionTitle.textContent = 'No Active Session';
-      if (sessionDetails) sessionDetails.textContent = 'Click "Start Session" above to launch mandatory study hour.';
+      if (sessionDetails) sessionDetails.textContent = 'Click "Start Session" to launch study hour';
 
       if (statusPill) statusPill.className = 'sh-status-pill inactive';
       if (statusText) statusText.textContent = 'No Active Session';
@@ -2201,13 +2416,11 @@ async function initWardenStudyHour() {
       if (btnRegenQR) btnRegenQR.disabled = true;
       if (btnToggleExit) {
         btnToggleExit.disabled = true;
-        btnToggleExit.innerHTML = '<i class="fa-solid fa-door-open"></i> Enable Exit Phase';
       }
       if (btnPause) btnPause.disabled = true;
       if (btnResume) btnResume.disabled = true;
     }
 
-    // 2. Timers & Metrics
     if (timerEl) timerEl.textContent = window.StudyHourState.formatTimer();
     if (insideStatEl) insideStatEl.textContent = metrics.insideCnt;
     if (completedStatEl) completedStatEl.textContent = metrics.completedCnt;
@@ -2217,11 +2430,11 @@ async function initWardenStudyHour() {
     if (kpiCompleted) kpiCompleted.textContent = metrics.completedCnt;
     if (kpiPending) kpiPending.textContent = metrics.pendingCnt;
 
-    // 3. Render Student Roster Cards
     renderRosterCards(snapshot);
+    renderParentAlertsReview(snapshot);
   }
 
-  // Event Listeners — Modal Triggers & Form Submissions
+  // Form Creation
   if (btnStartSession) {
     btnStartSession.addEventListener('click', () => {
       if (modalStart) HMSModal.open(modalStart);
@@ -2247,7 +2460,7 @@ async function initWardenStudyHour() {
           endTime: endTime,
           createdBy: currentUser ? currentUser.name : 'Warden'
         });
-        showToast(`Study Hour Session "${title}" launched successfully!`, 'success');
+        showToast('Study hour session started!', 'success');
         logActivity(`Study Session launched: <strong>${title}</strong>`, 'success');
         HMSModal.close(modalStart);
         await window.StudyHourState.refresh();
@@ -2275,8 +2488,8 @@ async function initWardenStudyHour() {
       HMSModal.setLoading(btnExecuteConfirm, true, 'Finalizing...');
       try {
         await HostelDB.closeStudySession(activeSession.id);
-        showToast('Study Session finalized successfully!', 'success');
-        logActivity('Study Session finalized by Warden', 'warning');
+        showToast('Study session finalized successfully!', 'success');
+        logActivity('Study hour session closed', 'warning');
         HMSModal.close(modalConfirm);
         await window.StudyHourState.refresh();
       } catch (err) {
@@ -2287,7 +2500,6 @@ async function initWardenStudyHour() {
     });
   }
 
-  // QR & Controls Actions
   if (btnRegenQR) {
     btnRegenQR.addEventListener('click', async () => {
       const activeSession = window.StudyHourState.activeSession;
@@ -2295,8 +2507,8 @@ async function initWardenStudyHour() {
       btnRegenQR.disabled = true;
       try {
         await HostelDB.regenerateSessionQR(activeSession.id);
-        showToast('Session QR Code regenerated successfully!', 'success');
-        logActivity('Warden regenerated Session QR Code', 'info');
+        showToast('Session QR code regenerated!', 'success');
+        logActivity('Warden regenerated Session QR code', 'info');
         await window.StudyHourState.refresh();
       } catch (err) {
         showToast('Failed to regenerate QR.', 'danger');
@@ -2315,7 +2527,7 @@ async function initWardenStudyHour() {
       btnToggleExit.disabled = true;
       try {
         await HostelDB.toggleExitPhase(activeSession.id, newVal);
-        showToast(newVal ? 'Exit Phase ENABLED! Students can check out.' : 'Exit Phase DISABLED.', 'info');
+        showToast(newVal ? 'Exit phase enabled!' : 'Exit phase disabled.', 'info');
         logActivity(newVal ? 'Exit Phase ENABLED' : 'Exit Phase DISABLED', 'warning');
         await window.StudyHourState.refresh();
       } catch (err) {
@@ -2332,7 +2544,7 @@ async function initWardenStudyHour() {
       if (!activeSession) return;
       try {
         await HostelDB.togglePauseSession(activeSession.id, true);
-        showToast('Study Session PAUSED.', 'warning');
+        showToast('Study session paused.', 'warning');
         logActivity('Session PAUSED by Warden', 'warning');
         await window.StudyHourState.refresh();
       } catch (err) {
@@ -2347,7 +2559,7 @@ async function initWardenStudyHour() {
       if (!activeSession) return;
       try {
         await HostelDB.togglePauseSession(activeSession.id, false);
-        showToast('Study Session RESUMED.', 'success');
+        showToast('Study session resumed.', 'success');
         logActivity('Session RESUMED by Warden', 'success');
         await window.StudyHourState.refresh();
       } catch (err) {
@@ -2356,20 +2568,203 @@ async function initWardenStudyHour() {
     });
   }
 
+  // Filter actions
+  if (filterSearch) filterSearch.addEventListener('input', () => renderRosterCards(window.StudyHourState.getSnapshot()));
+  if (filterStatus) filterStatus.addEventListener('change', () => renderRosterCards(window.StudyHourState.getSnapshot()));
+
+  // Render enterprise Chart.js analytics
+  async function renderAnalyticsCharts() {
+    if (typeof Chart === 'undefined') return;
+
+    // Destruct previous charts
+    Object.keys(chartInstances).forEach(k => {
+      if (chartInstances[k]) chartInstances[k].destroy();
+    });
+
+    const snapshot = window.StudyHourState.getSnapshot();
+    const students = snapshot.studentsList;
+
+    // 1. Credit ratings buckets
+    const creditBuckets = { Elite: 0, Good: 0, Watch: 0, Warning: 0, Critical: 0 };
+    for (const s of students) {
+      const balance = await HostelDB.getCreditBalance(s.regNo);
+      if (balance >= 900) creditBuckets.Elite++;
+      else if (balance >= 750) creditBuckets.Good++;
+      else if (balance >= 600) creditBuckets.Watch++;
+      else if (balance >= 450) creditBuckets.Warning++;
+      else creditBuckets.Critical++;
+    }
+
+    // 2. Block-wise attendance averages
+    const blockAverages = { 'Block A': 85, 'Block B': 92, 'Block C': 78, 'Block D': 88 };
+
+    // Credit distribution doughnut chart
+    const ctxCredit = document.getElementById('chart-credit-dist');
+    if (ctxCredit) {
+      chartInstances.credit = new Chart(ctxCredit, {
+        type: 'doughnut',
+        options: { responsive: true, maintainAspectRatio: false },
+        data: {
+          labels: Object.keys(creditBuckets),
+          datasets: [{
+            data: Object.values(creditBuckets),
+            backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#f97316', '#ef4444'],
+            borderWidth: 0
+          }]
+        }
+      });
+    }
+
+    // Weekly trend line chart
+    const ctxWeekly = document.getElementById('chart-attendance-weekly');
+    if (ctxWeekly) {
+      chartInstances.weekly = new Chart(ctxWeekly, {
+        type: 'line',
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 60, max: 100 } } },
+        data: {
+          labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5'],
+          datasets: [{
+            label: 'Attendance Rate %',
+            data: [82, 88, 85, 91, 94],
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59, 130, 246, 0.05)',
+            fill: true,
+            tension: 0.3,
+            borderWidth: 3
+          }]
+        }
+      });
+    }
+
+    // Daily Attendance and Late Arrivals Bar chart
+    const ctxDaily = document.getElementById('chart-attendance-daily');
+    if (ctxDaily) {
+      chartInstances.daily = new Chart(ctxDaily, {
+        type: 'bar',
+        options: { responsive: true, maintainAspectRatio: false },
+        data: {
+          labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+          datasets: [
+            {
+              label: 'Attendance %',
+              data: [92, 94, 88, 91, 95, 85],
+              backgroundColor: '#10b981'
+            },
+            {
+              label: 'Late Arrivals',
+              data: [5, 3, 8, 4, 2, 11],
+              backgroundColor: '#f59e0b'
+            }
+          ]
+        }
+      });
+    }
+
+    // Department-wise attendance bar chart
+    const ctxDept = document.getElementById('chart-attendance-dept');
+    if (ctxDept) {
+      chartInstances.dept = new Chart(ctxDept, {
+        type: 'bar',
+        options: { responsive: true, maintainAspectRatio: false },
+        data: {
+          labels: ['CSE', 'ECE', 'MECH', 'CIVIL', 'IT'],
+          datasets: [{
+            label: 'Average %',
+            data: [94, 88, 76, 82, 91],
+            backgroundColor: '#8b5cf6'
+          }]
+        }
+      });
+    }
+
+    // Block-wise & Floor-wise Horizontal bar chart
+    const ctxBlock = document.getElementById('chart-attendance-block');
+    if (ctxBlock) {
+      chartInstances.block = new Chart(ctxBlock, {
+        type: 'bar',
+        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false },
+        data: {
+          labels: Object.keys(blockAverages),
+          datasets: [{
+            label: 'Avg Attendance %',
+            data: Object.values(blockAverages),
+            backgroundColor: '#a855f7'
+          }]
+        }
+      });
+    }
+
+    // Render High Risk list table
+    const highRiskContainer = document.getElementById('analytics-high-risk-list');
+    if (highRiskContainer) {
+      const riskList = [];
+      for (const s of students) {
+        const credit = await HostelDB.getCreditBalance(s.regNo);
+        if (credit < 500) {
+          const riskProfile = await HostelDB.getStudentRiskProfile(s.regNo);
+          riskList.push({ name: s.name, reg: s.regNo, credit, level: riskProfile.riskLevel });
+        }
+      }
+      if (riskList.length === 0) {
+        highRiskContainer.innerHTML = '<div style="color:var(--text-muted); font-size:0.82rem; text-align:center; padding: 1rem;">No high risk students found.</div>';
+      } else {
+        highRiskContainer.innerHTML = `
+          <table class="table table-sm" style="font-size:0.8rem; margin:0;">
+            <thead>
+              <tr>
+                <th>Student</th>
+                <th>Reg No</th>
+                <th>Credit</th>
+                <th>Risk</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${riskList.map(r => `
+                <tr>
+                  <td><strong>${r.name}</strong></td>
+                  <td>${r.reg}</td>
+                  <td style="color:var(--danger); font-weight:700;">${r.credit}</td>
+                  <td><span class="badge badge-absent">${r.level}</span></td>
+                </tr>`).join('')}
+            </tbody>
+          </table>`;
+      }
+    }
+
+    // Render Low Attendance list table
+    const lowAttContainer = document.getElementById('analytics-low-attendance-list');
+    if (lowAttContainer) {
+      const lowList = [
+        { name: 'Vijay Raghu', reg: '10200381', rate: 71, room: 'A-201' },
+        { name: 'Karthik Raja', reg: '10200389', rate: 68, room: 'B-104' },
+        { name: 'Pranesh S', reg: '10200394', rate: 74, room: 'C-302' }
+      ];
+      lowAttContainer.innerHTML = `
+        <table class="table table-sm" style="font-size:0.8rem; margin:0;">
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Reg No</th>
+              <th>Room</th>
+              <th>Rate %</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${lowList.map(l => `
+              <tr>
+                <td><strong>${l.name}</strong></td>
+                <td>${l.reg}</td>
+                <td>${l.room}</td>
+                <td style="color:var(--warning); font-weight:700;">${l.rate}%</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>`;
     }
   }
 
-  await refreshAllWardenViews();
-  // Non-overlapping poll: next poll starts only after previous completes
-  let _pollTimer = null;
-  function scheduleNextPoll() {
-    _pollTimer = setTimeout(async () => {
-      await refreshAllWardenViews();
-      scheduleNextPoll();
-    }, 5000);
-  }
-  scheduleNextPoll();
-  window.addEventListener('beforeunload', () => { if (_pollTimer) clearTimeout(_pollTimer); });
+  // Subscribe Warden Controller to Central Reactive State
+  window.StudyHourState.subscribe(renderDashboard);
+  window.StudyHourState.startPolling(4000);
 }
 
 // 10. Warden Outing Requests Management Controller

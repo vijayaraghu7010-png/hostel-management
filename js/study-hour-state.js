@@ -5,13 +5,16 @@ class StudyHourStateEngine {
     this.activeSession = null;
     this.attendanceList = [];
     this.studentsList = [];
-    this.keywordChecks = [];
-    this.keywordResponses = [];
+    this.parentAlerts = [];
     this.listeners = new Set();
     this.isFetching = false;
     this.pollTimer = null;
     this.timerInterval = null;
     this.elapsedSeconds = 0;
+    this.settings = {
+      creditThreshold: 700,
+      autoSendAlerts: false
+    };
   }
 
   subscribe(listener) {
@@ -33,9 +36,6 @@ class StudyHourStateEngine {
   }
 
   getSnapshot() {
-    const attMap = new Map();
-    (this.attendanceList || []).forEach(a => attMap.set(a.studentReg, a));
-
     const totalStudents = this.studentsList.length;
     const presentCnt = this.attendanceList.filter(a => a.entryStatus === 'PASS').length;
     const checkedOutCnt = this.attendanceList.filter(a => a.exitStatus === 'PASS').length;
@@ -43,13 +43,17 @@ class StudyHourStateEngine {
     const insideCnt = this.attendanceList.filter(a => a.entryStatus === 'PASS' && a.exitStatus !== 'PASS').length;
     const completedCnt = this.attendanceList.filter(a => a.entryStatus === 'PASS' && a.exitStatus === 'PASS').length;
 
+    // Filter alerts to pending review
+    const pendingAlerts = this.parentAlerts.filter(a => a.status === 'PENDING');
+
     return {
       activeSession: this.activeSession,
       attendanceList: this.attendanceList,
       studentsList: this.studentsList,
-      keywordChecks: this.keywordChecks,
-      keywordResponses: this.keywordResponses,
+      parentAlerts: this.parentAlerts,
+      pendingAlerts: pendingAlerts,
       elapsedSeconds: this.elapsedSeconds,
+      settings: this.settings,
       metrics: {
         totalStudents,
         presentCnt,
@@ -57,7 +61,8 @@ class StudyHourStateEngine {
         pendingCnt,
         insideCnt,
         completedCnt,
-        keywordRounds: this.keywordChecks.length
+        avgAttendance: totalStudents ? Math.round((presentCnt / totalStudents) * 100) : 0,
+        totalAlertsPending: pendingAlerts.length
       }
     };
   }
@@ -68,13 +73,11 @@ class StudyHourStateEngine {
     try {
       this.activeSession = await HostelDB.getActiveStudySession();
       this.studentsList = await HostelDB.getStudents();
+      this.parentAlerts = await HostelDB.getParentAlerts();
 
       if (this.activeSession) {
         this.attendanceList = await HostelDB.getStudyAttendance(this.activeSession.id);
-        this.keywordChecks = await HostelDB.getKeywordChecks(this.activeSession.id);
-        this.keywordResponses = await HostelDB.getKeywordResponses(this.activeSession.id);
         
-        // Calculate elapsed time from session created_at / date & startTime
         if (this.activeSession.createdAt) {
           const startTimeMs = new Date(this.activeSession.createdAt).getTime();
           this.elapsedSeconds = Math.max(0, Math.floor((Date.now() - startTimeMs) / 1000));
@@ -83,10 +86,11 @@ class StudyHourStateEngine {
         }
       } else {
         this.attendanceList = [];
-        this.keywordChecks = [];
-        this.keywordResponses = [];
         this.elapsedSeconds = 0;
       }
+
+      // Automated parent alert monitor based on credits
+      await this.monitorStudentCredits();
 
       this.notify();
     } catch (err) {
@@ -96,10 +100,46 @@ class StudyHourStateEngine {
     }
   }
 
+  async monitorStudentCredits() {
+    try {
+      let alertsChanged = false;
+      const threshold = this.settings.creditThreshold;
+
+      for (const s of this.studentsList) {
+        const balance = await HostelDB.getCreditBalance(s.regNo);
+        if (balance < threshold) {
+          // Check if parent alert already exists for low credit (pending or sent)
+          const exists = this.parentAlerts.some(
+            a => a.studentReg === s.regNo && a.alertType === 'DISCIPLINE_WARNING'
+          );
+
+          if (!exists) {
+            const riskProfile = await HostelDB.getStudentRiskProfile(s.regNo);
+            const msg = `Dear Parent, your ward ${s.name} (${s.regNo}) has low discipline credit rating of ${balance}/1000. Risk level: ${riskProfile.riskLevel}. Please contact the hostel warden.`;
+            
+            await HostelDB.createParentAlert({
+              studentReg: s.regNo,
+              alertType: 'DISCIPLINE_WARNING',
+              language: 'ENGLISH',
+              messageText: msg,
+              status: this.settings.autoSendAlerts ? 'SENT_CONFIRMED' : 'PENDING'
+            });
+            alertsChanged = true;
+          }
+        }
+      }
+
+      if (alertsChanged) {
+        this.parentAlerts = await HostelDB.getParentAlerts();
+      }
+    } catch (err) {
+      console.warn('monitorStudentCredits error:', err);
+    }
+  }
+
   startPolling(intervalMs = 4000) {
     this.stopPolling();
 
-    // Live session timer incrementer every second
     this.timerInterval = setInterval(() => {
       if (this.activeSession) {
         this.elapsedSeconds++;
@@ -107,7 +147,6 @@ class StudyHourStateEngine {
       }
     }, 1000);
 
-    // Non-overlapping data sync poll
     const runPoll = async () => {
       await this.refresh();
       this.pollTimer = setTimeout(runPoll, intervalMs);

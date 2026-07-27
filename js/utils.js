@@ -1250,7 +1250,7 @@ class HostelDB {
     let att = attRecords.find(a => a.studentReg === studentReg);
 
     if (!att) {
-      // FIRST SCAN -> Check in (PRESENT)
+      // First Scan -> Mark Present
       att = {
         id: generateID('ATT'),
         sessionId: activeSession.id,
@@ -1260,10 +1260,10 @@ class HostelDB {
         room: student.room || '',
         entryStatus: 'PASS',
         entryTime: nowStr,
-        exitStatus: 'PENDING',
-        exitTime: null,
+        exitStatus: 'PASS', // auto-completed for single QR check
+        exitTime: nowStr,
         finalStatus: 'PRESENT',
-        notes: `Entry Checked In at ${new Date().toLocaleTimeString()}`
+        notes: `Attendance marked via Session QR scan at ${new Date().toLocaleTimeString()}`
       };
       await this.upsertStudyAttendance(att);
       return {
@@ -1272,47 +1272,11 @@ class HostelDB {
         message: '✅ Successfully Checked In'
       };
     } else {
-      // Second scan -> Checkout attempt (COMPLETED)
-      if (att.entryStatus === 'PASS' && att.exitStatus === 'PASS') {
-        return {
-          success: false,
-          status: 'ALREADY_COMPLETED',
-          message: "You have already completed today's Study Hour."
-        };
-      }
-
-      if (att.entryStatus === 'PASS' && att.exitStatus !== 'PASS') {
-        const exitPhaseEnabled = activeSession.config ? activeSession.config.exitPhaseEnabled : false;
-        
-        // Minimum study duration check (e.g. 60 minutes)
-        const entryTime = new Date(att.entryTime);
-        const elapsedMins = (new Date() - entryTime) / (1000 * 60);
-        const isDurationMet = elapsedMins >= 60;
-
-        if (exitPhaseEnabled || isDurationMet) {
-          att.exitStatus = 'PASS';
-          att.exitTime = nowStr;
-          att.finalStatus = 'COMPLETED';
-          att.notes += ` | Exit Checked Out at ${new Date().toLocaleTimeString()}`;
-          await this.upsertStudyAttendance(att);
-          return {
-            success: true,
-            status: 'EXIT',
-            message: '✅ Study Hour Completed Successfully'
-          };
-        } else {
-          return {
-            success: false,
-            status: 'TOO_EARLY',
-            message: 'Exit scan not allowed yet. Please wait for the minimum duration or Warden to enable the exit phase.'
-          };
-        }
-      }
-
+      // Prevent duplicates
       return {
         success: false,
-        status: 'UNKNOWN',
-        message: 'Invalid attendance state.'
+        status: 'ALREADY_COMPLETED',
+        message: "Attendance already recorded for this session."
       };
     }
   }
