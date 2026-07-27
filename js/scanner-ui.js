@@ -1,6 +1,7 @@
 /**
  * HMS PRODUCTION UNIVERSAL QR SCANNER CONTROLLER
- * HD 1080p Stream Engine + Tri-Tier Decoding (BarcodeDetector -> @zxing/browser -> Nimiq QrScanner)
+ * Full-Featured Debug Mode, Tri-Tier Engine (@zxing/browser -> Nimiq QrScanner -> BarcodeDetector)
+ * Universal Routing for OUTPASS, STUDY_HOUR, VISITOR modules.
  */
 (function (global) {
   'use strict';
@@ -10,14 +11,18 @@
       this.overlayEl = null;
       this.videoEl = null;
       this.isScanning = false;
+      this.scanLock = false;
       this.isTorchOn = false;
       this.activeDevices = [];
       this.currentDeviceIndex = 0;
       this.activeStream = null;
       this.scanTimer = null;
+      this.activeTier = 'ZXING_BROWSER';
 
-      // Controller instances
+      // Engine instances
       this.zxingReader = null;
+      this.zxingControls = null;
+      this.nimiqScanner = null;
       this.barcodeDetector = null;
 
       this.onScanCallback = null;
@@ -29,10 +34,27 @@
     }
 
     /* ----------------------------------------------------------------------
-       1. Initialize Engines
+       1. Initialize Engines & Multi-Tier Architecture
        ---------------------------------------------------------------------- */
     initEngines() {
-      // Tier 1: Hardware GPU BarcodeDetector (Chrome Android / Desktop)
+      // Tier 1: @zxing/browser
+      if (global.ZXingBrowser && global.ZXingBrowser.BrowserQRCodeReader) {
+        try {
+          this.zxingReader = new global.ZXingBrowser.BrowserQRCodeReader();
+          this.activeTier = 'ZXING_BROWSER';
+          console.log('✓ Primary Engine Initialized: @zxing/browser');
+        } catch (e) {
+          console.warn('ZXing Browser init warning:', e);
+        }
+      }
+
+      // Tier 2: Nimiq QrScanner
+      if (!this.zxingReader && global.QrScanner) {
+        this.activeTier = 'NIMIQ_SCANNER';
+        console.log('✓ Secondary Engine Initialized: Nimiq QrScanner');
+      }
+
+      // Hardware Acceleration: Native BarcodeDetector
       if ('BarcodeDetector' in global) {
         try {
           this.barcodeDetector = new global.BarcodeDetector({ formats: ['qr_code'] });
@@ -41,20 +63,10 @@
           this.barcodeDetector = null;
         }
       }
-
-      // Tier 2: @zxing/browser
-      if (global.ZXingBrowser && global.ZXingBrowser.BrowserQRCodeReader) {
-        try {
-          this.zxingReader = new global.ZXingBrowser.BrowserQRCodeReader();
-          console.log('✓ Primary Engine Initialized: @zxing/browser');
-        } catch (e) {
-          console.warn('ZXing Browser init warning:', e);
-        }
-      }
     }
 
     /* ----------------------------------------------------------------------
-       2. Inject Fullscreen Scanner DOM Layout
+       2. Inject Universal Fullscreen Scanner DOM Layout
        ---------------------------------------------------------------------- */
     initDOM() {
       if (document.getElementById('hms-qr-scanner-fullscreen')) {
@@ -73,7 +85,7 @@
             <i class="fa-solid fa-arrow-left"></i>
             <span>Back</span>
           </button>
-          <h1 class="hms-scanner-title" id="hms-scanner-header-title">QR Scanner</h1>
+          <h1 class="hms-scanner-title" id="hms-scanner-header-title">Universal QR Scanner</h1>
           <div class="hms-top-actions">
             <button type="button" class="hms-icon-btn" id="hms-scanner-btn-torch" title="Toggle Flashlight" aria-label="Toggle Flashlight">
               <i class="fa-solid fa-bolt"></i>
@@ -89,7 +101,7 @@
           <!-- Loading Spinner Overlay -->
           <div class="hms-scanner-loader" id="hms-scanner-loader-el" style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(5,7,10,0.92); z-index: 100; gap: 1rem;">
             <i class="fa-solid fa-circle-notch fa-spin fa-3x" style="color: #38bdf8;"></i>
-            <span style="color: #ffffff; font-size: 0.9rem; font-weight: 500;">Initializing HD Lens...</span>
+            <span style="color: #ffffff; font-size: 0.9rem; font-weight: 500;" id="hms-scanner-status-text">Initializing HD Lens...</span>
           </div>
 
           <video id="hms-scanner-video-el" class="hms-scanner-video" autoplay playsinline muted></video>
@@ -102,11 +114,6 @@
             <div class="hms-corner-cap hms-corner-br"></div>
             <div class="hms-laser-beam" id="hms-scanner-laser"></div>
           </div>
-        </div>
-
-        <!-- Debug On-Screen Scan Log Banner -->
-        <div class="hms-scanner-debug-banner" id="hms-scanner-debug-banner" style="display: none; position: absolute; bottom: 85px; left: 16px; right: 16px; background: rgba(16, 185, 129, 0.95); color: #ffffff; padding: 10px 14px; border-radius: 12px; font-family: monospace; font-size: 0.8rem; z-index: 1000; box-shadow: 0 4px 20px rgba(0,0,0,0.5); word-break: break-all; text-align: left;">
-          <strong>[SCANNED QR DECODED]:</strong> <span id="hms-scanner-debug-text"></span>
         </div>
 
         <!-- Minimal Bottom Bar -->
@@ -125,7 +132,7 @@
               <path d="M14 27 l10 10 l16 -18" />
             </svg>
           </div>
-          <p class="hms-success-title">QR Code Scanned!</p>
+          <p class="hms-success-title" id="hms-success-title-text">QR Code Scanned!</p>
         </div>
 
         <!-- Error View Overlay -->
@@ -134,7 +141,7 @@
             <i class="fa-solid fa-camera-slash"></i>
           </div>
           <h2 class="hms-error-title" id="hms-error-title-text">Camera Access Required</h2>
-          <p class="hms-error-msg" id="hms-error-msg-text">Please allow camera permissions to scan outpass QR codes automatically.</p>
+          <p class="hms-error-msg" id="hms-error-msg-text">Please allow camera permissions to scan QR codes automatically.</p>
           <div class="hms-error-actions">
             <button type="button" class="hms-btn-action hms-btn-action-primary" id="hms-btn-retry-camera">
               <i class="fa-solid fa-rotate-right"></i> Grant Access & Retry
@@ -142,6 +149,41 @@
             <button type="button" class="hms-btn-action hms-btn-action-secondary" id="hms-btn-error-close">
               <i class="fa-solid fa-xmark"></i> Close Scanner
             </button>
+          </div>
+        </div>
+
+        <!-- Mandatory Temporary Debug Sheet Modal -->
+        <div class="hms-debug-modal-backdrop" id="hms-debug-modal-backdrop" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 9999; align-items: flex-end; justify-content: center;">
+          <div style="background: #0f172a; color: #f8fafc; border-top: 2px solid #38bdf8; width: 100%; max-width: 540px; border-radius: 20px 20px 0 0; padding: 20px; font-family: monospace; box-shadow: 0 -10px 40px rgba(0,0,0,0.8); max-height: 80vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 10px; margin-bottom: 12px;">
+              <h3 style="margin: 0; font-size: 1rem; color: #38bdf8; font-weight: 700;">⚡ QR Scanner Debug Panel</h3>
+              <button type="button" id="hms-debug-btn-close" style="background: transparent; border: none; color: #94a3b8; font-size: 1.2rem; cursor: pointer;">&times;</button>
+            </div>
+            
+            <div style="font-size: 0.8rem; display: flex; flex-direction: column; gap: 10px;">
+              <div>
+                <span style="color: #94a3b8; display: block;">1. RAW DECODED TEXT:</span>
+                <div id="hms-debug-raw" style="background: #1e293b; padding: 8px; border-radius: 6px; color: #4ade80; word-break: break-all;">-</div>
+              </div>
+              <div>
+                <span style="color: #94a3b8; display: block;">2. PARSED PAYLOAD JSON:</span>
+                <pre id="hms-debug-parsed" style="background: #1e293b; padding: 8px; border-radius: 6px; color: #f43f5e; margin: 0; white-space: pre-wrap; word-break: break-all;">-</pre>
+              </div>
+              <div>
+                <span style="color: #94a3b8; display: block;">3. DETECTED TYPE:</span>
+                <div id="hms-debug-type" style="background: #1e293b; padding: 8px; border-radius: 6px; color: #38bdf8; font-weight: bold;">-</div>
+              </div>
+              <div>
+                <span style="color: #94a3b8; display: block;">4. ROUTING RESULT:</span>
+                <div id="hms-debug-route" style="background: #1e293b; padding: 8px; border-radius: 6px; color: #fbbf24;">-</div>
+              </div>
+            </div>
+
+            <div style="margin-top: 16px; display: flex; gap: 10px;">
+              <button type="button" id="hms-debug-btn-proceed" style="flex: 1; background: #0284c7; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer;">
+                Proceed Workflow &rarr;
+              </button>
+            </div>
           </div>
         </div>
       `;
@@ -154,7 +196,7 @@
     }
 
     /* ----------------------------------------------------------------------
-       3. Attach Event Listeners
+       3. Attach DOM Event Listeners
        ---------------------------------------------------------------------- */
     attachEvents() {
       const backBtn = document.getElementById('hms-scanner-btn-back');
@@ -191,7 +233,7 @@
     }
 
     /* ----------------------------------------------------------------------
-       4. Open Scanner Fullscreen
+       4. Open Scanner Fullscreen Overlay
        ---------------------------------------------------------------------- */
     async open(options = {}) {
       this.initDOM();
@@ -201,7 +243,7 @@
       this.onManualCallback = options.onManual || null;
 
       const headerTitle = document.getElementById('hms-scanner-header-title');
-      if (headerTitle) headerTitle.textContent = options.title || 'QR Scanner';
+      if (headerTitle) headerTitle.textContent = options.title || 'Universal QR Scanner';
 
       const mainText = document.getElementById('hms-bottom-text-main');
       if (mainText) mainText.textContent = options.mainText || 'Align the QR code inside the frame';
@@ -214,8 +256,8 @@
         manualBtn.style.display = options.allowManual ? 'inline-flex' : 'none';
       }
 
-      const debugBanner = document.getElementById('hms-scanner-debug-banner');
-      if (debugBanner) debugBanner.style.display = 'none';
+      const debugBackdrop = document.getElementById('hms-debug-modal-backdrop');
+      if (debugBackdrop) debugBackdrop.style.display = 'none';
 
       const errorOverlay = document.getElementById('hms-scanner-error-overlay');
       if (errorOverlay) errorOverlay.style.display = 'none';
@@ -227,11 +269,12 @@
       document.body.style.overflow = 'hidden';
 
       this.isScanning = true;
+      this.scanLock = false;
       await this.startCamera();
     }
 
     /* ----------------------------------------------------------------------
-       5. Start 1080p HD Camera Stream
+       5. Step 1: Camera Initialization & Resolution Setup
        ---------------------------------------------------------------------- */
     async startCamera() {
       const loader = document.getElementById('hms-scanner-loader-el');
@@ -266,24 +309,75 @@
           }
         }
 
-        // Build 1080p High-Resolution Constraints
+        // Try Tier 1: @zxing/browser (Preferred Engine)
+        if (this.zxingReader && this.activeTier === 'ZXING_BROWSER') {
+          try {
+            const constraints = {
+              video: {
+                deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
+                facingMode: selectedDeviceId ? undefined : { ideal: 'environment' },
+                width: { ideal: 1920, min: 1280 },
+                height: { ideal: 1080, min: 720 }
+              }
+            };
+
+            this.zxingControls = await this.zxingReader.decodeFromConstraints(
+              constraints,
+              this.videoEl,
+              (result, err, controls) => {
+                if (result && this.isScanning && !this.scanLock) {
+                  this.handleScanResult(result.getText());
+                }
+              }
+            );
+            console.log('▶ Started scanning via Tier 1 (@zxing/browser)');
+            if (loader) loader.style.display = 'none';
+            return;
+          } catch (zxingErr) {
+            console.warn('Tier 1 (@zxing/browser) init failed, falling back to Tier 2 (Nimiq):', zxingErr);
+            this.activeTier = 'NIMIQ_SCANNER';
+          }
+        }
+
+        // Fallback Tier 2: Nimiq QrScanner
+        if (this.activeTier === 'NIMIQ_SCANNER' && global.QrScanner) {
+          try {
+            this.nimiqScanner = new global.QrScanner(
+              this.videoEl,
+              (result) => {
+                if (this.isScanning && !this.scanLock) {
+                  const text = typeof result === 'object' ? result.data : result;
+                  this.handleScanResult(text);
+                }
+              },
+              {
+                preferredCamera: 'environment',
+                highlightScanRegion: false,
+                highlightCodeOutline: false,
+                maxScansPerSecond: 10
+              }
+            );
+            await this.nimiqScanner.start();
+            console.log('▶ Started scanning via Tier 2 (Nimiq QrScanner)');
+            if (loader) loader.style.display = 'none';
+            return;
+          } catch (nimiqErr) {
+            console.warn('Tier 2 (Nimiq) failed, attempting native BarcodeDetector fallback:', nimiqErr);
+          }
+        }
+
+        // Fallback Tier 3: Native BarcodeDetector + getUserMedia
         const videoConstraints = {
           facingMode: selectedDeviceId ? undefined : { ideal: 'environment' },
           deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
           width: { ideal: 1920, min: 1280 },
-          height: { ideal: 1080, min: 720 },
-          frameRate: { ideal: 30 }
+          height: { ideal: 1080, min: 720 }
         };
 
-        this.activeStream = await navigator.mediaDevices.getUserMedia({
-          video: videoConstraints,
-          audio: false
-        });
-
+        this.activeStream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: false });
         this.videoEl.srcObject = this.activeStream;
         await this.videoEl.play();
 
-        // Enable continuous focus mode
         const track = this.activeStream.getVideoTracks()[0];
         if (track && track.applyConstraints) {
           try {
@@ -291,48 +385,24 @@
           } catch (e) {}
         }
 
-        this.isScanning = true;
-        this.startDetectionLoop();
-
+        this.startNativeDetectionLoop();
         if (loader) loader.style.display = 'none';
 
       } catch (err) {
-        console.warn('1080p HD Camera stream failed, attempting standard resolution fallback:', err);
-        try {
-          this.activeStream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: { ideal: 'environment' } },
-            audio: false
-          });
-          this.videoEl.srcObject = this.activeStream;
-          await this.videoEl.play();
-
-          this.isScanning = true;
-          this.startDetectionLoop();
-
-          if (loader) loader.style.display = 'none';
-        } catch (fallbackErr) {
-          console.error('Camera fallback error:', fallbackErr);
-          this.showErrorState(
-            fallbackErr.name === 'NotAllowedError' ? 'Camera Permission Denied' : 'Camera Unavailable',
-            'Unable to start camera stream. Check camera permissions.'
-          );
-        }
+        console.error('Camera Stream Initialization Error:', err);
+        this.showErrorState(
+          err.name === 'NotAllowedError' ? 'Camera Permission Denied' : 'Camera Unavailable',
+          'Unable to access camera lens. Please check permissions.'
+        );
       }
     }
 
-    /* ----------------------------------------------------------------------
-       6. Tri-Tier Frame Detection Loop
-       ---------------------------------------------------------------------- */
-    startDetectionLoop() {
-      if (!this.isScanning) return;
-
+    startNativeDetectionLoop() {
       const scanFrame = async () => {
-        if (!this.isScanning || !this.videoEl) return;
+        if (!this.isScanning || this.scanLock || !this.videoEl) return;
 
         if (this.videoEl.readyState >= 2 && !this.videoEl.paused && !this.videoEl.ended) {
           let decodedText = null;
-
-          // Tier 1: Hardware GPU BarcodeDetector
           if (this.barcodeDetector) {
             try {
               const barcodes = await this.barcodeDetector.detect(this.videoEl);
@@ -342,33 +412,13 @@
             } catch (e) {}
           }
 
-          // Tier 2: @zxing/browser
-          if (!decodedText && this.zxingReader) {
-            try {
-              const result = this.zxingReader.decode(this.videoEl);
-              if (result) {
-                decodedText = result.getText();
-              }
-            } catch (e) {}
-          }
-
-          // Tier 3: Nimiq QrScanner fallback
-          if (!decodedText && global.QrScanner) {
-            try {
-              const result = await global.QrScanner.scanImage(this.videoEl, { returnDetailedScanResult: true });
-              if (result && result.data) {
-                decodedText = result.data;
-              }
-            } catch (e) {}
-          }
-
-          if (decodedText && this.isScanning) {
+          if (decodedText && this.isScanning && !this.scanLock) {
             this.handleScanResult(decodedText);
             return;
           }
         }
 
-        if (this.isScanning) {
+        if (this.isScanning && !this.scanLock) {
           this.scanTimer = setTimeout(scanFrame, 120);
         }
       };
@@ -377,40 +427,25 @@
     }
 
     /* ----------------------------------------------------------------------
-       7. Process & Debug Log Scanned Result
+       6. Steps 2, 3, 4, 5: QR Detection, Console & Debug Sheet, Universal Routing
        ---------------------------------------------------------------------- */
     handleScanResult(decodedText) {
-      if (!this.isScanning) return;
+      if (!this.isScanning || this.scanLock) return;
+      this.scanLock = true; // Lock immediately to prevent duplicate scans
 
-      // 1. Log to browser console
+      // Step 3: Print decoded value in Console
       console.log("%c=== UNIVERSAL QR DECODED ===", "color: #10b981; font-weight: bold; font-size: 14px;", decodedText);
 
-      // 2. Display debug log banner on screen
-      const debugBanner = document.getElementById('hms-scanner-debug-banner');
-      const debugText = document.getElementById('hms-scanner-debug-text');
-      if (debugBanner && debugText) {
-        debugText.textContent = decodedText;
-        debugBanner.style.display = 'block';
-      }
-
+      // Step 4: Parse JSON safely
       let payload = null;
-      try {
-        payload = this.validateAndParsePayload(decodedText);
-      } catch (err) {
-        if (navigator.vibrate) navigator.vibrate(250);
-        this.showInvalidPopup(err.message || 'Malformed QR code format.');
-        return;
-      }
+      let parseError = null;
 
-      this.handleSuccessfulScan(decodedText);
-    }
-
-    validateAndParsePayload(decodedText) {
-      let payload = null;
       try {
         payload = JSON.parse(decodedText);
       } catch (err) {
-        // Fallback for plain text backward compatibility
+        parseError = err;
+        console.warn("QR JSON parse error, attempting legacy token mapping:", err);
+
         if (decodedText.startsWith('HMSQR_')) {
           const parts = decodedText.split('_');
           payload = {
@@ -430,52 +465,84 @@
             timestamp: Date.now(),
             signature: ''
           };
-        } else {
-          throw new Error('Invalid QR payload format. Structured JSON required.');
         }
       }
 
-      if (!payload.type) {
-        throw new Error('Invalid QR: Missing payload type.');
+      // Step 5: Universal Routing Check
+      const detectedType = payload ? (payload.type || 'UNKNOWN') : 'INVALID_JSON';
+      let routingResult = 'Executing Universal Workflow...';
+
+      if (detectedType === 'OUTPASS') {
+        routingResult = 'Routing to Warden Gate Control Outpass Exit/Return Flow';
+      } else if (detectedType === 'STUDY_HOUR') {
+        routingResult = 'Routing to Study Hour Attendance Verification Flow';
+      } else if (detectedType === 'VISITOR') {
+        routingResult = 'Routing to Visitor Gate Check-in Flow';
+      } else {
+        routingResult = 'Unknown/Unsupported Module Type';
       }
 
-      const supportedTypes = ['STUDY_HOUR', 'OUTPASS', 'VISITOR', 'MAINTENANCE'];
-      if (!supportedTypes.includes(payload.type)) {
-        throw new Error(`Invalid QR: Unsupported system module type "${payload.type}".`);
+      // Update Debug Modal Panel
+      const debugBackdrop = document.getElementById('hms-debug-modal-backdrop');
+      const debugRaw = document.getElementById('hms-debug-raw');
+      const debugParsed = document.getElementById('hms-debug-parsed');
+      const debugType = document.getElementById('hms-debug-type');
+      const debugRoute = document.getElementById('hms-debug-route');
+      const btnProceed = document.getElementById('hms-debug-btn-proceed');
+
+      if (debugRaw) debugRaw.textContent = decodedText;
+      if (debugParsed) debugParsed.textContent = payload ? JSON.stringify(payload, null, 2) : `Error: ${parseError ? parseError.message : 'Invalid Payload'}`;
+      if (debugType) debugType.textContent = detectedType;
+      if (debugRoute) debugRoute.textContent = routingResult;
+
+      if (!payload || !payload.type) {
+        if (navigator.vibrate) navigator.vibrate(250);
+        this.scanLock = false;
+        this.showInvalidPopup(parseError ? parseError.message : 'Invalid QR code format. Structured JSON required.');
+        return;
       }
 
-      return payload;
+      // Render Debug Modal or Proceed
+      const executeScanWorkflow = () => {
+        if (debugBackdrop) debugBackdrop.style.display = 'none';
+        this.handleSuccessfulScan(decodedText);
+      };
+
+      if (debugBackdrop) {
+        debugBackdrop.style.display = 'flex';
+        const closeDebug = document.getElementById('hms-debug-btn-close');
+        if (closeDebug) closeDebug.onclick = () => {
+          debugBackdrop.style.display = 'none';
+          this.close();
+        };
+        if (btnProceed) btnProceed.onclick = () => executeScanWorkflow();
+      } else {
+        executeScanWorkflow();
+      }
     }
 
     async handleSuccessfulScan(qrData) {
       this.isScanning = false;
-      if (this.scanTimer) {
-        clearTimeout(this.scanTimer);
-        this.scanTimer = null;
-      }
 
-      // Haptic Vibration Feedback
+      // Haptic Feedback
       if (navigator.vibrate) {
         try {
           navigator.vibrate([100, 50, 100]);
         } catch (e) {}
       }
 
-      // Audio Chime Feedback
+      // Audio Chime
       this.playAudioBeep();
 
-      // Show Green Checkmark Overlay
+      // Show Success Checkmark Overlay
       const successOverlay = document.getElementById('hms-scanner-success-overlay');
       if (successOverlay) {
         successOverlay.classList.add('active');
       }
 
-      // Stop camera stream
       this.releaseStream();
 
-      // Animation delay
       await new Promise((r) => setTimeout(r, 650));
-
       this.close(true);
 
       if (typeof this.onScanCallback === 'function') {
@@ -484,10 +551,9 @@
     }
 
     /* ----------------------------------------------------------------------
-       8. Toggle Flashlight Torch Control
+       7. Toggle Flashlight Torch Control
        ---------------------------------------------------------------------- */
     async toggleTorch() {
-      if (!this.isScanning) return;
       try {
         let track = null;
         if (this.activeStream) {
@@ -507,9 +573,7 @@
         }
 
         this.isTorchOn = !this.isTorchOn;
-        await track.applyConstraints({
-          advanced: [{ torch: this.isTorchOn }]
-        });
+        await track.applyConstraints({ advanced: [{ torch: this.isTorchOn }] });
 
         const torchBtn = document.getElementById('hms-scanner-btn-torch');
         if (torchBtn) {
@@ -521,7 +585,7 @@
     }
 
     /* ----------------------------------------------------------------------
-       9. Switch Camera Lenses
+       8. Switch Camera Lenses
        ---------------------------------------------------------------------- */
     async switchCamera() {
       if (this.activeDevices.length <= 1) {
@@ -538,10 +602,11 @@
     }
 
     /* ----------------------------------------------------------------------
-       10. Error & Dialog Handlers
+       9. Error & Invalid Dialog Popups
        ---------------------------------------------------------------------- */
     showErrorState(title, message) {
       this.isScanning = false;
+      this.scanLock = false;
       this.releaseStream();
 
       const loader = document.getElementById('hms-scanner-loader-el');
@@ -559,10 +624,7 @@
 
     showInvalidPopup(message) {
       this.isScanning = false;
-      if (this.scanTimer) {
-        clearTimeout(this.scanTimer);
-        this.scanTimer = null;
-      }
+      this.releaseStream();
 
       let modalBackdrop = document.getElementById('hms-invalid-modal-backdrop');
       if (!modalBackdrop) {
@@ -618,6 +680,7 @@
           modalBackdrop.classList.remove('active');
           if (sheet) sheet.classList.remove('active');
           this.isScanning = true;
+          this.scanLock = false;
           this.startCamera();
         };
       }
@@ -654,13 +717,28 @@
     }
 
     /* ----------------------------------------------------------------------
-       11. Clean Stream Disposal
+       10. Clean Disposal
        ---------------------------------------------------------------------- */
     releaseStream() {
       this.isScanning = false;
       if (this.scanTimer) {
         clearTimeout(this.scanTimer);
         this.scanTimer = null;
+      }
+
+      if (this.zxingControls) {
+        try {
+          this.zxingControls.stop();
+        } catch (e) {}
+        this.zxingControls = null;
+      }
+
+      if (this.nimiqScanner) {
+        try {
+          this.nimiqScanner.stop();
+          this.nimiqScanner.destroy();
+        } catch (e) {}
+        this.nimiqScanner = null;
       }
 
       if (this.activeStream) {
@@ -681,6 +759,9 @@
       if (this.overlayEl) {
         this.overlayEl.classList.add('hms-hidden');
       }
+
+      const debugBackdrop = document.getElementById('hms-debug-modal-backdrop');
+      if (debugBackdrop) debugBackdrop.style.display = 'none';
 
       document.body.style.overflow = '';
 
