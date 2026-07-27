@@ -1203,6 +1203,12 @@ window.openOutpassModal = async function(passId) {
       if (!qrTarget) return;
 
       qrTarget.innerHTML = '';
+      qrTarget.style.background = '#ffffff';
+      qrTarget.style.padding = '16px';
+      qrTarget.style.borderRadius = '16px';
+      qrTarget.style.display = 'inline-block';
+      qrTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+
       const payloadStr = JSON.stringify({
         type: "OUTPASS",
         id: pass.id,
@@ -1211,38 +1217,41 @@ window.openOutpassModal = async function(passId) {
         timestamp: Date.now(),
         signature: pass.secureToken
       });
-      console.log("QR VALUE:", payloadStr);
+      console.log("GENERATING VALID QR PAYLOAD:", payloadStr);
+
+      let isRendered = false;
 
       if (typeof QRCode !== 'undefined') {
         try {
           new QRCode(qrTarget, {
             text: payloadStr,
-            width: 180,
-            height: 180,
+            width: 280,
+            height: 280,
             colorDark: "#000000",
-            colorLight: "#ffffff"
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel ? QRCode.CorrectLevel.H : 2
           });
+
+          const elements = qrTarget.querySelectorAll('canvas, img');
+          elements.forEach(el => {
+            el.style.width = '280px';
+            el.style.height = '280px';
+            el.style.display = 'block';
+            el.style.margin = '0 auto';
+          });
+          isRendered = true;
         } catch (err) {
-          console.warn("QRCode canvas render warning, trying fallback:", err);
+          console.warn("QRCode JS render error, trying fallback:", err);
         }
       }
 
-      // Verify canvas rendered properly; if not, generate fallback QR image matrix
-      const canvas = qrTarget.querySelector('canvas');
-      if (canvas) {
-        canvas.style.width = '180px';
-        canvas.style.height = '180px';
-        canvas.style.display = 'block';
-        canvas.style.margin = '0 auto';
-      } else {
+      if (!isRendered) {
         const encoded = encodeURIComponent(payloadStr);
-        qrTarget.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encoded}" alt="Outpass QR" style="width: 180px; height: 180px; display: block; margin: 0 auto;">`;
+        qrTarget.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&ecc=H&margin=2&data=${encoded}" alt="Outpass QR" style="width: 280px; height: 280px; display: block; margin: 0 auto; border-radius: 8px;">`;
       }
     };
 
-    // Render immediately and on modal transition micro-task
     renderQR();
-    setTimeout(renderQR, 50);
 
     HMSModal.open('#modal-view-outpass');
   } catch (e) {
