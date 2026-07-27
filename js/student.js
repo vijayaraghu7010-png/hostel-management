@@ -785,48 +785,14 @@ async function initStudentStudyHour(student) {
   const keywordCheckIdInput = document.getElementById('active-check-id');
   const keywordMsg = document.getElementById('keyword-response-msg');
 
-  const entryQrContainer = document.getElementById('entry-qr-container');
-  const exitQrContainer = document.getElementById('exit-qr-container');
+  const btnStartCamera = document.getElementById('btn-start-camera');
   const entryStatusBadge = document.getElementById('entry-status-badge');
   const exitStatusBadge = document.getElementById('exit-status-badge');
-  const btnRegenEntry = document.getElementById('btn-regen-entry-qr');
-  const btnRegenExit = document.getElementById('btn-regen-exit-qr');
+  const statusDisplay = document.getElementById('student-session-status');
   const historyTbody = document.getElementById('student-study-history-tbody');
 
-  let entryQrInstance = null;
-  let exitQrInstance = null;
   let currentActiveSession = null;
   let keywordCountdownInterval = null;
-
-  async function renderEntryQR(sessionId) {
-    if (!entryQrContainer) return;
-    try {
-      const token = await HostelDB.generateStudentQRToken(student.regNo, sessionId, 'ENTRY');
-      entryQrContainer.innerHTML = '';
-      if (typeof QRCode !== 'undefined') {
-        new QRCode(entryQrContainer, { text: token, width: 200, height: 200 });
-      } else {
-        entryQrContainer.innerHTML = `<div style="padding: 1rem; word-break: break-all; font-family: monospace; font-size: 0.75rem;">${token}</div>`;
-      }
-    } catch (e) {
-      console.error('Error generating Entry QR:', e);
-    }
-  }
-
-  async function renderExitQR(sessionId) {
-    if (!exitQrContainer) return;
-    try {
-      const token = await HostelDB.generateStudentQRToken(student.regNo, sessionId, 'EXIT');
-      exitQrContainer.innerHTML = '';
-      if (typeof QRCode !== 'undefined') {
-        new QRCode(exitQrContainer, { text: token, width: 200, height: 200 });
-      } else {
-        exitQrContainer.innerHTML = `<div style="padding: 1rem; word-break: break-all; font-family: monospace; font-size: 0.75rem;">${token}</div>`;
-      }
-    } catch (e) {
-      console.error('Error generating Exit QR:', e);
-    }
-  }
 
   async function refreshSessionState() {
     try {
@@ -840,25 +806,43 @@ async function initStudentStudyHour(student) {
         if (sessionTitle) sessionTitle.textContent = currentActiveSession.sessionTitle;
         if (sessionTiming) sessionTiming.textContent = `Date: ${currentActiveSession.date} | Timings: ${currentActiveSession.startTime} - ${currentActiveSession.endTime}`;
 
-        // Render QR codes if not already rendered
-        if (entryQrContainer && entryQrContainer.children.length === 0) {
-          await renderEntryQR(currentActiveSession.id);
-        }
-        if (exitQrContainer && exitQrContainer.children.length === 0) {
-          await renderExitQR(currentActiveSession.id);
-        }
+        if (btnStartCamera) btnStartCamera.disabled = false;
 
         // Check Attendance status for student
         const attList = await HostelDB.getStudyAttendance(currentActiveSession.id, student.regNo);
         if (attList && attList.length > 0) {
           const att = attList[0];
+          
           if (entryStatusBadge) {
-            entryStatusBadge.textContent = att.entryStatus === 'PASS' ? 'Entry Verified ✓' : 'Entry Pending';
+            entryStatusBadge.textContent = att.entryStatus === 'PASS' ? 'Entry: Verified ✓' : 'Entry: Pending';
             entryStatusBadge.className = att.entryStatus === 'PASS' ? 'badge badge-present' : 'badge badge-pending';
           }
           if (exitStatusBadge) {
-            exitStatusBadge.textContent = att.exitStatus === 'PASS' ? 'Exit Verified ✓' : 'Exit Pending';
+            exitStatusBadge.textContent = att.exitStatus === 'PASS' ? 'Exit: Verified ✓' : 'Exit: Pending';
             exitStatusBadge.className = att.exitStatus === 'PASS' ? 'badge badge-present' : 'badge badge-pending';
+          }
+
+          if (statusDisplay) {
+            if (att.entryStatus === 'PASS' && att.exitStatus === 'PASS') {
+              statusDisplay.innerHTML = '<span style="color: var(--primary);">LEFT / COMPLETED</span>';
+              if (btnStartCamera) btnStartCamera.disabled = true;
+            } else if (att.entryStatus === 'PASS') {
+              statusDisplay.innerHTML = '<span style="color: var(--success);">INSIDE HALL</span>';
+            } else {
+              statusDisplay.innerHTML = '<span style="color: var(--text-secondary);">OUTSIDE</span>';
+            }
+          }
+        } else {
+          if (entryStatusBadge) {
+            entryStatusBadge.textContent = 'Entry: Pending';
+            entryStatusBadge.className = 'badge badge-pending';
+          }
+          if (exitStatusBadge) {
+            exitStatusBadge.textContent = 'Exit: Pending';
+            exitStatusBadge.className = 'badge badge-pending';
+          }
+          if (statusDisplay) {
+            statusDisplay.innerHTML = '<span style="color: var(--text-secondary);">OUTSIDE</span>';
           }
         }
 
@@ -895,8 +879,16 @@ async function initStudentStudyHour(student) {
         }
         if (sessionTitle) sessionTitle.textContent = 'No Active Study Hour Session';
         if (sessionTiming) sessionTiming.textContent = 'Warden has not started a session currently.';
-        if (entryQrContainer) entryQrContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 0.85rem; padding: 2rem;">No Active Session</div>';
-        if (exitQrContainer) exitQrContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 0.85rem; padding: 2rem;">No Active Session</div>';
+        if (statusDisplay) statusDisplay.innerHTML = '<span style="color: var(--text-muted);">No Active Session</span>';
+        if (btnStartCamera) btnStartCamera.disabled = true;
+        if (entryStatusBadge) {
+          entryStatusBadge.textContent = 'Entry: Pending';
+          entryStatusBadge.className = 'badge badge-pending';
+        }
+        if (exitStatusBadge) {
+          exitStatusBadge.textContent = 'Exit: Pending';
+          exitStatusBadge.className = 'badge badge-pending';
+        }
         if (keywordCard) keywordCard.style.display = 'none';
       }
 
@@ -939,21 +931,37 @@ async function initStudentStudyHour(student) {
     historyTbody.innerHTML = rowsHtml;
   }
 
-  // Event Handlers
-  if (btnRegenEntry) {
-    btnRegenEntry.addEventListener('click', async () => {
-      if (currentActiveSession) {
-        await renderEntryQR(currentActiveSession.id);
-        showToast('Entry QR Code refreshed.', 'info');
+  // Scan QR Scanner Camera Trigger
+  if (btnStartCamera) {
+    btnStartCamera.addEventListener('click', async () => {
+      if (!currentActiveSession) {
+        showToast('No active session currently running.', 'warning');
+        return;
       }
-    });
-  }
-
-  if (btnRegenExit) {
-    btnRegenExit.addEventListener('click', async () => {
-      if (currentActiveSession) {
-        await renderExitQR(currentActiveSession.id);
-        showToast('Exit QR Code refreshed.', 'info');
+      if (window.HMSQRScanner) {
+        window.HMSQRScanner.open({
+          title: 'Scan Study Hour QR',
+          mainText: 'Align Session QR Code inside frame',
+          subText: 'Attendance status will be verified instantly.',
+          onScan: async (decodedText) => {
+            try {
+              const res = await HostelDB.verifySessionQRScan(student.regNo, decodedText);
+              if (res.success) {
+                if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+                showToast(res.message, 'success');
+                if (window.HMSQRScanner.close) {
+                  window.HMSQRScanner.close();
+                }
+                await refreshSessionState();
+              } else {
+                if (navigator.vibrate) navigator.vibrate(200);
+                showToast(res.message, 'danger');
+              }
+            } catch (err) {
+              showToast('Error verifying scan.', 'danger');
+            }
+          }
+        });
       }
     });
   }
@@ -964,6 +972,7 @@ async function initStudentStudyHour(student) {
       showToast('Study session state synced.', 'success');
     });
   }
+
 
   if (keywordForm) {
     keywordForm.addEventListener('submit', async (e) => {

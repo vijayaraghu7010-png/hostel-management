@@ -100,20 +100,44 @@
                KPI CARDS
           ═══════════════════════════════════════════ -->
           <div class="sh-kpi-grid">
-            <!-- Entry Scans -->
+            <!-- Present -->
             <div class="sh-kpi-card sh-kpi-card--entry">
-              <div class="sh-kpi-icon-wrap"><i class="fa-solid fa-qrcode"></i></div>
-              <div class="sh-kpi-value" id="kpi-entry">0</div>
-              <div class="sh-kpi-label">Entry Scans</div>
-              <div class="sh-kpi-trend"><i class="fa-solid fa-arrow-right-to-bracket"></i> Check-ins</div>
+              <div class="sh-kpi-icon-wrap"><i class="fa-solid fa-circle-check"></i></div>
+              <div class="sh-kpi-value" id="kpi-present">0</div>
+              <div class="sh-kpi-label">Present</div>
+              <div class="sh-kpi-trend"><i class="fa-solid fa-check"></i> Checked In</div>
             </div>
 
-            <!-- Exit Scans -->
+            <!-- Checked Out -->
             <div class="sh-kpi-card sh-kpi-card--exit">
               <div class="sh-kpi-icon-wrap"><i class="fa-solid fa-right-from-bracket"></i></div>
               <div class="sh-kpi-value" id="kpi-exit">0</div>
-              <div class="sh-kpi-label">Exit Scans</div>
-              <div class="sh-kpi-trend"><i class="fa-solid fa-arrow-right-from-bracket"></i> Check-outs</div>
+              <div class="sh-kpi-label">Checked Out</div>
+              <div class="sh-kpi-trend"><i class="fa-solid fa-arrow-right-from-bracket"></i> Checked Out</div>
+            </div>
+
+            <!-- Pending -->
+            <div class="sh-kpi-card sh-kpi-card--absent">
+              <div class="sh-kpi-icon-wrap"><i class="fa-solid fa-clock"></i></div>
+              <div class="sh-kpi-value" id="kpi-pending">0</div>
+              <div class="sh-kpi-label">Pending</div>
+              <div class="sh-kpi-trend"><i class="fa-solid fa-spinner"></i> Awaiting Scan</div>
+            </div>
+
+            <!-- Inside Hall -->
+            <div class="sh-kpi-card sh-kpi-card--partial">
+              <div class="sh-kpi-icon-wrap"><i class="fa-solid fa-house-laptop"></i></div>
+              <div class="sh-kpi-value" id="kpi-inside">0</div>
+              <div class="sh-kpi-label">Inside Hall</div>
+              <div class="sh-kpi-trend"><i class="fa-solid fa-door-open"></i> Currently Inside</div>
+            </div>
+
+            <!-- Completed -->
+            <div class="sh-kpi-card sh-kpi-card--present">
+              <div class="sh-kpi-icon-wrap"><i class="fa-solid fa-circle-check"></i></div>
+              <div class="sh-kpi-value" id="kpi-completed">0</div>
+              <div class="sh-kpi-label">Completed</div>
+              <div class="sh-kpi-trend"><i class="fa-solid fa-graduation-cap"></i> Finished Session</div>
             </div>
 
             <!-- Keyword Rounds -->
@@ -123,30 +147,6 @@
               <div class="sh-kpi-label">Keyword Rounds</div>
               <div class="sh-kpi-trend"><i class="fa-solid fa-bolt"></i> Triggered</div>
             </div>
-
-            <!-- Present -->
-            <div class="sh-kpi-card sh-kpi-card--present">
-              <div class="sh-kpi-icon-wrap"><i class="fa-solid fa-circle-check"></i></div>
-              <div class="sh-kpi-value" id="kpi-present">0</div>
-              <div class="sh-kpi-label">Present</div>
-              <div class="sh-kpi-trend"><i class="fa-solid fa-check"></i> Verified</div>
-            </div>
-
-            <!-- Absent -->
-            <div class="sh-kpi-card sh-kpi-card--absent">
-              <div class="sh-kpi-icon-wrap"><i class="fa-solid fa-circle-xmark"></i></div>
-              <div class="sh-kpi-value" id="kpi-absent">0</div>
-              <div class="sh-kpi-label">Absent</div>
-              <div class="sh-kpi-trend"><i class="fa-solid fa-xmark"></i> Not present</div>
-            </div>
-
-            <!-- Partial -->
-            <div class="sh-kpi-card sh-kpi-card--partial">
-              <div class="sh-kpi-icon-wrap"><i class="fa-solid fa-circle-half-stroke"></i></div>
-              <div class="sh-kpi-value" id="kpi-partial">0</div>
-              <div class="sh-kpi-label">Partial</div>
-              <div class="sh-kpi-trend"><i class="fa-solid fa-triangle-exclamation"></i> Incomplete</div>
-            </div>
           </div>
 
           <!-- ═══════════════════════════════════════════
@@ -155,7 +155,7 @@
           <nav class="sh-tab-nav" role="tablist">
             <button class="sh-tab-btn active" data-tab="tab-scanner" role="tab" aria-selected="true" id="tabnav-scanner">
               <i class="fa-solid fa-qrcode"></i>
-              <span>QR Scanner</span>
+              <span>Session QR</span>
             </button>
             <button class="sh-tab-btn" data-tab="tab-keyword" role="tab" aria-selected="false" id="tabnav-keyword">
               <i class="fa-solid fa-key"></i>
@@ -181,44 +181,49 @@
           <div class="tab-content" id="tab-scanner" style="display: block;">
             <div class="sh-scanner-layout">
 
-              <!-- LEFT: Scanner Controls -->
+              <!-- LEFT: Session QR Display and Controls -->
               <div>
                 <div class="sh-card" style="margin-bottom: 1rem;">
                   <div class="sh-card-header">
-                    <h4 class="sh-card-title"><i class="fa-solid fa-camera"></i>Attendance Scanner</h4>
-                    <div id="scan-session-req" style="font-size:0.75rem; color: var(--warning); display:none;">
-                      <i class="fa-solid fa-triangle-exclamation"></i> Start session first
+                    <h4 class="sh-card-title"><i class="fa-solid fa-qrcode"></i>Session Attendance QR Code</h4>
+                    <div class="sh-status-pill inactive" id="exit-phase-status-pill">
+                      <span class="sh-pulse-dot"></span>
+                      <span id="exit-phase-status-text">Exit Closed</span>
                     </div>
                   </div>
-                  <div class="sh-card-body">
-                    <!-- Scan purpose toggle -->
-                    <div class="sh-purpose-toggle" id="scan-purpose-toggle">
-                      <button class="sh-purpose-btn active" data-purpose="ENTRY" id="purpose-entry">
-                        <i class="fa-solid fa-arrow-right-to-bracket"></i> Entry Scan
-                      </button>
-                      <button class="sh-purpose-btn" data-purpose="EXIT" id="purpose-exit">
-                        <i class="fa-solid fa-arrow-right-from-bracket"></i> Exit Scan
-                      </button>
-                    </div>
-                    <input type="hidden" id="select-scan-purpose" value="ENTRY">
+                  <div class="sh-card-body" style="text-align: center;">
+                    <p style="font-size:0.8rem; color:var(--text-secondary); margin-bottom:1rem;">
+                      Students must scan this code using their Study Hour portal to Check In and Check Out.
+                    </p>
 
-                    <!-- Launch scanner -->
-                    <button class="sh-ctrl-btn sh-ctrl-btn--success" id="btn-start-camera" style="width:100%; font-size:0.9rem; padding: 0.85rem;">
-                      <i class="fa-solid fa-camera"></i> Open Camera Scanner
-                    </button>
-
-                    <!-- Divider -->
-                    <div style="display:flex; align-items:center; gap:0.75rem; margin: 1rem 0; color: var(--text-muted); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em;">
-                      <div style="flex:1; height:1px; background: var(--border-color);"></div>
-                      or enter manually
-                      <div style="flex:1; height:1px; background: var(--border-color);"></div>
+                    <!-- QR code display area -->
+                    <div id="session-qr-container" style="display: inline-flex; justify-content: center; align-items: center; margin: 1rem auto; padding: 1rem; background: #fff; border-radius: 12px; width: 220px; height: 220px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                      <div style="color: var(--text-muted); font-size: 0.85rem; padding: 2rem;" id="session-qr-placeholder">No Active Session</div>
                     </div>
 
-                    <!-- Manual token form -->
-                    <form id="form-manual-qr-verify" class="sh-manual-form">
-                      <input type="text" id="input-manual-token" class="sh-manual-input" placeholder="Register No or QR token…" autocomplete="off">
-                      <button type="submit" class="sh-manual-btn"><i class="fa-solid fa-paper-plane"></i></button>
-                    </form>
+                    <!-- Countdown or active info -->
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1.25rem;" id="session-qr-meta">
+                      Scan to Check In / Check Out
+                    </div>
+
+                    <!-- Single Session Controls Grid -->
+                    <div class="sh-control-grid" style="margin-top: 1rem;">
+                      <button class="sh-ctrl-btn sh-ctrl-btn--success" id="btn-regen-session-qr" disabled style="width:100%;">
+                        <i class="fa-solid fa-rotate"></i> Regenerate QR
+                      </button>
+                      <button class="sh-ctrl-btn sh-ctrl-btn--warning" id="btn-toggle-exit-phase" disabled style="width:100%;">
+                        <i class="fa-solid fa-door-open"></i> Enable Exit Phase
+                      </button>
+                    </div>
+
+                    <div class="sh-control-grid" style="margin-top: 0.5rem;">
+                      <button class="sh-ctrl-btn sh-ctrl-btn--purple" id="btn-pause-session" disabled style="width:100%;">
+                        <i class="fa-solid fa-pause"></i> Pause Session
+                      </button>
+                      <button class="sh-ctrl-btn" id="btn-resume-session" disabled style="width:100%;">
+                        <i class="fa-solid fa-play"></i> Resume Session
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -229,16 +234,16 @@
                   </div>
                   <div class="sh-card-body" style="display:grid; grid-template-columns:repeat(3,1fr); gap:0.5rem; text-align:center;">
                     <div style="padding:0.5rem;">
-                      <div style="font-size:1.5rem; font-weight:800; color: var(--success);" id="qs-entry">—</div>
-                      <div style="font-size:0.65rem; text-transform:uppercase; letter-spacing:0.07em; color:var(--text-muted); font-weight:700;">Entries</div>
+                      <div style="font-size:1.5rem; font-weight:800; color: var(--success);" id="qs-entry">0</div>
+                      <div style="font-size:0.65rem; text-transform:uppercase; letter-spacing:0.07em; color:var(--text-muted); font-weight:700;">Inside Hall</div>
                     </div>
                     <div style="padding:0.5rem; border-left:1px solid var(--border-color); border-right:1px solid var(--border-color);">
-                      <div style="font-size:1.5rem; font-weight:800; color: #a855f7;" id="qs-keyword">—</div>
+                      <div style="font-size:1.5rem; font-weight:800; color: #a855f7;" id="qs-keyword">0</div>
                       <div style="font-size:0.65rem; text-transform:uppercase; letter-spacing:0.07em; color:var(--text-muted); font-weight:700;">Keywords</div>
                     </div>
                     <div style="padding:0.5rem;">
-                      <div style="font-size:1.5rem; font-weight:800; color: #60a5fa;" id="qs-exit">—</div>
-                      <div style="font-size:0.65rem; text-transform:uppercase; letter-spacing:0.07em; color:var(--text-muted); font-weight:700;">Exits</div>
+                      <div style="font-size:1.5rem; font-weight:800; color: #60a5fa;" id="qs-exit">0</div>
+                      <div style="font-size:0.65rem; text-transform:uppercase; letter-spacing:0.07em; color:var(--text-muted); font-weight:700;">Completed</div>
                     </div>
                   </div>
                 </div>

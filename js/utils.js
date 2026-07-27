@@ -1078,8 +1078,10 @@ class HostelDB {
       throw new Error(`An active study session "${active.sessionTitle}" is already in progress.`);
     }
 
+    const sessionId = generateID('SES');
+    const qrSecret = `HMS_SESSION_QR_${generateID('QR')}_${Date.now()}`;
     const newSession = {
-      id: generateID('SES'),
+      id: sessionId,
       session_title: sessionData.sessionTitle || 'Evening Study Session',
       date: sessionData.date || new Date().toISOString().split('T')[0],
       start_time: sessionData.startTime || '19:00',
@@ -1088,7 +1090,12 @@ class HostelDB {
       created_by: sessionData.createdBy || 'Warden',
       created_at: new Date().toISOString(),
       closed_at: null,
-      config: sessionData.config || { durationMinutes: 120, keywordWindowSeconds: 60 }
+      config: sessionData.config || {
+        durationMinutes: 120,
+        keywordWindowSeconds: 60,
+        qrSecret: qrSecret,
+        exitPhaseEnabled: false
+      }
     };
 
     let savedInCloud = false;
@@ -1142,6 +1149,174 @@ class HostelDB {
     // Automatically trigger attendance finalization & credit engine
     await this.finalizeSessionAttendance(sessionId);
   }
+  static async toggleExitPhase(sessionId, enabled) {
+    const sessions = await this.getStudySessions();
+    const session = sessions.find(s => s.id === sessionId);
+    if (!session) return;
+
+    if (!session.config) session.config = {};
+    session.config.exitPhaseEnabled = enabled;
+
+    if (USE_SUPABASE) {
+      try {
+        await supabaseFetch(`hms_study_sessions?id=eq.${sessionId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ config: session.config })
+        });
+      } catch (e) {
+        console.warn('Supabase toggleExitPhase failed, falling back to LocalStorage:', e.message);
+      }
+    }
+
+    const list = this.getData('hms_study_sessions');
+    const updated = list.map(s => s.id === sessionId ? { ...s, config: session.config } : s);
+    this.setData('hms_study_sessions', updated);
+  }
+
+  static async togglePauseSession(sessionId, paused) {
+    const sessions = await this.getStudySessions();
+    const session = sessions.find(s => s.id === sessionId);
+    if (!session) return;
+
+    if (!session.config) session.config = {};
+    session.config.paused = paused;
+
+    if (USE_SUPABASE) {
+      try {
+        await supabaseFetch(`hms_study_sessions?id=eq.${sessionId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ config: session.config })
+        });
+      } catch (e) {
+        console.warn('Supabase togglePauseSession failed, falling back to LocalStorage:', e.message);
+      }
+    }
+
+    const list = this.getData('hms_study_sessions');
+    const updated = list.map(s => s.id === sessionId ? { ...s, config: session.config } : s);
+    this.setData('hms_study_sessions', updated);
+  }
+
+
+  static async regenerateSessionQR(sessionId) {
+    const sessions = await this.getStudySessions();
+    const session = sessions.find(s => s.id === sessionId);
+    if (!session) return null;
+
+    const qrSecret = `HMS_SESSION_QR_${generateID('QR')}_${Date.now()}`;
+    if (!session.config) session.config = {};
+    session.config.qrSecret = qrSecret;
+
+    if (USE_SUPABASE) {
+      try {
+        await supabaseFetch(`hms_study_sessions?id=eq.${sessionId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ config: session.config })
+        });
+      } catch (e) {
+        console.warn('Supabase regenerateSessionQR failed, falling back to LocalStorage:', e.message);
+      }
+    }
+
+    const list = this.getData('hms_study_sessions');
+    const updated = list.map(s => s.id === sessionId ? { ...s, config: session.config } : s);
+    this.setData('hms_study_sessions', updated);
+    return qrSecret;
+  }
+
+  static async verifySessionQRScan(studentReg, scannedSecret) {
+    const activeSession = await this.getActiveStudySession();
+    if (!activeSession) {
+      return { success: false, status: 'ENDED', message: 'Study Hour session has ended.' };
+    }
+
+    if (activeSession.config && activeSession.config.paused === true) {
+      return { success: false, status: 'PAUSED', message: 'Study Hour session is currently paused.' };
+    }
+
+    const sessionSecret = activeSession.config ? activeSession.config.qrSecret : '';
+    if (!sessionSecret || scannedSecret !== sessionSecret) {
+      return { success: false, status: 'INVALID', message: 'Invalid or expired Session QR code.' };
+    }
+
+    const students = await this.getStudents();
+    const student = students.find(s => s.regNo === studentReg);
+    if (!student) {
+      return { success: false, status: 'NOT_FOUND', message: 'Student details not found.' };
+    }
+
+    const nowStr = new Date().toISOString();
+    const attRecords = await this.getStudyAttendance(activeSession.id, studentReg);
+    let att = attRecords.find(a => a.studentReg === studentReg);
+
+    if (!att) {
+      // FIRST SCAN -> Check in (PRESENT)
+      att = {
+        id: generateID('ATT'),
+        sessionId: activeSession.id,
+        studentReg: studentReg,
+        studentName: student.name,
+        dept: student.dept || 'General',
+        room: student.room || '',
+        entryStatus: 'PASS',
+        entryTime: nowStr,
+        exitStatus: 'PENDING',
+        exitTime: null,
+        finalStatus: 'PRESENT',
+        notes: `Entry Checked In at ${new Date().toLocaleTimeString()}`
+      };
+      await this.upsertStudyAttendance(att);
+      return {
+        success: true,
+        status: 'ENTRY',
+        message: '✅ Successfully Checked In'
+      };
+    } else {
+      // Second scan -> Checkout attempt (COMPLETED)
+      if (att.entryStatus === 'PASS' && att.exitStatus === 'PASS') {
+        return {
+          success: false,
+          status: 'ALREADY_COMPLETED',
+          message: "You have already completed today's Study Hour."
+        };
+      }
+
+      if (att.entryStatus === 'PASS' && att.exitStatus !== 'PASS') {
+        const exitPhaseEnabled = activeSession.config ? activeSession.config.exitPhaseEnabled : false;
+        
+        // Minimum study duration check (e.g. 60 minutes)
+        const entryTime = new Date(att.entryTime);
+        const elapsedMins = (new Date() - entryTime) / (1000 * 60);
+        const isDurationMet = elapsedMins >= 60;
+
+        if (exitPhaseEnabled || isDurationMet) {
+          att.exitStatus = 'PASS';
+          att.exitTime = nowStr;
+          att.finalStatus = 'COMPLETED';
+          att.notes += ` | Exit Checked Out at ${new Date().toLocaleTimeString()}`;
+          await this.upsertStudyAttendance(att);
+          return {
+            success: true,
+            status: 'EXIT',
+            message: '✅ Study Hour Completed Successfully'
+          };
+        } else {
+          return {
+            success: false,
+            status: 'TOO_EARLY',
+            message: 'Exit scan not allowed yet. Please wait for the minimum duration or Warden to enable the exit phase.'
+          };
+        }
+      }
+
+      return {
+        success: false,
+        status: 'UNKNOWN',
+        message: 'Invalid attendance state.'
+      };
+    }
+  }
+
 
   // --- DYNAMIC QR TOKENS & VERIFICATION ---
   static async generateStudentQRToken(studentReg, sessionId, purpose) {

@@ -1987,11 +1987,14 @@ async function initWardenStudyHour() {
   const tabBtns = document.querySelectorAll('.sh-tab-btn');
   const tabContents = document.querySelectorAll('.tab-content');
 
-  // Camera Scanner
-  const btnStartCamera = document.getElementById('btn-start-camera');
-  const selectScanPurposeHidden = document.getElementById('select-scan-purpose');
-  const formManualVerify = document.getElementById('form-manual-qr-verify');
-  const inputManualToken = document.getElementById('input-manual-token');
+  // Session QR Code Display & Controls
+  const sessionQrContainer = document.getElementById('session-qr-container');
+  const btnRegenSessionQR = document.getElementById('btn-regen-session-qr');
+  const btnToggleExitPhase = document.getElementById('btn-toggle-exit-phase');
+  const exitPhaseStatusPill = document.getElementById('exit-phase-status-pill');
+  const exitPhaseStatusText = document.getElementById('exit-phase-status-text');
+  const btnPauseSession = document.getElementById('btn-pause-session');
+  const btnResumeSession = document.getElementById('btn-resume-session');
   const scanActivityLog = document.getElementById('scan-activity-log');
   let feedEventCount = 0;
 
@@ -2133,55 +2136,116 @@ async function initWardenStudyHour() {
     });
   }
 
-  // Camera QR Scanner Controls
-  if (btnStartCamera) {
-    btnStartCamera.addEventListener('click', async () => {
-      if (!activeSession) {
-        showToast('Please launch an active study session before starting scanner.', 'warning');
-        return;
-      }
-      if (window.HMSQRScanner) {
-        window.HMSQRScanner.open({
-          title: 'Study Session Attendance Scanner',
-          mainText: 'Align student QR code inside frame',
-          subText: 'Attendance token will be processed automatically.',
-          onScan: async (decodedText) => {
-            await processScannedToken(decodedText);
-          }
+  // Render Session QR Code
+  function renderSessionQRCode(qrSecret) {
+    if (!sessionQrContainer) return;
+    sessionQrContainer.innerHTML = '';
+    if (qrSecret) {
+      if (typeof QRCode !== 'undefined') {
+        new QRCode(sessionQrContainer, {
+          text: qrSecret,
+          width: 200,
+          height: 200,
+          correctLevel: QRCode.CorrectLevel.M
         });
+      } else {
+        sessionQrContainer.innerHTML = `<div style="padding:1rem; word-break:break-all; font-family:monospace; font-size:0.8rem;">${qrSecret}</div>`;
+      }
+      const meta = document.getElementById('session-qr-meta');
+      if (meta) meta.textContent = 'Scan to Check In / Check Out';
+    } else {
+      sessionQrContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 0.85rem; padding: 2rem;" id="session-qr-placeholder">No Active Session</div>';
+      const meta = document.getElementById('session-qr-meta');
+      if (meta) meta.textContent = 'Start a session to generate QR';
+    }
+  }
+
+  // Regenerate Session QR Click Handler
+  if (btnRegenSessionQR) {
+    btnRegenSessionQR.addEventListener('click', async () => {
+      if (!activeSession) return;
+      btnRegenSessionQR.disabled = true;
+      try {
+        const newSecret = await HostelDB.regenerateSessionQR(activeSession.id);
+        renderSessionQRCode(newSecret);
+        showToast('Session QR Code regenerated successfully!', 'success');
+        logScanActivity('Warden regenerated the Session QR Code', 'warning');
+      } catch (err) {
+        showToast('Failed to regenerate QR code.', 'danger');
+      } finally {
+        btnRegenSessionQR.disabled = false;
       }
     });
   }
 
-  window.handleStudyScanResult = async function(scannedText) {
-    await processScannedToken(scannedText);
-  };
+  // Toggle Exit Phase Click Handler
+  if (btnToggleExitPhase) {
+    btnToggleExitPhase.addEventListener('click', async () => {
+      if (!activeSession) return;
+      const currentVal = activeSession.config ? activeSession.config.exitPhaseEnabled : false;
+      const newVal = !currentVal;
+      btnToggleExitPhase.disabled = true;
+      try {
+        await HostelDB.toggleExitPhase(activeSession.id, newVal);
+        activeSession.config.exitPhaseEnabled = newVal;
+        updateExitPhaseUI(newVal);
+        showToast(newVal ? 'Exit Phase is now ENABLED! Students can check out.' : 'Exit Phase is now DISABLED.', 'info');
+        logScanActivity(newVal ? 'Exit Phase ENABLED by Warden' : 'Exit Phase DISABLED by Warden', 'info');
+      } catch (err) {
+        showToast('Failed to toggle exit phase.', 'danger');
+      } finally {
+        btnToggleExitPhase.disabled = false;
+      }
+    });
+  }
 
-  async function processScannedToken(tokenStr) {
-    if (!activeSession) {
-      showToast('No active session running!', 'warning');
-      return;
-    }
-    const purpose = currentScanPurpose || 'ENTRY';
-
-    
-    // Check if tokenStr is pure regNo
-    let token = tokenStr.trim();
-    if (token.startsWith('STU') && !token.includes('HMSQR_')) {
-      // Find or generate dynamic token for student
-      token = await HostelDB.generateStudentQRToken(token, activeSession.id, purpose);
-    }
-
-    const res = await HostelDB.verifyQRToken(token, purpose, activeSession.id, currentUser ? currentUser.email : 'Warden');
-    if (res.success) {
-      showToast(`✓ ${res.message}`, 'success');
-      const label = purpose === 'EXIT' ? 'Exit' : 'Entry';
-      logScanActivity(`${label} verified: <strong>${res.studentReg}</strong>`, 'success');
+  function updateExitPhaseUI(enabled) {
+    if (!btnToggleExitPhase) return;
+    if (enabled) {
+      btnToggleExitPhase.innerHTML = '<i class="fa-solid fa-door-closed"></i> Disable Exit Phase';
+      btnToggleExitPhase.className = 'sh-ctrl-btn sh-ctrl-btn--danger';
+      if (exitPhaseStatusPill) exitPhaseStatusPill.className = 'sh-status-pill active';
+      if (exitPhaseStatusText) exitPhaseStatusText.textContent = 'Exit Open';
     } else {
-      showToast(`✕ Scan Error: ${res.message}`, 'danger');
-      logScanActivity(`Scan failed (${purpose}): ${res.message}`, 'danger');
+      btnToggleExitPhase.innerHTML = '<i class="fa-solid fa-door-open"></i> Enable Exit Phase';
+      btnToggleExitPhase.className = 'sh-ctrl-btn sh-ctrl-btn--warning';
+      if (exitPhaseStatusPill) exitPhaseStatusPill.className = 'sh-status-pill inactive';
+      if (exitPhaseStatusText) exitPhaseStatusText.textContent = 'Exit Closed';
     }
-    await refreshAllWardenViews();
+  }
+
+  // Pause Session Click Handler
+  if (btnPauseSession) {
+    btnPauseSession.addEventListener('click', async () => {
+      if (!activeSession) return;
+      try {
+        await HostelDB.togglePauseSession(activeSession.id, true);
+        if (activeSession.config) activeSession.config.paused = true;
+        btnPauseSession.disabled = true;
+        btnResumeSession.disabled = false;
+        showToast('Study Hour session has been paused.', 'warning');
+        logScanActivity('Study Hour session PAUSED by Warden', 'warning');
+      } catch (err) {
+        showToast('Failed to pause session.', 'danger');
+      }
+    });
+  }
+
+  // Resume Session Click Handler
+  if (btnResumeSession) {
+    btnResumeSession.addEventListener('click', async () => {
+      if (!activeSession) return;
+      try {
+        await HostelDB.togglePauseSession(activeSession.id, false);
+        if (activeSession.config) activeSession.config.paused = false;
+        btnPauseSession.disabled = false;
+        btnResumeSession.disabled = true;
+        showToast('Study Hour session has been resumed.', 'success');
+        logScanActivity('Study Hour session RESUMED by Warden', 'success');
+      } catch (err) {
+        showToast('Failed to resume session.', 'danger');
+      }
+    });
   }
 
   // ── Enterprise Activity Feed ────────────────────────────
@@ -2216,18 +2280,6 @@ async function initWardenStudyHour() {
     while (scanActivityLog.children.length > 50) {
       scanActivityLog.removeChild(scanActivityLog.lastChild);
     }
-  }
-
-
-  // Manual QR Token Entry Form
-  if (formManualVerify) {
-    formManualVerify.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const tokenVal = inputManualToken.value.trim();
-      if (!tokenVal) return;
-      await processScannedToken(tokenVal);
-      inputManualToken.value = '';
-    });
   }
 
   // Trigger Keyword Form handled below (with countdown)
@@ -2729,42 +2781,60 @@ async function initWardenStudyHour() {
 
       // — Status pill
       if (statusPill) { statusPill.className = 'sh-status-pill active'; statusPill.querySelector('.sh-pulse-dot').style.cssText = ''; }
-      if (statusText) statusText.textContent = 'Session Active';
+      if (statusText) statusText.textContent = activeSession.config && activeSession.config.paused ? 'Session Paused' : 'Session Active';
 
       // — Header buttons
       if (btnStartSession)    btnStartSession.style.display    = 'none';
       if (btnFinalizeSession) btnFinalizeSession.style.display = 'flex';
 
+      // — Render QR
+      renderSessionQRCode(activeSession.config ? activeSession.config.qrSecret : '');
+
       // — Stats from attendance
       const attList    = await HostelDB.getStudyAttendance(activeSession.id);
-      const entryCount = attList.filter(a => a.entryStatus === 'PASS').length;
-      const exitCount  = attList.filter(a => a.exitStatus  === 'PASS').length;
-      const presentCnt = attList.filter(a => a.finalStatus === 'PRESENT').length;
-      const absentCnt  = attList.filter(a => a.finalStatus === 'ABSENT').length;
-      const partialCnt = attList.filter(a => a.finalStatus === 'PARTIAL').length;
+      const students   = await HostelDB.getStudents();
+      const totalStudents = students.length;
+
+      const presentCnt = attList.filter(a => a.entryStatus === 'PASS').length;
+      const checkedOutCnt = attList.filter(a => a.exitStatus === 'PASS').length;
+      const pendingCnt = totalStudents - presentCnt;
+      const insideCnt = attList.filter(a => a.entryStatus === 'PASS' && a.exitStatus !== 'PASS').length;
+      const completedCnt = attList.filter(a => a.entryStatus === 'PASS' && a.exitStatus === 'PASS').length;
+      
       const checks = await HostelDB.getKeywordChecks(activeSession.id);
 
       // Banner stats
       const bannerEntry = document.getElementById('stat-entry-scans');
       const bannerKw    = document.getElementById('stat-keyword-rounds');
       const bannerExit  = document.getElementById('stat-exit-scans');
-      if (bannerEntry)  bannerEntry.textContent  = entryCount;
+      if (bannerEntry)  bannerEntry.textContent  = insideCnt;
       if (bannerKw)     bannerKw.textContent     = checks.length;
-      if (bannerExit)   bannerExit.textContent   = exitCount;
+      if (bannerExit)   bannerExit.textContent   = completedCnt;
 
       // KPI cards
       const setKPI = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-      setKPI('kpi-entry',   entryCount);
-      setKPI('kpi-exit',    exitCount);
-      setKPI('kpi-keyword', checks.length);
-      setKPI('kpi-present', presentCnt);
-      setKPI('kpi-absent',  absentCnt);
-      setKPI('kpi-partial', partialCnt);
+      setKPI('kpi-present',   presentCnt);
+      setKPI('kpi-exit',      checkedOutCnt);
+      setKPI('kpi-pending',   pendingCnt);
+      setKPI('kpi-inside',    insideCnt);
+      setKPI('kpi-completed', completedCnt);
+      setKPI('kpi-keyword',   checks.length);
 
       // Quick stats panel
-      setKPI('qs-entry',   entryCount);
+      setKPI('qs-entry',   insideCnt);
       setKPI('qs-keyword', checks.length);
-      setKPI('qs-exit',    exitCount);
+      setKPI('qs-exit',    completedCnt);
+
+      // Enable/Disable Session QR controls
+      if (btnRegenSessionQR) btnRegenSessionQR.disabled = false;
+      if (btnToggleExitPhase) btnToggleExitPhase.disabled = false;
+      
+      const isPaused = activeSession.config ? activeSession.config.paused === true : false;
+      if (btnPauseSession) btnPauseSession.disabled = isPaused;
+      if (btnResumeSession) btnResumeSession.disabled = !isPaused;
+
+      // Update exit phase toggle UI
+      updateExitPhaseUI(activeSession.config ? activeSession.config.exitPhaseEnabled : false);
 
     } else {
       // — No session
@@ -2774,8 +2844,18 @@ async function initWardenStudyHour() {
       if (btnStartSession)    btnStartSession.style.display    = 'flex';
       if (btnFinalizeSession) btnFinalizeSession.style.display = 'none';
 
+      renderSessionQRCode(null);
+
+      if (btnRegenSessionQR) btnRegenSessionQR.disabled = true;
+      if (btnToggleExitPhase) {
+        btnToggleExitPhase.disabled = true;
+        updateExitPhaseUI(false);
+      }
+      if (btnPauseSession) btnPauseSession.disabled = true;
+      if (btnResumeSession) btnResumeSession.disabled = true;
+
       ['stat-entry-scans','stat-keyword-rounds','stat-exit-scans',
-       'kpi-entry','kpi-exit','kpi-keyword','kpi-present','kpi-absent','kpi-partial',
+       'kpi-present','kpi-exit','kpi-pending','kpi-inside','kpi-completed','kpi-keyword',
        'qs-entry','qs-keyword','qs-exit'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.textContent = '0';
