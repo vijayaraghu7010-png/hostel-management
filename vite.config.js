@@ -1,7 +1,47 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
+import fs from 'fs';
+import path from 'path';
+
+function copyDirSync(src, dest) {
+  fs.mkdirSync(dest, { recursive: true });
+  let entries = fs.readdirSync(src, { withFileTypes: true });
+
+  for (let entry of entries) {
+    let srcPath = path.join(src, entry.name);
+    let destPath = path.join(dest, entry.name);
+
+    if (entry.isDirectory()) {
+      copyDirSync(srcPath, destPath);
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
+}
+
+function copyStaticAssetsPlugin() {
+  return {
+    name: 'copy-static-assets-plugin',
+    closeBundle() {
+      try {
+        console.log('Copying static js/ and components/ folders to dist/...');
+        const distJs = resolve(__dirname, 'dist/js');
+        const srcJs = resolve(__dirname, 'js');
+        copyDirSync(srcJs, distJs);
+
+        const distComponents = resolve(__dirname, 'dist/components');
+        const srcComponents = resolve(__dirname, 'components');
+        copyDirSync(srcComponents, distComponents);
+        console.log('Static folders copied successfully!');
+      } catch (err) {
+        console.error('Error copying static assets:', err);
+      }
+    }
+  };
+}
 
 export default defineConfig({
+  plugins: [copyStaticAssetsPlugin()],
   build: {
     rollupOptions: {
       input: {

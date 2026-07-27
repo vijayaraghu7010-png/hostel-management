@@ -248,6 +248,9 @@
       };
 
       try {
+        if (!navigator.mediaDevices) {
+          throw { name: 'SecurityError', message: 'Camera APIs require HTTPS/localhost security access.' };
+        }
         this.stream = await navigator.mediaDevices.getUserMedia(constraints);
         this.videoEl.srcObject = this.stream;
         
@@ -283,13 +286,18 @@
         this.startScanningLoop();
       } catch (err) {
         console.error('Camera startup error:', err);
-        this.showErrorState(
-          err.name === 'NotAllowedError' ? 'Camera Permission Denied' : 'Camera Unavailable',
-          err.name === 'NotAllowedError' 
-            ? 'Please allow camera access in your browser settings to scan QR codes.'
-            : 'Unable to start camera lens. Please check if another app is using the camera and retry.',
-          true
-        );
+        let title = 'Camera Unavailable';
+        let desc = 'Unable to start camera lens. Please check if another app is using the camera and retry.';
+
+        if (err.name === 'NotAllowedError') {
+          title = 'Camera Permission Denied';
+          desc = 'Please allow camera access in your browser settings to scan QR codes.';
+        } else if (err.name === 'SecurityError' || !navigator.mediaDevices) {
+          title = 'HTTPS Access Required';
+          desc = 'Camera capture APIs are blocked on unsecured (HTTP) connections. Please serve this site over HTTPS or test on localhost.';
+        }
+
+        this.showErrorState(title, desc, true);
       }
     }
 
