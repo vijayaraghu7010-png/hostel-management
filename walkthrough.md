@@ -12,8 +12,15 @@
   - **Study Hour QR** (`HMSQR_...`): Automatically routes verification requests to `HostelDB.verifyQRToken` and displays a dedicated study presence card.
   - **Future / Unrecognized QR**: Gracefully handles and displays raw parsed payloads with alert feedback.
 
+### 3. Production Asset Bundling Fix (`vite.config.js`)
+- **Root Cause**: Vite builds didn't bundle non-module dependencies in `<script>` tags, causing missing assets (404 errors) when deployed.
+- **Fix**: Implemented a custom post-bundle copying plugin in `vite.config.js` to ensure the `js` and `components` folders are correctly present in the built `dist` folder.
+
+### 4. Browser Security & HTTPS Safety Checks (`js/scanner-ui.js`)
+- Handled browser sandboxing rules by adding clean warnings if `navigator.mediaDevices` is blocked (e.g. when testing over unencrypted HTTP connections).
+
 ---
 
 ## Verification Status
 - ✅ Build compiled successfully: `npx vite build` succeeded.
-- ✅ Pushed to origin main: Commit `9cbd63d`.
+- ✅ Pushed to origin main: Commit `061e1eb`.
