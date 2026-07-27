@@ -1178,8 +1178,8 @@ window.openOutpassModal = async function(passId) {
         </div>
 
         <!-- Scanner-Safe QR Code Card Wrapper -->
-        <div class="outpass-qr-container" style="background: #ffffff; padding: 12px; border-radius: 12px; display: flex; align-items: center; justify-content: center; width: 204px; height: 204px; margin: 0.85rem auto; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
-          <div id="outpass-qr-canvas" style="width: 180px; height: 180px; display: flex; align-items: center; justify-content: center;"></div>
+        <div class="outpass-qr-container" style="background: #ffffff; padding: 16px; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 236px; height: 236px; margin: 1rem auto; border: 1px solid #cbd5e1; box-shadow: 0 4px 16px rgba(0,0,0,0.12);">
+          <div id="outpass-qr-canvas" style="width: 204px; height: 204px; display: flex; align-items: center; justify-content: center; overflow: hidden;"></div>
         </div>
 
         <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; border-top: 1px solid var(--border-color); padding-top: 0.75rem;">
@@ -1203,11 +1203,6 @@ window.openOutpassModal = async function(passId) {
       if (!qrTarget) return;
 
       qrTarget.innerHTML = '';
-      qrTarget.style.background = '#ffffff';
-      qrTarget.style.padding = '16px';
-      qrTarget.style.borderRadius = '16px';
-      qrTarget.style.display = 'inline-block';
-      qrTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
 
       const payloadStr = JSON.stringify({
         type: "OUTPASS",
@@ -1225,20 +1220,26 @@ window.openOutpassModal = async function(passId) {
         try {
           new QRCode(qrTarget, {
             text: payloadStr,
-            width: 280,
-            height: 280,
+            width: 204,
+            height: 204,
             colorDark: "#000000",
             colorLight: "#ffffff",
             correctLevel: QRCode.CorrectLevel ? QRCode.CorrectLevel.H : 2
           });
 
-          const elements = qrTarget.querySelectorAll('canvas, img');
-          elements.forEach(el => {
-            el.style.width = '280px';
-            el.style.height = '280px';
-            el.style.display = 'block';
-            el.style.margin = '0 auto';
-          });
+          const canvas = qrTarget.querySelector('canvas');
+          if (canvas) {
+            canvas.style.width = '204px';
+            canvas.style.height = '204px';
+            canvas.style.maxWidth = '100%';
+            canvas.style.display = 'block';
+            canvas.style.margin = '0 auto';
+          }
+          const img = qrTarget.querySelector('img');
+          if (img) {
+            img.style.maxWidth = '100%';
+            img.style.margin = '0 auto';
+          }
           isRendered = true;
         } catch (err) {
           console.warn("QRCode JS render error, trying fallback:", err);
@@ -1247,7 +1248,7 @@ window.openOutpassModal = async function(passId) {
 
       if (!isRendered) {
         const encoded = encodeURIComponent(payloadStr);
-        qrTarget.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&ecc=H&margin=2&data=${encoded}" alt="Outpass QR" style="width: 280px; height: 280px; display: block; margin: 0 auto; border-radius: 8px;">`;
+        qrTarget.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&ecc=H&margin=2&data=${encoded}" alt="Outpass QR" style="width: 204px; height: 204px; display: block; margin: 0 auto; border-radius: 4px;">`;
       }
     };
 
