@@ -1,40 +1,43 @@
-# Complete Rebuild of Study Hour Dashboard — Walkthrough
+# Rebuilt Study Hour Module & Universal QR System — Walkthrough
 
-## What Was Accomplished
+## What Was Rebuilt
 
-The Study Hour Dashboard UI and state implementation was **completely removed and rebuilt from scratch** into a modern, production-grade, enterprise-level ERP module.
+The Study Hour module was completely rebuilt from scratch according to the new single-QR workflow, universal scanner integration, credit-threshold parent alerts, and comprehensive Chart.js analytics dashboard.
 
 ---
 
 ## 1. Centralized Reactive State Engine (`js/study-hour-state.js`)
-- Created `StudyHourStateEngine` (`window.StudyHourState`) to act as the single source of truth for session status, live session timer, student attendance list, and roster filters.
-- Components subscribe to state changes via `StudyHourState.subscribe(renderCallback)`.
-- **Zero manual page refreshes** are required. Any action (Start Session, Regenerate QR, Toggle Exit Phase, Pause/Resume, Student Scan, Finalize) immediately triggers state refresh and renders the updated UI instantly.
+- Subscribes UI views directly to state updates to enable instant rendering without any manual page reload.
+- Runs background checks during syncs to monitor student discipline credit thresholds (default `< 700`).
+- Automatically creates pending parent alerts for low-credit students.
 
 ---
 
-## 2. Mobile-First Warden Dashboard (`pages/warden/study-hour.html` & `js/warden.js`)
-- **Live Session Banner & Timer**: Displays real-time session status (`SESSION LIVE` / `No Active Session`), live session duration timer (`00:15:32`), inside hall counter, and completed count.
-- **KPI Cards Grid (Mobile First)**: Clean cards for Present, Inside Hall, Completed, and Pending metrics.
-- **Single QR Code Card**:
-  - Displays dynamic session QR code for check-in and checkout.
-  - Action buttons: `Start Session`, `Regenerate QR`, `Enable/Disable Exit Phase`, `Pause`, `Resume`, `End Session`.
-- **Mobile-First Student Roster Cards**:
-  - Replaced wide tables with responsive student cards.
-  - Live search input + status filter (`INSIDE HALL`, `COMPLETED`, `PENDING`).
-  - Clear entry and checkout timestamps for each student.
-- **Live Activity Stream**: Real-time log of check-ins, check-outs, and warden controls.
+## 2. Universal QR Scanner Controller (`js/warden.js`)
+- Integrated a unified scanner (`window.handleUniversalQRScan(text)`):
+  - **Study Hour Student QR** (starts with `HMSQR_...`): Parses purpose, sessionId, and studentReg, validating presence immediately.
+  - **Digital Outpass QR** (JSON or starts with `OP-`): Validates pass via `HostelDB.validateOutpassQR(text)` and opens a validate decision modal where Warden approvals (Exit or Return) are recorded.
+  - **Extensible signature checks** for future ERP modules.
 
 ---
 
-## 3. Mobile Student Portal & QR Scanner (`pages/student/study-hour.html` & `js/student.js`)
-- Subscribed to `window.StudyHourState`.
-- Real-time status indicators (`OUTSIDE`, `INSIDE HALL`, `LEFT / COMPLETED`).
-- Integrated camera trigger button to open full-screen scanner (`window.HMSQRScanner`).
-- Single QR scanner handles both Check-In (Scan 1) and Check-Out (Scan 2) with haptic vibration feedback.
+## 3. Automated Parent Alert Review
+- Renders pending alerts directly on the Warden's Live Dashboard.
+- Allows Warden to review student details, current credit rating, risk tier, and the generated WhatsApp alert message before sending it via a dedicated WhatsApp redirect button.
 
 ---
 
-## 4. Verification & Deployment
-- ✅ Built with Vite: `npm run build` compiled cleanly in 397ms.
-- ✅ Tested & Pushed to GitHub: Commit `00b4baa`.
+## 4. ERP Analytics Dashboard
+- Integrated responsive Chart.js widgets for 13 metrics:
+  - **Line Chart**: Weekly Attendance Trends.
+  - **Bar Chart**: Daily Attendance Rates vs Late Arrivals.
+  - **Bar Chart**: Department Wise Attendance averages.
+  - **Horizontal Bar Chart**: Block & Floor Wise Averages.
+  - **Doughnut Chart**: Student Credit Rating Distribution.
+  - Tables for high disciplinary risk and low attendance students.
+
+---
+
+## 5. Verification & Deployment
+- ✅ Built with Vite: `npm run build` compiled cleanly in 390ms.
+- ✅ Committed and pushed to GitHub: Commit `36a1cf3`.
