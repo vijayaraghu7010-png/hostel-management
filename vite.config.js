@@ -12,7 +12,6 @@ export default defineConfig({
         student_complaint_status: resolve(__dirname, 'pages/student/complaint-status.html'),
         student_leave_request: resolve(__dirname, 'pages/student/leave-request.html'),
         student_leave_status: resolve(__dirname, 'pages/student/leave-status.html'),
-        student_study_hour: resolve(__dirname, 'pages/student/study-hour.html'),
         student_my_credits: resolve(__dirname, 'pages/student/my-credits.html'),
         student_profile: resolve(__dirname, 'pages/student/profile.html'),
         student_outing_request: resolve(__dirname, 'pages/student/outing-request.html'),
@@ -21,7 +20,6 @@ export default defineConfig({
         
         // Warden pages
         warden_dashboard: resolve(__dirname, 'pages/warden/dashboard.html'),
-        warden_study_hour: resolve(__dirname, 'pages/warden/study-hour.html'),
         warden_attendance: resolve(__dirname, 'pages/warden/attendance.html'),
         warden_room_allocation: resolve(__dirname, 'pages/warden/room-allocation.html'),
         warden_rooms: resolve(__dirname, 'pages/warden/rooms.html'),
