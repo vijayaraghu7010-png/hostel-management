@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Warden Study Hour Management — Session Control, QR Attendance, Keyword Verification & Risk Analytics">
-  <title>Study Hour Management — Warden ERP</title>
+  <meta name="description" content="Warden Study Hour Management — Enterprise Session Control & QR Attendance System">
+  <title>Study Hour ERP — Warden Portal</title>
 
   <!-- Core CSS -->
   <link rel="stylesheet" href="../../css/variables.css">
@@ -32,587 +32,287 @@
         <div class="container-fluid">
 
           <!-- ═══════════════════════════════════════════
-               PAGE HEADER
+               1. PAGE HEADER & TIMERS
           ═══════════════════════════════════════════ -->
           <div class="sh-page-header">
             <div class="sh-page-title-group">
               <div class="sh-page-eyebrow">
-                <i class="fa-solid fa-book-open-reader"></i>
-                Warden ERP · Discipline Module
+                <i class="fa-solid fa-graduation-cap"></i>
+                Hostel ERP · Study Hour Module
               </div>
               <h1 class="sh-page-title">Study Hour Management</h1>
-              <p class="sh-page-subtitle">Session Control · Live QR Attendance · Keyword Verification · Risk Analytics</p>
+              <p class="sh-page-subtitle">Single Session QR System · Real-Time Mobile Attendance Control</p>
             </div>
 
             <div class="sh-header-actions">
-              <!-- Session live status pill -->
+              <!-- Live Session Status Pill -->
               <div class="sh-status-pill inactive" id="session-status-pill">
                 <span class="sh-pulse-dot"></span>
-                <span id="session-status-text">No Session</span>
+                <span id="session-status-text">No Active Session</span>
               </div>
 
-              <!-- Primary action buttons -->
+              <!-- Header Action Buttons -->
               <button class="sh-ctrl-btn sh-ctrl-btn--primary" id="btn-start-new-session" style="gap:0.5rem;">
-                <i class="fa-solid fa-circle-play"></i>
+                <i class="fa-solid fa-play"></i>
                 <span>Start Session</span>
               </button>
               <button class="sh-ctrl-btn sh-ctrl-btn--danger" id="btn-finalize-session" style="display:none; gap:0.5rem;">
                 <i class="fa-solid fa-flag-checkered"></i>
-                <span>Finalize</span>
+                <span>End Session</span>
               </button>
             </div>
           </div>
 
           <!-- ═══════════════════════════════════════════
-               LIVE SESSION BANNER
+               2. LIVE SESSION BANNER & TIMER
           ═══════════════════════════════════════════ -->
           <div class="sh-session-banner" id="warden-session-banner">
             <div class="sh-banner-inner">
               <div class="sh-banner-left">
                 <div class="sh-banner-badge">
-                  <i class="fa-solid fa-rotate fa-spin"></i>
-                  SESSION IN PROGRESS
+                  <i class="fa-solid fa-satellite-dish fa-spin"></i>
+                  SESSION LIVE
                 </div>
-                <h2 class="sh-banner-title" id="warden-session-title">Loading session…</h2>
-                <p class="sh-banner-meta" id="warden-session-details">Fetching session details…</p>
+                <h2 class="sh-banner-title" id="warden-session-title">No Session Currently Running</h2>
+                <p class="sh-banner-meta" id="warden-session-details">Click "Start Session" above to generate dynamic QR code</p>
               </div>
 
               <div class="sh-banner-right">
                 <div class="sh-banner-stat">
-                  <span class="sh-banner-stat-label">Entries</span>
-                  <span class="sh-banner-stat-value" id="stat-entry-scans">0</span>
+                  <span class="sh-banner-stat-label">SESSION TIMER</span>
+                  <span class="sh-banner-stat-value" id="stat-session-timer" style="font-family: monospace; color: var(--primary);">00:00</span>
                 </div>
                 <div class="sh-banner-divider"></div>
                 <div class="sh-banner-stat">
-                  <span class="sh-banner-stat-label">Keywords</span>
-                  <span class="sh-banner-stat-value" style="color: var(--primary);" id="stat-keyword-rounds">0</span>
+                  <span class="sh-banner-stat-label">INSIDE HALL</span>
+                  <span class="sh-banner-stat-value" id="stat-inside-count" style="color: var(--success);">0</span>
                 </div>
                 <div class="sh-banner-divider"></div>
                 <div class="sh-banner-stat">
-                  <span class="sh-banner-stat-label">Exits</span>
-                  <span class="sh-banner-stat-value" style="color: #60a5fa;" id="stat-exit-scans">0</span>
+                  <span class="sh-banner-stat-label">COMPLETED</span>
+                  <span class="sh-banner-stat-value" id="stat-completed-count" style="color: #60a5fa;">0</span>
                 </div>
               </div>
             </div>
           </div>
 
           <!-- ═══════════════════════════════════════════
-               KPI CARDS
+               3. KPI CARDS GRID (MOBILE FIRST)
           ═══════════════════════════════════════════ -->
           <div class="sh-kpi-grid">
-            <!-- Present -->
             <div class="sh-kpi-card sh-kpi-card--entry">
-              <div class="sh-kpi-icon-wrap"><i class="fa-solid fa-circle-check"></i></div>
+              <div class="sh-kpi-icon-wrap"><i class="fa-solid fa-user-check"></i></div>
               <div class="sh-kpi-value" id="kpi-present">0</div>
               <div class="sh-kpi-label">Present</div>
-              <div class="sh-kpi-trend"><i class="fa-solid fa-check"></i> Checked In</div>
+              <div class="sh-kpi-trend"><i class="fa-solid fa-check"></i> Total Scanned Entry</div>
             </div>
 
-            <!-- Checked Out -->
+            <div class="sh-kpi-card sh-kpi-card--partial">
+              <div class="sh-kpi-icon-wrap"><i class="fa-solid fa-door-open"></i></div>
+              <div class="sh-kpi-value" id="kpi-inside">0</div>
+              <div class="sh-kpi-label">Inside Hall</div>
+              <div class="sh-kpi-trend"><i class="fa-solid fa-users"></i> Currently Studying</div>
+            </div>
+
             <div class="sh-kpi-card sh-kpi-card--exit">
-              <div class="sh-kpi-icon-wrap"><i class="fa-solid fa-right-from-bracket"></i></div>
-              <div class="sh-kpi-value" id="kpi-exit">0</div>
-              <div class="sh-kpi-label">Checked Out</div>
-              <div class="sh-kpi-trend"><i class="fa-solid fa-arrow-right-from-bracket"></i> Checked Out</div>
+              <div class="sh-kpi-icon-wrap"><i class="fa-solid fa-graduation-cap"></i></div>
+              <div class="sh-kpi-value" id="kpi-completed">0</div>
+              <div class="sh-kpi-label">Completed</div>
+              <div class="sh-kpi-trend"><i class="fa-solid fa-circle-check"></i> Entry &amp; Exit Done</div>
             </div>
 
-            <!-- Pending -->
             <div class="sh-kpi-card sh-kpi-card--absent">
               <div class="sh-kpi-icon-wrap"><i class="fa-solid fa-clock"></i></div>
               <div class="sh-kpi-value" id="kpi-pending">0</div>
               <div class="sh-kpi-label">Pending</div>
-              <div class="sh-kpi-trend"><i class="fa-solid fa-spinner"></i> Awaiting Scan</div>
-            </div>
-
-            <!-- Inside Hall -->
-            <div class="sh-kpi-card sh-kpi-card--partial">
-              <div class="sh-kpi-icon-wrap"><i class="fa-solid fa-house-laptop"></i></div>
-              <div class="sh-kpi-value" id="kpi-inside">0</div>
-              <div class="sh-kpi-label">Inside Hall</div>
-              <div class="sh-kpi-trend"><i class="fa-solid fa-door-open"></i> Currently Inside</div>
-            </div>
-
-            <!-- Completed -->
-            <div class="sh-kpi-card sh-kpi-card--present">
-              <div class="sh-kpi-icon-wrap"><i class="fa-solid fa-circle-check"></i></div>
-              <div class="sh-kpi-value" id="kpi-completed">0</div>
-              <div class="sh-kpi-label">Completed</div>
-              <div class="sh-kpi-trend"><i class="fa-solid fa-graduation-cap"></i> Finished Session</div>
-            </div>
-
-            <!-- Keyword Rounds -->
-            <div class="sh-kpi-card sh-kpi-card--kw">
-              <div class="sh-kpi-icon-wrap"><i class="fa-solid fa-key"></i></div>
-              <div class="sh-kpi-value" id="kpi-keyword">0</div>
-              <div class="sh-kpi-label">Keyword Rounds</div>
-              <div class="sh-kpi-trend"><i class="fa-solid fa-bolt"></i> Triggered</div>
+              <div class="sh-kpi-trend"><i class="fa-solid fa-hourglass-half"></i> Not Yet Scanned</div>
             </div>
           </div>
 
           <!-- ═══════════════════════════════════════════
-               TAB NAVIGATION
+               4. MAIN WORKSPACE GRID (QR + ROSTER)
           ═══════════════════════════════════════════ -->
-          <nav class="sh-tab-nav" role="tablist">
-            <button class="sh-tab-btn active" data-tab="tab-scanner" role="tab" aria-selected="true" id="tabnav-scanner">
-              <i class="fa-solid fa-qrcode"></i>
-              <span>Session QR</span>
-            </button>
-            <button class="sh-tab-btn" data-tab="tab-keyword" role="tab" aria-selected="false" id="tabnav-keyword">
-              <i class="fa-solid fa-key"></i>
-              <span>Keyword</span>
-            </button>
-            <button class="sh-tab-btn" data-tab="tab-roster" role="tab" aria-selected="false" id="tabnav-roster">
-              <i class="fa-solid fa-list-check"></i>
-              <span>Live Roster</span>
-            </button>
-            <button class="sh-tab-btn" data-tab="tab-risk" role="tab" aria-selected="false" id="tabnav-risk">
-              <i class="fa-solid fa-shield-halved"></i>
-              <span>Risk Analytics</span>
-            </button>
-            <button class="sh-tab-btn" data-tab="tab-alerts" role="tab" aria-selected="false" id="tabnav-alerts">
-              <i class="fa-brands fa-whatsapp"></i>
-              <span>Parent Alerts</span>
-            </button>
-          </nav>
-
-          <!-- ═══════════════════════════════════════════
-               TAB 1 — QR SCANNER
-          ═══════════════════════════════════════════ -->
-          <div class="tab-content" id="tab-scanner" style="display: block;">
-            <div class="sh-scanner-layout">
-
-              <!-- LEFT: Session QR Display and Controls -->
-              <div>
-                <div class="sh-card" style="margin-bottom: 1rem;">
-                  <div class="sh-card-header">
-                    <h4 class="sh-card-title"><i class="fa-solid fa-qrcode"></i>Session Attendance QR Code</h4>
-                    <div class="sh-status-pill inactive" id="exit-phase-status-pill">
-                      <span class="sh-pulse-dot"></span>
-                      <span id="exit-phase-status-text">Exit Closed</span>
-                    </div>
-                  </div>
-                  <div class="sh-card-body" style="text-align: center;">
-                    <p style="font-size:0.8rem; color:var(--text-secondary); margin-bottom:1rem;">
-                      Students must scan this code using their Study Hour portal to Check In and Check Out.
-                    </p>
-
-                    <!-- QR code display area -->
-                    <div id="session-qr-container" style="display: inline-flex; justify-content: center; align-items: center; margin: 1rem auto; padding: 1rem; background: #fff; border-radius: 12px; width: 220px; height: 220px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
-                      <div style="color: var(--text-muted); font-size: 0.85rem; padding: 2rem;" id="session-qr-placeholder">No Active Session</div>
-                    </div>
-
-                    <!-- Countdown or active info -->
-                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1.25rem;" id="session-qr-meta">
-                      Scan to Check In / Check Out
-                    </div>
-
-                    <!-- Single Session Controls Grid -->
-                    <div class="sh-control-grid" style="margin-top: 1rem;">
-                      <button class="sh-ctrl-btn sh-ctrl-btn--success" id="btn-regen-session-qr" disabled style="width:100%;">
-                        <i class="fa-solid fa-rotate"></i> Regenerate QR
-                      </button>
-                      <button class="sh-ctrl-btn sh-ctrl-btn--warning" id="btn-toggle-exit-phase" disabled style="width:100%;">
-                        <i class="fa-solid fa-door-open"></i> Enable Exit Phase
-                      </button>
-                    </div>
-
-                    <div class="sh-control-grid" style="margin-top: 0.5rem;">
-                      <button class="sh-ctrl-btn sh-ctrl-btn--purple" id="btn-pause-session" disabled style="width:100%;">
-                        <i class="fa-solid fa-pause"></i> Pause Session
-                      </button>
-                      <button class="sh-ctrl-btn" id="btn-resume-session" disabled style="width:100%;">
-                        <i class="fa-solid fa-play"></i> Resume Session
-                      </button>
-                    </div>
-                  </div>
+          <div class="row" style="margin-top: 1.5rem;">
+            
+            <!-- LEFT COLUMN: Session QR Display & Session Controls -->
+            <div class="col-lg-4 col-md-12" style="margin-bottom: 1.5rem;">
+              <div class="sh-card" style="height: 100%;">
+                <div class="sh-card-header" style="justify-content: space-between;">
+                  <h4 class="sh-card-title">
+                    <i class="fa-solid fa-qrcode text-primary-color"></i>
+                    Session QR Code
+                  </h4>
+                  <span class="badge badge-secondary" id="exit-phase-status-badge">Exit Closed</span>
                 </div>
-
-                <!-- Session quick-stats (compact) -->
-                <div class="sh-card">
-                  <div class="sh-card-header">
-                    <h4 class="sh-card-title"><i class="fa-solid fa-chart-simple"></i>Session Quick Stats</h4>
-                  </div>
-                  <div class="sh-card-body" style="display:grid; grid-template-columns:repeat(3,1fr); gap:0.5rem; text-align:center;">
-                    <div style="padding:0.5rem;">
-                      <div style="font-size:1.5rem; font-weight:800; color: var(--success);" id="qs-entry">0</div>
-                      <div style="font-size:0.65rem; text-transform:uppercase; letter-spacing:0.07em; color:var(--text-muted); font-weight:700;">Inside Hall</div>
-                    </div>
-                    <div style="padding:0.5rem; border-left:1px solid var(--border-color); border-right:1px solid var(--border-color);">
-                      <div style="font-size:1.5rem; font-weight:800; color: #a855f7;" id="qs-keyword">0</div>
-                      <div style="font-size:0.65rem; text-transform:uppercase; letter-spacing:0.07em; color:var(--text-muted); font-weight:700;">Keywords</div>
-                    </div>
-                    <div style="padding:0.5rem;">
-                      <div style="font-size:1.5rem; font-weight:800; color: #60a5fa;" id="qs-exit">0</div>
-                      <div style="font-size:0.65rem; text-transform:uppercase; letter-spacing:0.07em; color:var(--text-muted); font-weight:700;">Completed</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- RIGHT: Activity Feed -->
-              <div>
-                <div class="sh-card" style="height: 100%;">
-                  <div class="sh-card-header">
-                    <h4 class="sh-card-title"><i class="fa-solid fa-bolt"></i>Live Activity Feed</h4>
-                    <span style="font-size:0.7rem; color:var(--text-muted); font-variant-numeric: tabular-nums;" id="feed-count">0 events</span>
-                  </div>
-                  <div class="sh-activity-feed" id="scan-activity-log">
-                    <div class="sh-empty-state">
-                      <i class="fa-regular fa-clock"></i>
-                      <p>No scan events yet.<br>Start the camera scanner to begin attendance.</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-          </div><!-- /tab-scanner -->
-
-          <!-- ═══════════════════════════════════════════
-               TAB 2 — KEYWORD VERIFICATION
-          ═══════════════════════════════════════════ -->
-          <div class="tab-content" id="tab-keyword" style="display: none;">
-            <div class="sh-keyword-layout">
-
-              <!-- Active keyword banner (shown when keyword is live) -->
-              <div class="sh-keyword-banner" id="kw-active-banner">
-                <div class="sh-keyword-countdown-ring"></div>
-                <div>
-                  <div style="font-size:0.65rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:#a855f7; margin-bottom:0.2rem;">Active Keyword</div>
-                  <div class="sh-keyword-word" id="kw-active-word">—</div>
-                </div>
-                <div style="margin-left: auto; text-align: center;">
-                  <div class="sh-keyword-countdown" id="kw-countdown-display">
-                    <i class="fa-regular fa-clock" style="color:#a855f7;"></i>
-                    <span id="kw-countdown-value">—</span>
-                  </div>
-                  <div style="font-size:0.65rem; color:var(--text-muted); margin-top:0.2rem;">seconds remaining</div>
-                </div>
-              </div>
-
-              <!-- Trigger form -->
-              <div class="sh-card">
-                <div class="sh-card-header">
-                  <h4 class="sh-card-title"><i class="fa-solid fa-bullhorn"></i>Trigger Keyword Challenge</h4>
-                </div>
-                <div class="sh-card-body">
-                  <p style="font-size:0.8rem; color:var(--text-secondary); margin-bottom:1rem; line-height:1.6;">
-                    Set a keyword and announce it verbally in the study hall. Students receive a live alert and countdown to submit it.
+                
+                <div class="sh-card-body" style="text-align: center; padding: 1.5rem;">
+                  <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 1rem;">
+                    Students scan this dynamic QR code using their phones to check in or out.
                   </p>
-                  <form id="form-trigger-keyword">
-                    <div class="sh-kw-form">
-                      <div>
-                        <label class="sh-form-label" for="input-keyword-word">Keyword Phrase</label>
-                        <input type="text" id="input-keyword-word" class="sh-form-input sh-keyword-input" placeholder="e.g. PHOENIX" required autocomplete="off">
-                      </div>
-                      <div>
-                        <label class="sh-form-label" for="select-keyword-duration">Window</label>
-                        <select id="select-keyword-duration" class="sh-select">
-                          <option value="45">45 sec</option>
-                          <option value="60" selected>60 sec</option>
-                          <option value="90">90 sec</option>
-                          <option value="120">120 sec</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label class="sh-form-label" style="opacity:0;">Go</label>
-                        <button type="submit" class="sh-ctrl-btn sh-ctrl-btn--purple" id="btn-activate-keyword" style="width:100%;">
-                          <i class="fa-solid fa-bolt"></i> Activate
-                        </button>
-                      </div>
+
+                  <!-- Dynamic QR Container -->
+                  <div id="session-qr-container" style="display: flex; justify-content: center; align-items: center; margin: 1rem auto; padding: 1rem; background: #fff; border-radius: 16px; width: 220px; height: 220px; box-shadow: 0 8px 24px rgba(0,0,0,0.08); border: 2px dashed var(--border-color);">
+                    <div style="color: var(--text-muted); font-size: 0.85rem;" id="session-qr-placeholder">
+                      <i class="fa-solid fa-qrcode" style="font-size: 2.5rem; opacity: 0.3; display: block; margin-bottom: 0.5rem;"></i>
+                      No Active Session
                     </div>
-                  </form>
-                </div>
-              </div>
+                  </div>
 
-              <!-- Responses table -->
-              <div class="sh-card">
-                <div class="sh-card-header">
-                  <h4 class="sh-card-title"><i class="fa-solid fa-list-check"></i>Student Submissions</h4>
-                  <button class="sh-ctrl-btn" style="padding:0.4rem 0.75rem; font-size:0.75rem;" id="btn-refresh-keyword-responses">
-                    <i class="fa-solid fa-rotate"></i> Refresh
-                  </button>
-                </div>
-                <div class="table-responsive">
-                  <table class="sh-roster-table">
-                    <thead>
-                      <tr>
-                        <th>Round</th>
-                        <th>Reg No</th>
-                        <th>Student Name</th>
-                        <th>Keyword Submitted</th>
-                        <th>Status</th>
-                        <th>Time</th>
-                      </tr>
-                    </thead>
-                    <tbody id="table-keyword-responses-tbody">
-                      <tr><td colspan="6"><div class="sh-table-empty"><i class="fa-solid fa-key"></i><p>No keyword submissions yet. Trigger a round to begin.</p></div></td></tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+                  <div style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); margin-bottom: 1.5rem;" id="session-qr-meta">
+                    Start session to generate QR
+                  </div>
 
-            </div>
-          </div><!-- /tab-keyword -->
+                  <!-- Control Buttons Grid -->
+                  <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <button class="sh-ctrl-btn sh-ctrl-btn--success" id="btn-regen-session-qr" disabled style="width: 100%;">
+                      <i class="fa-solid fa-arrows-rotate"></i> Regenerate Session QR
+                    </button>
 
-          <!-- ═══════════════════════════════════════════
-               TAB 3 — LIVE ROSTER
-          ═══════════════════════════════════════════ -->
-          <div class="tab-content" id="tab-roster" style="display: none;">
-            <div class="sh-card">
-              <div class="sh-card-header">
-                <h4 class="sh-card-title"><i class="fa-solid fa-users"></i>Live Attendance Roster</h4>
-                <div class="sh-filter-bar">
-                  <input type="text" id="filter-roster-search" class="sh-search-input" placeholder="Search by name, reg, dept…">
-                  <select id="filter-roster-status" class="sh-select">
-                    <option value="">All Statuses</option>
-                    <option value="PRESENT">PRESENT</option>
-                    <option value="PARTIAL">PARTIAL</option>
-                    <option value="ABSENT">ABSENT</option>
-                    <option value="EXCUSED">EXCUSED</option>
-                  </select>
-                </div>
-              </div>
-              <div class="table-responsive">
-                <table class="sh-roster-table sh-responsive-table">
-                  <thead>
-                    <tr>
-                      <th>Reg No</th>
-                      <th>Name</th>
-                      <th>Dept &amp; Room</th>
-                      <th>Entry</th>
-                      <th>Exit</th>
-                      <th>Status</th>
-                      <th>Notes</th>
-                    </tr>
-                  </thead>
-                  <tbody id="table-session-roster-tbody">
-                    <tr><td colspan="7"><div class="sh-table-empty"><i class="fa-solid fa-users-slash"></i><p>Start a session to view the live roster.</p></div></td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div><!-- /tab-roster -->
+                    <button class="sh-ctrl-btn sh-ctrl-btn--warning" id="btn-toggle-exit-phase" disabled style="width: 100%;">
+                      <i class="fa-solid fa-door-open"></i> Enable Exit Phase
+                    </button>
 
-          <!-- ═══════════════════════════════════════════
-               TAB 4 — RISK ANALYTICS
-          ═══════════════════════════════════════════ -->
-          <div class="tab-content" id="tab-risk" style="display: none;">
-
-            <!-- Charts row -->
-            <div class="sh-chart-grid">
-              <div class="sh-chart-card">
-                <div class="sh-chart-title"><i class="fa-solid fa-chart-pie" style="color:#a855f7;"></i>Credit Distribution</div>
-                <div class="sh-chart-wrap">
-                  <canvas id="chart-credit-dist"></canvas>
-                </div>
-              </div>
-              <div class="sh-chart-card">
-                <div class="sh-chart-title"><i class="fa-solid fa-chart-bar" style="color:#3b82f6;"></i>Risk Level Breakdown</div>
-                <div class="sh-chart-wrap">
-                  <canvas id="chart-risk-breakdown"></canvas>
-                </div>
-              </div>
-            </div>
-
-            <!-- Risk table -->
-            <div class="sh-card">
-              <div class="sh-card-header">
-                <h4 class="sh-card-title"><i class="fa-solid fa-shield-halved"></i>Student Risk Profiles</h4>
-                <select id="filter-risk-level" class="sh-select">
-                  <option value="">All Risk Tiers</option>
-                  <option value="CRITICAL">CRITICAL</option>
-                  <option value="WARNING">WARNING</option>
-                  <option value="WATCH">WATCH</option>
-                  <option value="NORMAL">NORMAL</option>
-                </select>
-              </div>
-              <div class="table-responsive">
-                <table class="sh-roster-table sh-responsive-table">
-                  <thead>
-                    <tr>
-                      <th>Reg No</th>
-                      <th>Name</th>
-                      <th>Credit Score</th>
-                      <th>Rating Tier</th>
-                      <th>Risk Level</th>
-                      <th>Behavioral Evidence</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody id="table-student-risk-tbody">
-                    <tr><td colspan="7"><div class="sh-table-empty"><i class="fa-solid fa-shield-halved"></i><p>Loading student risk profiles…</p></div></td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-          </div><!-- /tab-risk -->
-
-          <!-- ═══════════════════════════════════════════
-               TAB 5 — PARENT ALERTS
-          ═══════════════════════════════════════════ -->
-          <div class="tab-content" id="tab-alerts" style="display: none;">
-            <div class="sh-alerts-layout">
-
-              <!-- Left: Alert generator -->
-              <div class="sh-card">
-                <div class="sh-card-header">
-                  <h4 class="sh-card-title"><i class="fa-brands fa-whatsapp" style="color:#25d366;"></i>Generate Parent Alert</h4>
-                </div>
-                <div class="sh-card-body">
-                  <form id="form-parent-alert-generator">
-
-                    <div style="margin-bottom: 0.875rem;">
-                      <label class="sh-form-label" for="select-alert-student">Select Student</label>
-                      <select id="select-alert-student" class="sh-form-input sh-select" required style="padding-right:2rem;">
-                        <option value="" disabled selected>Choose student…</option>
-                      </select>
-                    </div>
-
-                    <!-- Student info card (hidden until selection) -->
-                    <div id="parent-info-card" style="display:none; background: rgba(0,0,0,0.06); border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); padding: 0.875rem; margin-bottom: 0.875rem;">
-                      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1rem; font-size: 0.78rem; margin-bottom: 0.625rem;">
-                        <div><span style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted);display:block;margin-bottom:.1rem;">Student</span><strong id="disp-student-name" class="sh-primary-color">—</strong></div>
-                        <div><span style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted);display:block;margin-bottom:.1rem;">Reg No</span><strong id="disp-student-reg">—</strong></div>
-                        <div><span style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted);display:block;margin-bottom:.1rem;">Parent</span><strong id="disp-parent-name">—</strong></div>
-                        <div><span style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted);display:block;margin-bottom:.1rem;">Phone</span><strong id="disp-parent-phone" style="font-family:monospace;">—</strong></div>
-                      </div>
-                      <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border-color); padding-top:0.5rem;">
-                        <span style="font-size:0.72rem; color:var(--text-muted);">Credit &amp; Risk:</span>
-                        <div style="display:flex; gap:0.35rem; align-items:center;">
-                          <span class="sh-badge sh-badge--present" id="disp-student-credit">1000/1000</span>
-                          <span class="sh-badge sh-badge--normal" id="disp-student-risk">GOOD</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div style="margin-bottom: 0.875rem;">
-                      <label class="sh-form-label" for="select-alert-language">Language</label>
-                      <select id="select-alert-language" class="sh-form-input sh-select" style="padding-right:2rem;">
-                        <option value="ENGLISH" selected>English</option>
-                        <option value="TAMIL">Tamil</option>
-                        <option value="TAMIL_ENGLISH">Tamil + English (Bilingual)</option>
-                      </select>
-                    </div>
-
-                    <div style="margin-bottom: 1rem;">
-                      <label class="sh-form-label" for="textarea-alert-preview">Message Preview</label>
-                      <textarea id="textarea-alert-preview" class="sh-alert-preview" rows="7" readonly placeholder="Select a student to generate the alert message…"></textarea>
-                    </div>
-
-                    <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-                      <button type="button" class="sh-ctrl-btn sh-ctrl-btn--success" id="btn-open-whatsapp" disabled style="flex:1; min-width:130px;">
-                        <i class="fa-brands fa-whatsapp"></i> Open WhatsApp
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                      <button class="sh-ctrl-btn sh-ctrl-btn--purple" id="btn-pause-session" disabled style="width: 100%;">
+                        <i class="fa-solid fa-pause"></i> Pause
                       </button>
-                      <button type="submit" class="sh-ctrl-btn" id="btn-save-parent-alert" disabled style="flex:1; min-width:130px;">
-                        <i class="fa-solid fa-floppy-disk"></i> Save to Log
+                      <button class="sh-ctrl-btn" id="btn-resume-session" disabled style="width: 100%;">
+                        <i class="fa-solid fa-play"></i> Resume
                       </button>
                     </div>
-                  </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- RIGHT COLUMN: Searchable Live Roster Cards & Live Activity Log -->
+            <div class="col-lg-8 col-md-12">
+              
+              <!-- Live Attendance Student Roster Card -->
+              <div class="sh-card" style="margin-bottom: 1.5rem;">
+                <div class="sh-card-header" style="flex-wrap: wrap; gap: 1rem; justify-content: space-between; align-items: center;">
+                  <h4 class="sh-card-title">
+                    <i class="fa-solid fa-users text-primary-color"></i>
+                    Student Attendance Roster
+                  </h4>
+
+                  <!-- Filter controls -->
+                  <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; flex: 1; max-width: 480px; justify-content: flex-end;">
+                    <input type="text" class="form-control form-control-sm" id="filter-roster-search" placeholder="Search student by name / reg no..." style="min-width: 180px; flex: 1;">
+                    <select class="form-select form-select-sm" id="filter-roster-status" style="width: 130px;">
+                      <option value="">All Statuses</option>
+                      <option value="INSIDE">Inside Hall</option>
+                      <option value="COMPLETED">Completed</option>
+                      <option value="PENDING">Pending</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="sh-card-body" style="padding: 1.25rem;">
+                  <!-- Mobile-First Responsive Roster Cards Container -->
+                  <div id="roster-cards-container" style="display: flex; flex-direction: column; gap: 0.85rem;">
+                    <div style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                      <i class="fa-solid fa-spin fa-spinner" style="margin-right: 0.5rem;"></i> Loading attendance roster...
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <!-- Right: Alert history -->
+              <!-- Live Activity Stream Log -->
               <div class="sh-card">
-                <div class="sh-card-header">
-                  <h4 class="sh-card-title"><i class="fa-solid fa-clock-rotate-left"></i>Alert History Log</h4>
+                <div class="sh-card-header" style="justify-content: space-between;">
+                  <h4 class="sh-card-title">
+                    <i class="fa-solid fa-stream text-primary-color"></i>
+                    Live Scan Activity Stream
+                  </h4>
+                  <span class="badge badge-secondary" id="feed-count">0 events</span>
                 </div>
-                <div class="table-responsive">
-                  <table class="sh-roster-table sh-responsive-table">
-                    <thead>
-                      <tr>
-                        <th>Date</th>
-                        <th>Student</th>
-                        <th>Parent Contact</th>
-                        <th>Language</th>
-                        <th>Status</th>
-                        <th>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody id="table-parent-alerts-tbody">
-                      <tr><td colspan="6"><div class="sh-table-empty"><i class="fa-solid fa-paper-plane"></i><p>No parent alerts logged yet.</p></div></td></tr>
-                    </tbody>
-                  </table>
+                <div class="sh-card-body" style="padding: 1rem; max-height: 260px; overflow-y: auto;" id="scan-activity-log">
+                  <div class="sh-empty-state" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
+                    No scan events recorded yet in this session.
+                  </div>
                 </div>
               </div>
 
             </div>
-          </div><!-- /tab-alerts -->
+          </div>
 
-        </div><!-- /container-fluid -->
-      </div><!-- /page-body -->
-
-      <div id="footer-container"></div>
+        </div>
+      </div>
     </main>
   </div>
 
-  <!-- ═══════════════════════════════════════════════════════
-       MODAL: START SESSION
-  ═══════════════════════════════════════════════════════ -->
-  <div class="modal-backdrop" id="modal-start-session" style="display:none;">
-    <div class="modal-card" style="max-width:480px;">
-      <div class="modal-header">
-        <h3><i class="fa-solid fa-circle-play" style="color:var(--primary); margin-right:0.5rem;"></i>Start Study Session</h3>
-        <button class="modal-close" id="btn-close-start-session-modal"><i class="fa-solid fa-xmark"></i></button>
-      </div>
-      <form id="form-create-session">
-        <div class="modal-body">
-          <div class="form-group" style="margin-bottom:1rem;">
-            <label class="form-label">Session Title</label>
-            <input type="text" id="session-title-input" class="form-control" value="Evening Mandatory Study Session" required>
-          </div>
-          <div class="row">
-            <div class="col-md-6" style="margin-bottom:1rem;">
-              <label class="form-label">Start Time</label>
-              <input type="time" id="session-start-time" class="form-control" value="19:00" required>
+  <!-- ═══════════════════════════════════════════
+       MODAL 1: START STUDY SESSION
+  ═══════════════════════════════════════════ -->
+  <div class="modal-backdrop" id="modal-start-session">
+    <div class="modal-dialog" style="max-width: 480px;">
+      <div class="modal-content glass-card">
+        <div class="modal-header">
+          <h3 class="modal-title"><i class="fa-solid fa-play text-primary-color"></i> Launch Study Hour Session</h3>
+          <button class="modal-close-btn" id="btn-close-start-session-modal">&times;</button>
+        </div>
+        <form id="form-create-session">
+          <div class="modal-body">
+            <div class="form-group" style="margin-bottom: 1rem;">
+              <label class="form-label" for="session-title-input">Session Title</label>
+              <input type="text" class="form-control" id="session-title-input" required value="Evening Mandatory Study Hour">
             </div>
-            <div class="col-md-6" style="margin-bottom:1rem;">
-              <label class="form-label">End Time</label>
-              <input type="time" id="session-end-time" class="form-control" value="21:00" required>
+            <div class="row">
+              <div class="col-6">
+                <div class="form-group">
+                  <label class="form-label" for="session-start-time">Start Time</label>
+                  <input type="time" class="form-control" id="session-start-time" required value="19:00">
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="form-group">
+                  <label class="form-label" for="session-end-time">End Time</label>
+                  <input type="time" class="form-control" id="session-end-time" required value="21:00">
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" id="btn-cancel-start-session">Cancel</button>
-          <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check"></i> Launch Session</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- ═══════════════════════════════════════════════════════
-       MODAL: CONFIRM FINALIZE SESSION
-  ═══════════════════════════════════════════════════════ -->
-  <div class="modal-backdrop" id="modal-confirm-close-session" style="display:none;">
-    <div class="modal-card" style="max-width:460px;">
-      <div class="modal-header" style="border-bottom-color:rgba(239,68,68,0.2);">
-        <h3 style="color:var(--danger);"><i class="fa-solid fa-triangle-exclamation" style="margin-right:0.5rem;"></i>Finalize Study Session</h3>
-        <button class="modal-close" id="btn-close-confirm-modal"><i class="fa-solid fa-xmark"></i></button>
-      </div>
-      <div class="modal-body">
-        <p style="font-size:0.9rem; margin-bottom:0.75rem;">Are you sure you want to close and finalize the current active study session?</p>
-        <div style="background:rgba(239,68,68,0.07); border-left:3px solid var(--danger); padding:0.75rem 1rem; border-radius:4px; font-size:0.82rem; color:var(--text-secondary); line-height:1.6;">
-          <i class="fa-solid fa-circle-info" style="color:var(--danger); margin-right:0.4rem;"></i>
-          This action will auto-calculate attendance (PRESENT / PARTIAL / ABSENT) and update all student discipline credit ledgers.
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" id="btn-cancel-confirm-close">Cancel</button>
-        <button type="button" class="btn btn-danger" id="btn-execute-confirm-close"><i class="fa-solid fa-flag-checkered"></i> Close &amp; Finalize</button>
+          <div class="modal-footer" style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+            <button type="button" class="btn btn-secondary" id="btn-cancel-start-session">Cancel</button>
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-rocket"></i> Launch Session</button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
 
-  <!-- Scripts -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- ═══════════════════════════════════════════
+       MODAL 2: CONFIRM FINALIZE SESSION
+  ═══════════════════════════════════════════ -->
+  <div class="modal-backdrop" id="modal-confirm-close-session">
+    <div class="modal-dialog" style="max-width: 440px;">
+      <div class="modal-content glass-card" style="text-align: center;">
+        <div class="modal-header">
+          <h3 class="modal-title" style="color: var(--danger);"><i class="fa-solid fa-triangle-exclamation"></i> End Study Session?</h3>
+          <button class="modal-close-btn" id="btn-close-confirm-modal">&times;</button>
+        </div>
+        <div class="modal-body" style="padding: 1.5rem 1rem;">
+          <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem;">
+            Ending this session will finalize student attendance status and calculate discipline credits.
+          </p>
+        </div>
+        <div class="modal-footer" style="display: flex; gap: 0.5rem; justify-content: center;">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-confirm-close">Cancel</button>
+          <button type="button" class="btn btn-danger" id="btn-execute-confirm-close"><i class="fa-solid fa-flag-checkered"></i> Confirm End Session</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Core Scripts -->
   <script src="../../js/vendor/qrcode.min.js"></script>
-  <script src="../../js/vendor/html5-qrcode.min.js"></script>
+  <script src="../../js/supabase.js"></script>
   <script src="../../js/utils.js"></script>
   <script src="../../js/auth.js"></script>
   <script src="../../js/notifications.js"></script>
   <script src="../../js/app.js"></script>
+  <script src="../../js/study-hour-state.js"></script>
   <script src="../../js/warden.js"></script>
-  <script src="../../js/scanner-ui.js"></script>
 </body>
 </html>

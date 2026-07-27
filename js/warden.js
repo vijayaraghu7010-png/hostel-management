@@ -1961,185 +1961,84 @@ async function initStaffManagement() {
   }
 }
 
-// 9. Warden Study Hour & Discipline Management Center
+/// 9. Warden Study Hour & Discipline Management Center
 async function initWardenStudyHour() {
   const currentUser = HMSAuth.getCurrentUser();
 
-  // ── DOM refs — SESSION BANNER ─────────────────────────
-  const sessionBanner  = document.getElementById('warden-session-banner');
-  const sessionTitle   = document.getElementById('warden-session-title');
+  // DOM Elements
+  const sessionBanner = document.getElementById('warden-session-banner');
+  const sessionTitle = document.getElementById('warden-session-title');
   const sessionDetails = document.getElementById('warden-session-details');
-
-  // ── DOM refs — HEADER BUTTONS ─────────────────────────
-  const btnStartSession    = document.getElementById('btn-start-new-session');
-  const btnFinalizeSession = document.getElementById('btn-finalize-session');
-
-  // ── DOM refs — STATUS PILL ────────────────────────────
   const statusPill = document.getElementById('session-status-pill');
   const statusText = document.getElementById('session-status-text');
 
-  const modalStartSession = document.getElementById('modal-start-session');
-  const formCreateSession = document.getElementById('form-create-session');
-  const btnCloseStartModal = document.getElementById('btn-close-start-session-modal');
-  const btnCancelStartModal = document.getElementById('btn-cancel-start-session');
+  const btnStartSession = document.getElementById('btn-start-new-session');
+  const btnFinalizeSession = document.getElementById('btn-finalize-session');
 
-  // Tabs — new sh-tab-btn class
-  const tabBtns = document.querySelectorAll('.sh-tab-btn');
-  const tabContents = document.querySelectorAll('.tab-content');
+  const timerEl = document.getElementById('stat-session-timer');
+  const insideStatEl = document.getElementById('stat-inside-count');
+  const completedStatEl = document.getElementById('stat-completed-count');
 
-  // Session QR Code Display & Controls
+  const kpiPresent = document.getElementById('kpi-present');
+  const kpiInside = document.getElementById('kpi-inside');
+  const kpiCompleted = document.getElementById('kpi-completed');
+  const kpiPending = document.getElementById('kpi-pending');
+
   const sessionQrContainer = document.getElementById('session-qr-container');
-  const btnRegenSessionQR = document.getElementById('btn-regen-session-qr');
-  const btnToggleExitPhase = document.getElementById('btn-toggle-exit-phase');
-  const exitPhaseStatusPill = document.getElementById('exit-phase-status-pill');
-  const exitPhaseStatusText = document.getElementById('exit-phase-status-text');
-  const btnPauseSession = document.getElementById('btn-pause-session');
-  const btnResumeSession = document.getElementById('btn-resume-session');
-  const scanActivityLog = document.getElementById('scan-activity-log');
-  let feedEventCount = 0;
+  const sessionQrPlaceholder = document.getElementById('session-qr-placeholder');
+  const sessionQrMeta = document.getElementById('session-qr-meta');
+  const exitPhaseBadge = document.getElementById('exit-phase-status-badge');
 
-  // Keyword Trigger
-  const formTriggerKeyword = document.getElementById('form-trigger-keyword');
-  const inputKeywordWord = document.getElementById('input-keyword-word');
-  const selectKeywordDuration = document.getElementById('select-keyword-duration');
-  const tableKeywordResponsesTbody = document.getElementById('table-keyword-responses-tbody');
-  const btnRefreshKeyword = document.getElementById('btn-refresh-keyword-responses');
-  let kwCountdownInterval = null;
+  const btnRegenQR = document.getElementById('btn-regen-session-qr');
+  const btnToggleExit = document.getElementById('btn-toggle-exit-phase');
+  const btnPause = document.getElementById('btn-pause-session');
+  const btnResume = document.getElementById('btn-resume-session');
 
-  // Roster
-  const tableSessionRosterTbody = document.getElementById('table-session-roster-tbody');
-  const filterRosterSearch = document.getElementById('filter-roster-search');
-  const filterRosterStatus = document.getElementById('filter-roster-status');
+  const rosterCardsContainer = document.getElementById('roster-cards-container');
+  const filterSearch = document.getElementById('filter-roster-search');
+  const filterStatus = document.getElementById('filter-roster-status');
+  const activityLog = document.getElementById('scan-activity-log');
+  const feedCountEl = document.getElementById('feed-count');
 
-  // Risk Analysis
-  const tableStudentRiskTbody = document.getElementById('table-student-risk-tbody');
-  const filterRiskLevel = document.getElementById('filter-risk-level');
+  // Modals
+  const modalStart = document.getElementById('modal-start-session');
+  const formCreate = document.getElementById('form-create-session');
+  const btnCloseStart = document.getElementById('btn-close-start-session-modal');
+  const btnCancelStart = document.getElementById('btn-cancel-start-session');
 
-  // Parent Alerts
-  const selectAlertStudent = document.getElementById('select-alert-student');
-  const selectAlertLanguage = document.getElementById('select-alert-language');
-  const textareaAlertPreview = document.getElementById('textarea-alert-preview');
-  const btnOpenWhatsapp = document.getElementById('btn-open-whatsapp');
-  const formParentAlert = document.getElementById('form-parent-alert-generator');
-  const tableParentAlertsTbody = document.getElementById('table-parent-alerts-tbody');
+  const modalConfirm = document.getElementById('modal-confirm-close-session');
+  const btnCloseConfirm = document.getElementById('btn-close-confirm-modal');
+  const btnCancelConfirm = document.getElementById('btn-cancel-confirm-close');
+  const btnExecuteConfirm = document.getElementById('btn-execute-confirm-close');
 
-  // Charts
-  let chartCreditDist = null;
-  let chartRiskBreakdown = null;
+  let currentQrSecret = null;
+  let logEvents = [];
 
-  let activeSession = null;
-  let activeWhatsAppUrl = '';
+  // Log activity helper
+  function logActivity(text, type = 'info') {
+    if (!activityLog) return;
+    const timeStr = new Date().toLocaleTimeString();
+    logEvents.unshift({ text, type, timeStr });
+    if (logEvents.length > 30) logEvents.pop();
 
+    if (feedCountEl) feedCountEl.textContent = `${logEvents.length} event${logEvents.length !== 1 ? 's' : ''}`;
 
-  // Tab Switcher — new sh-tab-btn class
-  tabBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const targetTab = btn.getAttribute('data-tab');
-      tabBtns.forEach(b => b.classList.remove('active'));
-      tabContents.forEach(c => c.style.display = 'none');
-      btn.classList.add('active');
-      const contentEl = document.getElementById(targetTab);
-      if (contentEl) contentEl.style.display = 'block';
-      if (typeof initResponsiveTables === 'function') {
-        setTimeout(initResponsiveTables, 50);
-      }
-      // Lazy-init charts when risk tab becomes visible
-      if (targetTab === 'tab-risk') {
-        setTimeout(initAnalyticsCharts, 100);
-      }
-    });
-  });
-
-  // ── Scan Purpose Toggle ─────────────────────────────
-  let currentScanPurpose = 'ENTRY';
-  document.querySelectorAll('.sh-purpose-btn').forEach(pbtn => {
-    pbtn.addEventListener('click', () => {
-      document.querySelectorAll('.sh-purpose-btn').forEach(b => b.classList.remove('active', 'active-exit'));
-      pbtn.classList.add('active');
-      currentScanPurpose = pbtn.getAttribute('data-purpose') || 'ENTRY';
-      if (selectScanPurposeHidden) selectScanPurposeHidden.value = currentScanPurpose;
-      if (currentScanPurpose === 'EXIT') pbtn.classList.add('active-exit');
-    });
-  });
-
-
-
-  // Modal Handlers
-  const modalConfirmClose = document.getElementById('modal-confirm-close-session');
-  const btnCloseConfirmModal = document.getElementById('btn-close-confirm-modal');
-  const btnCancelConfirmClose = document.getElementById('btn-cancel-confirm-close');
-  const btnExecuteConfirmClose = document.getElementById('btn-execute-confirm-close');
-
-  const openStartModal = () => { if (modalStartSession) HMSModal.open(modalStartSession); };
-  const closeStartModal = () => { if (modalStartSession) HMSModal.close(modalStartSession); };
-
-  if (btnStartSession) btnStartSession.addEventListener('click', openStartModal);
-  if (btnCloseStartModal) btnCloseStartModal.addEventListener('click', closeStartModal);
-  if (btnCancelStartModal) btnCancelStartModal.addEventListener('click', closeStartModal);
-
-  // Form Create Session
-  if (formCreateSession) {
-    formCreateSession.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const submitBtn = formCreateSession.querySelector('button[type="submit"]');
-      const title = document.getElementById('session-title-input').value;
-      const startTime = document.getElementById('session-start-time').value;
-      const endTime = document.getElementById('session-end-time').value;
-
-      HMSModal.setLoading(submitBtn, true, 'Launching Session...');
-
-      try {
-        await HostelDB.createStudySession({
-          sessionTitle: title,
-          date: new Date().toISOString().split('T')[0],
-          startTime: startTime,
-          endTime: endTime,
-          createdBy: currentUser ? currentUser.name : 'Warden'
-        });
-        showToast(`Study Session "${title}" launched successfully!`, 'success');
-        closeStartModal();
-        await refreshAllWardenViews();
-      } catch (err) {
-        showToast(err.message || 'Failed to start session.', 'danger');
-      } finally {
-        HMSModal.setLoading(submitBtn, false);
-      }
-    });
+    activityLog.innerHTML = logEvents.map(e => `
+      <div style="display:flex; align-items:center; gap:0.75rem; padding:0.6rem 0; border-bottom:1px solid var(--border-color); font-size:0.82rem;">
+        <span style="width:8px; height:8px; border-radius:50%; background:${e.type === 'success' ? 'var(--success)' : e.type === 'warning' ? 'var(--warning)' : 'var(--primary)'}; flex-shrink:0;"></span>
+        <div style="flex:1;">${e.text}</div>
+        <div style="font-size:0.72rem; color:var(--text-muted); font-family:monospace;">${e.timeStr}</div>
+      </div>
+    `).join('');
   }
 
-  // Finalize Session with Confirmation Modal
-  if (btnFinalizeSession) {
-    btnFinalizeSession.addEventListener('click', () => {
-      if (!activeSession) return;
-      if (modalConfirmClose) HMSModal.open(modalConfirmClose);
-    });
-  }
-
-  if (btnCloseConfirmModal) btnCloseConfirmModal.addEventListener('click', () => HMSModal.close(modalConfirmClose));
-  if (btnCancelConfirmClose) btnCancelConfirmClose.addEventListener('click', () => HMSModal.close(modalConfirmClose));
-
-  if (btnExecuteConfirmClose) {
-    btnExecuteConfirmClose.addEventListener('click', async () => {
-      if (!activeSession) return;
-      HMSModal.setLoading(btnExecuteConfirmClose, true, 'Finalizing...');
-
-      try {
-        await HostelDB.closeStudySession(activeSession.id);
-        HMSModal.close(modalConfirmClose);
-        showToast('Study session finalized and discipline credits updated!', 'success');
-        await refreshAllWardenViews();
-      } catch (err) {
-        showToast('Error closing session.', 'danger');
-      } finally {
-        HMSModal.setLoading(btnExecuteConfirmClose, false);
-      }
-    });
-  }
-
-  // Render Session QR Code
-  function renderSessionQRCode(qrSecret) {
+  // Render Session QR
+  function renderSessionQR(qrSecret) {
     if (!sessionQrContainer) return;
+    if (qrSecret === currentQrSecret) return; // avoid re-rendering same QR
+    currentQrSecret = qrSecret;
     sessionQrContainer.innerHTML = '';
+
     if (qrSecret) {
       if (typeof QRCode !== 'undefined') {
         new QRCode(sessionQrContainer, {
@@ -2149,741 +2048,314 @@ async function initWardenStudyHour() {
           correctLevel: QRCode.CorrectLevel.M
         });
       } else {
-        sessionQrContainer.innerHTML = `<div style="padding:1rem; word-break:break-all; font-family:monospace; font-size:0.8rem;">${qrSecret}</div>`;
+        sessionQrContainer.innerHTML = `<div style="padding:1rem; word-break:break-all; font-family:monospace; font-size:0.75rem;">${qrSecret}</div>`;
       }
-      const meta = document.getElementById('session-qr-meta');
-      if (meta) meta.textContent = 'Scan to Check In / Check Out';
+      if (sessionQrMeta) sessionQrMeta.textContent = 'Scan code to Check In / Check Out';
     } else {
-      sessionQrContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 0.85rem; padding: 2rem;" id="session-qr-placeholder">No Active Session</div>';
-      const meta = document.getElementById('session-qr-meta');
-      if (meta) meta.textContent = 'Start a session to generate QR';
+      sessionQrContainer.innerHTML = `
+        <div style="color: var(--text-muted); font-size: 0.85rem;" id="session-qr-placeholder">
+          <i class="fa-solid fa-qrcode" style="font-size: 2.5rem; opacity: 0.3; display: block; margin-bottom: 0.5rem;"></i>
+          No Active Session
+        </div>`;
+      if (sessionQrMeta) sessionQrMeta.textContent = 'Start session to generate QR';
     }
   }
 
-  // Regenerate Session QR Click Handler
-  if (btnRegenSessionQR) {
-    btnRegenSessionQR.addEventListener('click', async () => {
-      if (!activeSession) return;
-      btnRegenSessionQR.disabled = true;
+  // Render Roster Cards (Mobile First)
+  function renderRosterCards(snapshot) {
+    if (!rosterCardsContainer) return;
+    const { studentsList, attendanceList, activeSession } = snapshot;
+
+    if (!activeSession) {
+      rosterCardsContainer.innerHTML = `
+        <div style="text-align: center; color: var(--text-muted); padding: 2.5rem; background: var(--bg-primary); border-radius: 12px; border: 1px dashed var(--border-color);">
+          <i class="fa-solid fa-bed" style="font-size: 2rem; margin-bottom: 0.5rem; opacity: 0.5;"></i>
+          <p style="margin:0; font-weight:600;">No active study hour session currently in progress.</p>
+        </div>`;
+      return;
+    }
+
+    const attMap = new Map();
+    attendanceList.forEach(a => attMap.set(a.studentReg, a));
+
+    const query = (filterSearch ? filterSearch.value : '').toLowerCase().trim();
+    const statusVal = filterStatus ? filterStatus.value : '';
+
+    const filtered = studentsList.filter(s => {
+      const att = attMap.get(s.regNo);
+      let statusStr = 'PENDING';
+      if (att) {
+        if (att.entryStatus === 'PASS' && att.exitStatus === 'PASS') statusStr = 'COMPLETED';
+        else if (att.entryStatus === 'PASS') statusStr = 'INSIDE';
+      }
+
+      const matchesSearch = s.name.toLowerCase().includes(query) ||
+                            s.regNo.toLowerCase().includes(query) ||
+                            (s.room || '').toLowerCase().includes(query) ||
+                            (s.dept || '').toLowerCase().includes(query);
+      const matchesStatus = !statusVal || statusStr === statusVal;
+      return matchesSearch && matchesStatus;
+    });
+
+    if (filtered.length === 0) {
+      rosterCardsContainer.innerHTML = `
+        <div style="text-align: center; color: var(--text-muted); padding: 2rem;">
+          No students matching filter query.
+        </div>`;
+      return;
+    }
+
+    rosterCardsContainer.innerHTML = filtered.map(s => {
+      const att = attMap.get(s.regNo);
+      let statusBadge = '<span class="badge badge-pending">PENDING</span>';
+      let cardBorder = 'var(--border-color)';
+
+      if (att) {
+        if (att.entryStatus === 'PASS' && att.exitStatus === 'PASS') {
+          statusBadge = '<span class="badge badge-primary"><i class="fa-solid fa-graduation-cap"></i> COMPLETED</span>';
+          cardBorder = 'var(--primary)';
+        } else if (att.entryStatus === 'PASS') {
+          statusBadge = '<span class="badge badge-present"><i class="fa-solid fa-circle-check"></i> INSIDE HALL</span>';
+          cardBorder = 'var(--success)';
+        }
+      }
+
+      const entryTimeStr = att && att.entryTime ? new Date(att.entryTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
+      const exitTimeStr = att && att.exitTime ? new Date(att.exitTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
+
+      return `
+        <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-left: 4px solid ${cardBorder}; border-radius: 12px; padding: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.5rem;">
+            <div>
+              <strong style="font-size: 0.95rem; color: var(--text-primary);">${s.name}</strong>
+              <div style="font-size: 0.78rem; color: var(--text-secondary); font-family: monospace;">
+                ${s.regNo} · Room ${s.room || 'N/A'} · ${s.dept || 'Gen'}
+              </div>
+            </div>
+            ${statusBadge}
+          </div>
+          <div style="display: flex; gap: 1.25rem; font-size: 0.78rem; color: var(--text-secondary); padding-top: 0.5rem; border-top: 1px dashed var(--border-color);">
+            <div><i class="fa-solid fa-right-to-bracket text-success" style="margin-right: 0.35rem;"></i> Check In: <strong>${entryTimeStr}</strong></div>
+            <div><i class="fa-solid fa-right-from-bracket text-primary-color" style="margin-right: 0.35rem;"></i> Check Out: <strong>${exitTimeStr}</strong></div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Reactive UI update callback
+  function renderDashboard(snapshot) {
+    const { activeSession, metrics } = snapshot;
+
+    // 1. Session Banner & Headers
+    if (activeSession) {
+      if (sessionBanner) sessionBanner.classList.add('is-active');
+      if (sessionTitle) sessionTitle.textContent = activeSession.sessionTitle;
+      if (sessionDetails) sessionDetails.textContent = `${activeSession.date} · ${activeSession.startTime} – ${activeSession.endTime} · Started by ${activeSession.createdBy}`;
+
+      const isPaused = activeSession.config && activeSession.config.paused === true;
+      if (statusPill) statusPill.className = `sh-status-pill ${isPaused ? 'warning' : 'active'}`;
+      if (statusText) statusText.textContent = isPaused ? 'Session Paused' : 'Session Active';
+
+      if (btnStartSession) btnStartSession.style.display = 'none';
+      if (btnFinalizeSession) btnFinalizeSession.style.display = 'inline-flex';
+
+      const exitEnabled = activeSession.config && activeSession.config.exitPhaseEnabled === true;
+      if (exitPhaseBadge) {
+        exitPhaseBadge.textContent = exitEnabled ? 'Exit Open' : 'Exit Closed';
+        exitPhaseBadge.className = exitEnabled ? 'badge badge-present' : 'badge badge-secondary';
+      }
+
+      // Render Session QR Code
+      renderSessionQR(activeSession.config ? activeSession.config.qrSecret : null);
+
+      // Controls State
+      if (btnRegenQR) btnRegenQR.disabled = false;
+      if (btnToggleExit) {
+        btnToggleExit.disabled = false;
+        btnToggleExit.innerHTML = exitEnabled 
+          ? '<i class="fa-solid fa-door-closed"></i> Disable Exit Phase' 
+          : '<i class="fa-solid fa-door-open"></i> Enable Exit Phase';
+      }
+      if (btnPause) btnPause.disabled = isPaused;
+      if (btnResume) btnResume.disabled = !isPaused;
+
+    } else {
+      if (sessionBanner) sessionBanner.classList.remove('is-active');
+      if (sessionTitle) sessionTitle.textContent = 'No Active Session';
+      if (sessionDetails) sessionDetails.textContent = 'Click "Start Session" above to launch mandatory study hour.';
+
+      if (statusPill) statusPill.className = 'sh-status-pill inactive';
+      if (statusText) statusText.textContent = 'No Active Session';
+
+      if (btnStartSession) btnStartSession.style.display = 'inline-flex';
+      if (btnFinalizeSession) btnFinalizeSession.style.display = 'none';
+
+      if (exitPhaseBadge) {
+        exitPhaseBadge.textContent = 'Exit Closed';
+        exitPhaseBadge.className = 'badge badge-secondary';
+      }
+
+      renderSessionQR(null);
+
+      if (btnRegenQR) btnRegenQR.disabled = true;
+      if (btnToggleExit) {
+        btnToggleExit.disabled = true;
+        btnToggleExit.innerHTML = '<i class="fa-solid fa-door-open"></i> Enable Exit Phase';
+      }
+      if (btnPause) btnPause.disabled = true;
+      if (btnResume) btnResume.disabled = true;
+    }
+
+    // 2. Timers & Metrics
+    if (timerEl) timerEl.textContent = window.StudyHourState.formatTimer();
+    if (insideStatEl) insideStatEl.textContent = metrics.insideCnt;
+    if (completedStatEl) completedStatEl.textContent = metrics.completedCnt;
+
+    if (kpiPresent) kpiPresent.textContent = metrics.presentCnt;
+    if (kpiInside) kpiInside.textContent = metrics.insideCnt;
+    if (kpiCompleted) kpiCompleted.textContent = metrics.completedCnt;
+    if (kpiPending) kpiPending.textContent = metrics.pendingCnt;
+
+    // 3. Render Student Roster Cards
+    renderRosterCards(snapshot);
+  }
+
+  // Event Listeners — Modal Triggers & Form Submissions
+  if (btnStartSession) {
+    btnStartSession.addEventListener('click', () => {
+      if (modalStart) HMSModal.open(modalStart);
+    });
+  }
+  if (btnCloseStart) btnCloseStart.addEventListener('click', () => HMSModal.close(modalStart));
+  if (btnCancelStart) btnCancelStart.addEventListener('click', () => HMSModal.close(modalStart));
+
+  if (formCreate) {
+    formCreate.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const submitBtn = formCreate.querySelector('button[type="submit"]');
+      const title = document.getElementById('session-title-input').value.trim();
+      const startTime = document.getElementById('session-start-time').value;
+      const endTime = document.getElementById('session-end-time').value;
+
+      HMSModal.setLoading(submitBtn, true, 'Launching...');
       try {
-        const newSecret = await HostelDB.regenerateSessionQR(activeSession.id);
-        renderSessionQRCode(newSecret);
-        showToast('Session QR Code regenerated successfully!', 'success');
-        logScanActivity('Warden regenerated the Session QR Code', 'warning');
+        await HostelDB.createStudySession({
+          sessionTitle: title,
+          date: new Date().toISOString().split('T')[0],
+          startTime: startTime,
+          endTime: endTime,
+          createdBy: currentUser ? currentUser.name : 'Warden'
+        });
+        showToast(`Study Hour Session "${title}" launched successfully!`, 'success');
+        logActivity(`Study Session launched: <strong>${title}</strong>`, 'success');
+        HMSModal.close(modalStart);
+        await window.StudyHourState.refresh();
       } catch (err) {
-        showToast('Failed to regenerate QR code.', 'danger');
+        showToast(err.message || 'Failed to start session.', 'danger');
       } finally {
-        btnRegenSessionQR.disabled = false;
+        HMSModal.setLoading(submitBtn, false);
       }
     });
   }
 
-  // Toggle Exit Phase Click Handler
-  if (btnToggleExitPhase) {
-    btnToggleExitPhase.addEventListener('click', async () => {
+  if (btnFinalizeSession) {
+    btnFinalizeSession.addEventListener('click', () => {
+      if (modalConfirm) HMSModal.open(modalConfirm);
+    });
+  }
+  if (btnCloseConfirm) btnCloseConfirm.addEventListener('click', () => HMSModal.close(modalConfirm));
+  if (btnCancelConfirm) btnCancelConfirm.addEventListener('click', () => HMSModal.close(modalConfirm));
+
+  if (btnExecuteConfirm) {
+    btnExecuteConfirm.addEventListener('click', async () => {
+      const activeSession = window.StudyHourState.activeSession;
+      if (!activeSession) return;
+
+      HMSModal.setLoading(btnExecuteConfirm, true, 'Finalizing...');
+      try {
+        await HostelDB.closeStudySession(activeSession.id);
+        showToast('Study Session finalized successfully!', 'success');
+        logActivity('Study Session finalized by Warden', 'warning');
+        HMSModal.close(modalConfirm);
+        await window.StudyHourState.refresh();
+      } catch (err) {
+        showToast('Error finalizing session.', 'danger');
+      } finally {
+        HMSModal.setLoading(btnExecuteConfirm, false);
+      }
+    });
+  }
+
+  // QR & Controls Actions
+  if (btnRegenQR) {
+    btnRegenQR.addEventListener('click', async () => {
+      const activeSession = window.StudyHourState.activeSession;
+      if (!activeSession) return;
+      btnRegenQR.disabled = true;
+      try {
+        await HostelDB.regenerateSessionQR(activeSession.id);
+        showToast('Session QR Code regenerated successfully!', 'success');
+        logActivity('Warden regenerated Session QR Code', 'info');
+        await window.StudyHourState.refresh();
+      } catch (err) {
+        showToast('Failed to regenerate QR.', 'danger');
+      } finally {
+        btnRegenQR.disabled = false;
+      }
+    });
+  }
+
+  if (btnToggleExit) {
+    btnToggleExit.addEventListener('click', async () => {
+      const activeSession = window.StudyHourState.activeSession;
       if (!activeSession) return;
       const currentVal = activeSession.config ? activeSession.config.exitPhaseEnabled : false;
       const newVal = !currentVal;
-      btnToggleExitPhase.disabled = true;
+      btnToggleExit.disabled = true;
       try {
         await HostelDB.toggleExitPhase(activeSession.id, newVal);
-        activeSession.config.exitPhaseEnabled = newVal;
-        updateExitPhaseUI(newVal);
-        showToast(newVal ? 'Exit Phase is now ENABLED! Students can check out.' : 'Exit Phase is now DISABLED.', 'info');
-        logScanActivity(newVal ? 'Exit Phase ENABLED by Warden' : 'Exit Phase DISABLED by Warden', 'info');
+        showToast(newVal ? 'Exit Phase ENABLED! Students can check out.' : 'Exit Phase DISABLED.', 'info');
+        logActivity(newVal ? 'Exit Phase ENABLED' : 'Exit Phase DISABLED', 'warning');
+        await window.StudyHourState.refresh();
       } catch (err) {
         showToast('Failed to toggle exit phase.', 'danger');
       } finally {
-        btnToggleExitPhase.disabled = false;
+        btnToggleExit.disabled = false;
       }
     });
   }
 
-  function updateExitPhaseUI(enabled) {
-    if (!btnToggleExitPhase) return;
-    if (enabled) {
-      btnToggleExitPhase.innerHTML = '<i class="fa-solid fa-door-closed"></i> Disable Exit Phase';
-      btnToggleExitPhase.className = 'sh-ctrl-btn sh-ctrl-btn--danger';
-      if (exitPhaseStatusPill) exitPhaseStatusPill.className = 'sh-status-pill active';
-      if (exitPhaseStatusText) exitPhaseStatusText.textContent = 'Exit Open';
-    } else {
-      btnToggleExitPhase.innerHTML = '<i class="fa-solid fa-door-open"></i> Enable Exit Phase';
-      btnToggleExitPhase.className = 'sh-ctrl-btn sh-ctrl-btn--warning';
-      if (exitPhaseStatusPill) exitPhaseStatusPill.className = 'sh-status-pill inactive';
-      if (exitPhaseStatusText) exitPhaseStatusText.textContent = 'Exit Closed';
-    }
-  }
-
-  // Pause Session Click Handler
-  if (btnPauseSession) {
-    btnPauseSession.addEventListener('click', async () => {
+  if (btnPause) {
+    btnPause.addEventListener('click', async () => {
+      const activeSession = window.StudyHourState.activeSession;
       if (!activeSession) return;
       try {
         await HostelDB.togglePauseSession(activeSession.id, true);
-        if (activeSession.config) activeSession.config.paused = true;
-        btnPauseSession.disabled = true;
-        btnResumeSession.disabled = false;
-        showToast('Study Hour session has been paused.', 'warning');
-        logScanActivity('Study Hour session PAUSED by Warden', 'warning');
+        showToast('Study Session PAUSED.', 'warning');
+        logActivity('Session PAUSED by Warden', 'warning');
+        await window.StudyHourState.refresh();
       } catch (err) {
         showToast('Failed to pause session.', 'danger');
       }
     });
   }
 
-  // Resume Session Click Handler
-  if (btnResumeSession) {
-    btnResumeSession.addEventListener('click', async () => {
+  if (btnResume) {
+    btnResume.addEventListener('click', async () => {
+      const activeSession = window.StudyHourState.activeSession;
       if (!activeSession) return;
       try {
         await HostelDB.togglePauseSession(activeSession.id, false);
-        if (activeSession.config) activeSession.config.paused = false;
-        btnPauseSession.disabled = false;
-        btnResumeSession.disabled = true;
-        showToast('Study Hour session has been resumed.', 'success');
-        logScanActivity('Study Hour session RESUMED by Warden', 'success');
+        showToast('Study Session RESUMED.', 'success');
+        logActivity('Session RESUMED by Warden', 'success');
+        await window.StudyHourState.refresh();
       } catch (err) {
         showToast('Failed to resume session.', 'danger');
       }
     });
   }
 
-  // ── Enterprise Activity Feed ────────────────────────────
-  function logScanActivity(msgText, type) {
-    if (!scanActivityLog) return;
-
-    // Remove empty state
-    const emptyEl = scanActivityLog.querySelector('.sh-empty-state');
-    if (emptyEl) emptyEl.remove();
-
-    feedEventCount++;
-    const feedCountEl = document.getElementById('feed-count');
-    if (feedCountEl) feedCountEl.textContent = `${feedEventCount} event${feedEventCount !== 1 ? 's' : ''}`;
-
-    const dotClass = type === 'success' ? 'sh-activity-dot--success'
-      : type === 'danger'  ? 'sh-activity-dot--danger'
-      : type === 'warning' ? 'sh-activity-dot--warning'
-      : 'sh-activity-dot--info';
-
-    const item = document.createElement('div');
-    item.className = 'sh-activity-item';
-    item.innerHTML = `
-      <span class="sh-activity-dot ${dotClass}"></span>
-      <div class="sh-activity-content">
-        <div class="sh-activity-text">${msgText}</div>
-        <div class="sh-activity-time">${new Date().toLocaleTimeString()}</div>
-      </div>
-    `;
-    scanActivityLog.insertBefore(item, scanActivityLog.firstChild);
-
-    // Keep feed max 50 entries
-    while (scanActivityLog.children.length > 50) {
-      scanActivityLog.removeChild(scanActivityLog.lastChild);
-    }
-  }
-
-  // Trigger Keyword Form handled below (with countdown)
-
-  if (btnRefreshKeyword) {
-    btnRefreshKeyword.addEventListener('click', async () => {
-      await refreshKeywordResponses();
-      showToast('Keyword responses updated.', 'info');
-    });
-  }
-
-
-  async function refreshKeywordResponses() {
-    if (!tableKeywordResponsesTbody) return;
-    if (!activeSession) {
-      tableKeywordResponsesTbody.innerHTML = '<tr><td colspan="6"><div class="sh-table-empty"><i class="fa-solid fa-key"></i><p>No active session.</p></div></td></tr>';
-      return;
-    }
-    try {
-    const checks = await HostelDB.getKeywordChecks(activeSession.id);
-    const responses = await HostelDB.getKeywordResponses(activeSession.id);
-
-    if (responses.length === 0) {
-    tableKeywordResponsesTbody.innerHTML = '<tr><td colspan="6"><div class="sh-table-empty"><i class="fa-solid fa-key"></i><p>No keyword submissions yet.</p></div></td></tr>';
-      return;
-    }
-
-    const students = await HostelDB.getStudents();
-    tableKeywordResponsesTbody.innerHTML = responses.map(r => {
-      const check = checks.find(c => c.id === r.checkId);
-      const student = students.find(s => s.regNo === r.studentReg);
-      const statusBadge = r.status === 'PASS'
-        ? '<span class="sh-badge sh-badge--pass"><i class="fa-solid fa-check"></i> PASS</span>'
-        : '<span class="sh-badge sh-badge--fail"><i class="fa-solid fa-xmark"></i> FAIL</span>';
-
-
-      return `
-        <tr>
-          <td>Round #${check ? check.roundNumber : 1}</td>
-          <td><strong>${r.studentReg}</strong></td>
-          <td>${student ? student.name : r.studentReg}</td>
-          <td><strong style="letter-spacing: 1px;">${r.submittedKeyword}</strong></td>
-          <td>${statusBadge}</td>
-          <td>${new Date(r.submittedAt).toLocaleTimeString()}</td>
-        </tr>
-      `;
-    }).join('');
-    } catch (e) { console.warn('refreshKeywordResponses error:', e); }
-  }
-
-  // Refresh Roster View
-  async function refreshRosterView() {
-    if (!tableSessionRosterTbody) return;
-    if (!activeSession) {
-      tableSessionRosterTbody.innerHTML = '<tr><td colspan="7"><div class="sh-table-empty"><i class="fa-solid fa-users-slash"></i><p>No active session.</p></div></td></tr>';
-      return;
-    }
-    try {
-      const attList = await HostelDB.getStudyAttendance(activeSession.id);
-      const students = await HostelDB.getStudents();
-
-      const searchTerm = (filterRosterSearch ? filterRosterSearch.value : '').toLowerCase();
-      const statusTerm = filterRosterStatus ? filterRosterStatus.value : '';
-
-      const filteredStudents = students.filter(s => {
-        const att = attList.find(a => a.studentReg === s.regNo);
-        const attStatus = att ? att.finalStatus : 'PENDING';
-
-        const matchSearch = s.name.toLowerCase().includes(searchTerm) || s.regNo.toLowerCase().includes(searchTerm) || (s.dept || '').toLowerCase().includes(searchTerm);
-        const matchStatus = !statusTerm || attStatus === statusTerm;
-        return matchSearch && matchStatus;
-      });
-
-      if (filteredStudents.length === 0) {
-        tableSessionRosterTbody.innerHTML = '<tr><td colspan="7"><div class="sh-table-empty"><i class="fa-solid fa-users-slash"></i><p>No matching students found.</p></div></td></tr>';
-        return;
-      }
-
-      tableSessionRosterTbody.innerHTML = filteredStudents.map(s => {
-        const att = attList.find(a => a.studentReg === s.regNo);
-        const entryPass = att && att.entryStatus === 'PASS';
-        const exitPass = att && att.exitStatus === 'PASS';
-        const finalStatus = att ? att.finalStatus : 'PENDING';
-
-        let statusBadge = `<span class="sh-badge sh-badge--pending">${finalStatus}</span>`;
-        if (finalStatus === 'PRESENT') statusBadge = '<span class="sh-badge sh-badge--present"><i class="fa-solid fa-check"></i> PRESENT</span>';
-        if (finalStatus === 'PARTIAL') statusBadge = '<span class="sh-badge sh-badge--partial"><i class="fa-solid fa-circle-half-stroke"></i> PARTIAL</span>';
-        if (finalStatus === 'ABSENT')  statusBadge = '<span class="sh-badge sh-badge--absent"><i class="fa-solid fa-xmark"></i> ABSENT</span>';
-        if (finalStatus === 'EXCUSED') statusBadge = '<span class="sh-badge sh-badge--excused"><i class="fa-solid fa-circle-info"></i> EXCUSED</span>';
-
-
-        return `
-          <tr>
-            <td data-label="Reg No"><strong>${s.regNo}</strong></td>
-            <td data-label="Name">${s.name}</td>
-            <td data-label="Dept &amp; Room">${s.dept || 'N/A'} · Room ${s.room || 'N/A'}</td>
-            <td data-label="Entry">${entryPass ? '<span style="color:var(--success); font-size:.8rem;"><i class="fa-solid fa-circle-check"></i> ' + new Date(att.entryTime).toLocaleTimeString() + '</span>' : '<span style="color:var(--text-muted); font-size:.8rem;">Pending</span>'}</td>
-            <td data-label="Exit">${exitPass ? '<span style="color:var(--success); font-size:.8rem;"><i class="fa-solid fa-circle-check"></i> ' + new Date(att.exitTime).toLocaleTimeString() + '</span>' : '<span style="color:var(--text-muted); font-size:.8rem;">Pending</span>'}</td>
-            <td data-label="Status">${statusBadge}</td>
-            <td data-label="Notes"><span style="font-size:0.78rem; color:var(--text-secondary);">${att ? att.notes : 'Active'}</span></td>
-          </tr>
-        `;
-      }).join('');
-    } catch (e) { console.warn('refreshRosterView error:', e); }
-  }
-
-  // Refresh Risk View
-  async function refreshRiskView() {
-    if (!tableStudentRiskTbody) return;
-    const students = await HostelDB.getStudents();
-    const filterTier = filterRiskLevel ? filterRiskLevel.value : '';
-    let rowsHtml = '';
-    for (const s of students) {
-      const balance = await HostelDB.getCreditBalance(s.regNo);
-      const tierInfo = HostelDB.evaluateRatingTier(balance);
-      const riskProfile = await HostelDB.getStudentRiskProfile(s.regNo);
-
-      if (filterTier && riskProfile.riskLevel !== filterTier && tierInfo.tier !== filterTier) {
-        continue;
-      }
-
-      let riskBadge = `<span class="sh-badge sh-badge--normal">NORMAL</span>`;
-      if (riskProfile.riskLevel === 'WATCH')    riskBadge = `<span class="sh-badge sh-badge--watch"><i class="fa-solid fa-eye"></i> WATCH</span>`;
-      if (riskProfile.riskLevel === 'WARNING')  riskBadge = `<span class="sh-badge sh-badge--warning"><i class="fa-solid fa-triangle-exclamation"></i> WARNING</span>`;
-      if (riskProfile.riskLevel === 'CRITICAL') riskBadge = `<span class="sh-badge sh-badge--critical"><i class="fa-solid fa-skull-crossbones"></i> CRITICAL</span>`;
-
-      const creditPct = Math.round((balance / 1000) * 100);
-
-
-      const evidenceText = riskProfile.evidence && riskProfile.evidence.length > 0 ? riskProfile.evidence.join('; ') : 'No disciplinary infractions';
-
-      rowsHtml += `
-        <tr>
-          <td data-label="Reg No"><strong>${s.regNo}</strong></td>
-          <td data-label="Name">${s.name}</td>
-          <td data-label="Credit">
-            <strong style="color:var(--primary)">${balance}/1000</strong>
-            <div class="sh-credit-bar"><div class="sh-credit-fill" style="width:${creditPct}%"></div></div>
-          </td>
-          <td data-label="Tier"><span class="sh-badge ${tierInfo.badgeClass}">${tierInfo.tier}</span></td>
-          <td data-label="Risk">${riskBadge}</td>
-          <td data-label="Evidence"><span style="font-size:0.75rem; color:var(--text-secondary);">${evidenceText}</span></td>
-          <td data-label="Action">
-            <button class="sh-ctrl-btn" style="padding:0.35rem 0.75rem; font-size:0.72rem; gap:0.35rem;" class="btn-quick-alert" data-reg="${s.regNo}"><i class="fa-brands fa-whatsapp" style="color:#25d366;"></i> Alert</button>
-          </td>
-        </tr>
-      `;
-    }
-
-    if (!rowsHtml) {
-      tableStudentRiskTbody.innerHTML = '<tr><td colspan="7"><div class="sh-table-empty"><i class="fa-solid fa-shield-halved"></i><p>No students match the selected risk filter.</p></div></td></tr>';
-
-      return;
-    }
-    tableStudentRiskTbody.innerHTML = rowsHtml;
-
-    // Attach quick alert listeners
-    document.querySelectorAll('.btn-quick-alert').forEach(b => {
-      b.addEventListener('click', () => {
-        const reg = b.getAttribute('data-reg');
-        if (selectAlertStudent) selectAlertStudent.value = reg;
-        const alertTabBtn = document.querySelector('[data-tab="tab-alerts"]');
-        if (alertTabBtn) alertTabBtn.click();
-        triggerParentAlertPreview();
-      });
-    });
-
-    // Update charts after risk data loads
-    setTimeout(initAnalyticsCharts, 200);
-  }
-
-  // Refresh Parent Alerts View
-  async function refreshParentAlertsView() {
-    const students = await HostelDB.getStudents();
-
-    if (selectAlertStudent) {
-      const currentVal = selectAlertStudent.value;
-      selectAlertStudent.innerHTML = '<option value="" disabled selected>Choose student...</option>' + 
-        students.map(s => {
-          const parentPhone = HostelDB.getParentPhone(s);
-          const maskedPhone = parentPhone ? HostelDB.maskPhoneNumber(parentPhone) : 'No Phone';
-          return `<option value="${s.regNo}">${s.name} (${s.regNo} - Room ${s.room || 'N/A'}) [Parent: ${maskedPhone}]</option>`;
-        }).join('');
-      if (currentVal) selectAlertStudent.value = currentVal;
-    }
-
-    if (tableParentAlertsTbody) {
-      const alertLogs = await HostelDB.getParentAlerts();
-      if (alertLogs.length === 0) {
-        tableParentAlertsTbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted" style="padding: 1.5rem;">No parent alerts issued yet.</td></tr>';
-      } else {
-        tableParentAlertsTbody.innerHTML = alertLogs.map(a => {
-          const student = students.find(s => s.regNo === a.studentReg);
-          const parentPhone = student ? HostelDB.getParentPhone(student) : '';
-          const maskedPhone = parentPhone ? HostelDB.maskPhoneNumber(parentPhone) : 'N/A';
-          let statusBadge = `<span class="badge badge-pending">${a.status}</span>`;
-          if (a.status === 'WHATSAPP_OPENED' || a.status === 'PREPARED') statusBadge = `<span class="badge badge-primary">WHATSAPP OPENED</span>`;
-          if (a.status === 'SENT_CONFIRMED' || a.status === 'SENT') statusBadge = `<span class="badge badge-present">SENT CONFIRMED</span>`;
-
-          return `
-            <tr>
-              <td>${formatDateString(a.createdAt)}</td>
-              <td><strong>${student ? student.name : a.studentReg}</strong><br><span style="font-size: 0.72rem; color: var(--text-muted);">${a.studentReg}</span></td>
-              <td><span style="font-family: monospace; font-size: 0.8rem;">${maskedPhone}</span></td>
-              <td><span class="badge badge-secondary">${a.language}</span></td>
-              <td>${statusBadge}</td>
-              <td>
-                ${a.status !== 'SENT_CONFIRMED' ? `
-                  <button class="btn btn-outline-success btn-sm btn-mark-sent" data-id="${a.id}">
-                    <i class="fa-solid fa-check"></i> Mark Sent
-                  </button>
-                ` : `<span class="text-success" style="font-size: 0.75rem; font-weight: 600;"><i class="fa-solid fa-check-double"></i> Confirmed</span>`}
-              </td>
-            </tr>
-          `;
-        }).join('');
-
-        // Attach event delegation for Mark as Sent
-        tableParentAlertsTbody.querySelectorAll('.btn-mark-sent').forEach(btn => {
-          btn.addEventListener('click', async () => {
-            const alertId = btn.getAttribute('data-id');
-            await HostelDB.updateParentAlertStatus(alertId, 'SENT_CONFIRMED', currentUser ? currentUser.name : 'Warden');
-            showToast('Alert status updated to Sent Confirmed!', 'success');
-            await refreshParentAlertsView();
-          });
-        });
-      }
-    }
-  }
-
-  async function triggerParentAlertPreview() {
-    const regNo = selectAlertStudent ? selectAlertStudent.value : '';
-    const lang = selectAlertLanguage ? selectAlertLanguage.value : 'ENGLISH';
-    
-    const infoCard = document.getElementById('parent-info-card');
-    const btnSaveAlert = document.getElementById('btn-save-parent-alert');
-
-    if (!regNo) {
-      if (infoCard) infoCard.style.display = 'none';
-      if (textareaAlertPreview) textareaAlertPreview.value = '';
-      if (btnOpenWhatsapp) btnOpenWhatsapp.disabled = true;
-      if (btnSaveAlert) btnSaveAlert.disabled = true;
-      activeWhatsAppUrl = '';
-      return;
-    }
-
-    const students = await HostelDB.getStudents();
-    const student = students.find(s => s.regNo === regNo);
-    if (!student) return;
-
-    const creditBalance = await HostelDB.getCreditBalance(regNo);
-    const riskProfile = await HostelDB.getStudentRiskProfile(regNo);
-
-    // Extract real parent phone & parent name
-    const parentPhone = HostelDB.getParentPhone(student);
-    const parentName = HostelDB.getParentName(student);
-
-    // Update UI Card
-    if (infoCard) infoCard.style.display = 'block';
-    const dispName = document.getElementById('disp-student-name');
-    const dispReg = document.getElementById('disp-student-reg');
-    const dispParent = document.getElementById('disp-parent-name');
-    const dispPhone = document.getElementById('disp-parent-phone');
-    const dispCredit = document.getElementById('disp-student-credit');
-    const dispRisk = document.getElementById('disp-student-risk');
-
-    if (dispName) dispName.textContent = student.name;
-    if (dispReg) dispReg.textContent = student.regNo;
-    if (dispParent) dispParent.textContent = parentName;
-    if (dispPhone) dispPhone.textContent = parentPhone ? HostelDB.maskPhoneNumber(parentPhone) : 'Not Available';
-    if (dispCredit) dispCredit.textContent = `${creditBalance}/1000`;
-
-    if (dispRisk) {
-      dispRisk.textContent = riskProfile.riskLevel;
-      dispRisk.className = 'badge';
-      let riskBadgeClass = 'present';
-      if (riskProfile.riskLevel === 'WATCH') riskBadgeClass = 'pending';
-      if (riskProfile.riskLevel === 'WARNING') riskBadgeClass = 'warning';
-      if (riskProfile.riskLevel === 'CRITICAL') riskBadgeClass = 'absent';
-      dispRisk.classList.add(`badge-${riskBadgeClass}`);
-    }
-
-    // Generate Message
-    const messageText = HostelDB.generateWhatsAppMessageTemplate(student, riskProfile, lang, creditBalance);
-    if (textareaAlertPreview) textareaAlertPreview.value = messageText;
-
-    // Normalize phone number
-    const normResult = HostelDB.normalizePhoneNumber(parentPhone);
-    if (normResult.valid) {
-      activeWhatsAppUrl = HostelDB.generateWhatsAppLink(normResult.phone, messageText);
-      if (btnOpenWhatsapp) {
-        btnOpenWhatsapp.disabled = false;
-        btnOpenWhatsapp.title = `Open WhatsApp for ${normResult.phone}`;
-      }
-      if (btnSaveAlert) btnSaveAlert.disabled = false;
-    } else {
-      activeWhatsAppUrl = '';
-      if (btnOpenWhatsapp) {
-        btnOpenWhatsapp.disabled = true;
-        btnOpenWhatsapp.title = normResult.error;
-      }
-      if (btnSaveAlert) btnSaveAlert.disabled = false;
-    }
-  }
-
-  if (selectAlertStudent) selectAlertStudent.addEventListener('change', triggerParentAlertPreview);
-  if (selectAlertLanguage) selectAlertLanguage.addEventListener('change', triggerParentAlertPreview);
-
-  if (btnOpenWhatsapp) {
-    btnOpenWhatsapp.addEventListener('click', async () => {
-      const regNo = selectAlertStudent ? selectAlertStudent.value : '';
-      if (!regNo) {
-        showToast('Please select a student first.', 'warning');
-        return;
-      }
-
-      const students = await HostelDB.getStudents();
-      const student = students.find(s => s.regNo === regNo);
-      const parentPhone = HostelDB.getParentPhone(student);
-      const normResult = HostelDB.normalizePhoneNumber(parentPhone);
-
-      if (!normResult.valid) {
-        showToast(normResult.error || "Parent phone number is not available or invalid. Please update the student's profile.", 'danger');
-        return;
-      }
-
-      const lang = selectAlertLanguage ? selectAlertLanguage.value : 'ENGLISH';
-      const text = textareaAlertPreview ? textareaAlertPreview.value : '';
-
-      const targetUrl = HostelDB.generateWhatsAppLink(normResult.phone, text);
-
-      // Open WhatsApp Chat
-      window.open(targetUrl, '_blank');
-      showToast(`Opening WhatsApp chat for parent (${HostelDB.maskPhoneNumber(parentPhone)})...`, 'success');
-
-      // Record in audit log
-      try {
-        await HostelDB.createParentAlert({
-          studentReg: regNo,
-          language: lang,
-          messageText: text,
-          status: 'WHATSAPP_OPENED'
-        });
-        await refreshParentAlertsView();
-      } catch (e) {
-        console.warn('Failed to log parent alert:', e);
-      }
-    });
-  }
-
-  if (formParentAlert) {
-    formParentAlert.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const regNo = selectAlertStudent.value;
-      const lang = selectAlertLanguage.value;
-      const text = textareaAlertPreview.value;
-      if (!regNo || !text) return;
-
-      try {
-        await HostelDB.createParentAlert({
-          studentReg: regNo,
-          language: lang,
-          messageText: text,
-          status: 'PREPARED'
-        });
-        showToast('Parent alert saved in history log!', 'success');
-        await refreshParentAlertsView();
-      } catch (err) {
-        showToast('Error saving alert.', 'danger');
-      }
-    });
-  }
-
-  // ── Filter Listeners ──────────────────────────────────────
-  if (filterRosterSearch) filterRosterSearch.addEventListener('input', refreshRosterView);
-  if (filterRosterStatus) filterRosterStatus.addEventListener('change', refreshRosterView);
-  if (filterRiskLevel)    filterRiskLevel.addEventListener('change', refreshRiskView);
-
-  // ── Keyword Countdown Display ─────────────────────────────
-  function startKeywordCountdown(word, durationSec) {
-    const banner  = document.getElementById('kw-active-banner');
-    const wordEl  = document.getElementById('kw-active-word');
-    const countEl = document.getElementById('kw-countdown-value');
-    if (!banner || !wordEl || !countEl) return;
-
-    if (kwCountdownInterval) clearInterval(kwCountdownInterval);
-    let remaining = durationSec;
-    banner.classList.add('is-active');
-    wordEl.textContent  = word.toUpperCase();
-    countEl.textContent = remaining;
-
-    kwCountdownInterval = setInterval(() => {
-      remaining--;
-      countEl.textContent = remaining;
-      if (remaining <= 0) {
-        clearInterval(kwCountdownInterval);
-        kwCountdownInterval = null;
-        banner.classList.remove('is-active');
-      }
-    }, 1000);
-  }
-
-  // Wire keyword form to also start countdown
-  if (formTriggerKeyword) {
-    formTriggerKeyword.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      if (!activeSession) {
-        showToast('Please launch an active session first!', 'warning');
-        return;
-      }
-      const word = inputKeywordWord.value.trim();
-      const dur  = parseInt(selectKeywordDuration.value) || 60;
-      if (!word) return;
-
-      try {
-        await HostelDB.createKeywordCheck(activeSession.id, word, dur);
-        showToast(`Keyword "${word.toUpperCase()}" activated for ${dur} seconds! Announce it now.`, 'success');
-        logScanActivity(`Keyword round started: <strong>${word.toUpperCase()}</strong> (${dur}s)`, 'warning');
-        inputKeywordWord.value = '';
-        startKeywordCountdown(word, dur);
-        await refreshKeywordResponses();
-      } catch (err) {
-        showToast('Failed to trigger keyword.', 'danger');
-      }
-    }, { once: false });
-  }
-
-  // ── Analytics Charts (Chart.js) ───────────────────────────
-  async function initAnalyticsCharts() {
-    if (typeof Chart === 'undefined') return;
-
-    const students = await HostelDB.getStudents();
-    const creditBuckets = { 'Elite (900+)': 0, 'Good (700-899)': 0, 'Average (500-699)': 0, 'Low (<500)': 0 };
-    const riskBuckets  = { NORMAL: 0, WATCH: 0, WARNING: 0, CRITICAL: 0 };
-
-    for (const s of students) {
-      const bal = await HostelDB.getCreditBalance(s.regNo);
-      const risk = await HostelDB.getStudentRiskProfile(s.regNo);
-      if (bal >= 900) creditBuckets['Elite (900+)']++;
-      else if (bal >= 700) creditBuckets['Good (700-899)']++;
-      else if (bal >= 500) creditBuckets['Average (500-699)']++;
-      else creditBuckets['Low (<500)']++;
-      if (riskBuckets[risk.riskLevel] !== undefined) riskBuckets[risk.riskLevel]++;
-    }
-
-    const chartDefaults = {
-      color: '#94a3b8',
-      font: { family: '\'Plus Jakarta Sans\', sans-serif', size: 11 }
-    };
-    Chart.defaults.color = chartDefaults.color;
-    Chart.defaults.font  = chartDefaults.font;
-
-    // Credit Distribution Doughnut
-    const ctxCredit = document.getElementById('chart-credit-dist');
-    if (ctxCredit) {
-      if (chartCreditDist) chartCreditDist.destroy();
-      chartCreditDist = new Chart(ctxCredit, {
-        type: 'doughnut',
-        data: {
-          labels: Object.keys(creditBuckets),
-          datasets: [{
-            data: Object.values(creditBuckets),
-            backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'],
-            borderWidth: 2,
-            borderColor: 'transparent',
-            hoverOffset: 8
-          }]
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false, cutout: '68%',
-          plugins: { legend: { position: 'right', labels: { boxWidth: 10, padding: 12 } }, tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw} students` } } }
-        }
-      });
-    }
-
-    // Risk Breakdown Bar
-    const ctxRisk = document.getElementById('chart-risk-breakdown');
-    if (ctxRisk) {
-      if (chartRiskBreakdown) chartRiskBreakdown.destroy();
-      chartRiskBreakdown = new Chart(ctxRisk, {
-        type: 'bar',
-        data: {
-          labels: Object.keys(riskBuckets),
-          datasets: [{
-            label: 'Students',
-            data: Object.values(riskBuckets),
-            backgroundColor: ['rgba(16,185,129,.7)', 'rgba(59,130,246,.7)', 'rgba(245,158,11,.7)', 'rgba(239,68,68,.7)'],
-            borderRadius: 6, borderSkipped: false
-          }]
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.raw} students` } } },
-          scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: 'rgba(148,163,184,.1)' } } }
-        }
-      });
-    }
-  }
-
-  // ── Enterprise Master Refresh ──────────────────────────────
-  let _refreshInProgress = false;
-  async function refreshAllWardenViews() {
-    if (_refreshInProgress) return;
-    _refreshInProgress = true;
-    try {
-    activeSession = await HostelDB.getActiveStudySession();
-
-    if (activeSession) {
-      // — Session banner
-      if (sessionBanner) sessionBanner.classList.add('is-active');
-      if (sessionTitle) sessionTitle.textContent = activeSession.sessionTitle;
-      if (sessionDetails) sessionDetails.textContent = `${activeSession.date}  ·  ${activeSession.startTime} – ${activeSession.endTime}  ·  by ${activeSession.createdBy}`;
-
-      // — Status pill
-      if (statusPill) { statusPill.className = 'sh-status-pill active'; const _dot = statusPill.querySelector('.sh-pulse-dot'); if (_dot) _dot.style.cssText = ''; }
-      if (statusText) statusText.textContent = activeSession.config && activeSession.config.paused ? 'Session Paused' : 'Session Active';
-
-      // — Header buttons
-      if (btnStartSession)    btnStartSession.style.display    = 'none';
-      if (btnFinalizeSession) btnFinalizeSession.style.display = 'flex';
-
-      // — Render QR
-      renderSessionQRCode(activeSession.config ? activeSession.config.qrSecret : '');
-
-      // — Stats from attendance
-      const attList    = await HostelDB.getStudyAttendance(activeSession.id);
-      const students   = await HostelDB.getStudents();
-      const totalStudents = students.length;
-
-      const presentCnt = attList.filter(a => a.entryStatus === 'PASS').length;
-      const checkedOutCnt = attList.filter(a => a.exitStatus === 'PASS').length;
-      const pendingCnt = totalStudents - presentCnt;
-      const insideCnt = attList.filter(a => a.entryStatus === 'PASS' && a.exitStatus !== 'PASS').length;
-      const completedCnt = attList.filter(a => a.entryStatus === 'PASS' && a.exitStatus === 'PASS').length;
-      
-      const checks = await HostelDB.getKeywordChecks(activeSession.id);
-
-      // Banner stats
-      const bannerEntry = document.getElementById('stat-entry-scans');
-      const bannerKw    = document.getElementById('stat-keyword-rounds');
-      const bannerExit  = document.getElementById('stat-exit-scans');
-      if (bannerEntry)  bannerEntry.textContent  = insideCnt;
-      if (bannerKw)     bannerKw.textContent     = checks.length;
-      if (bannerExit)   bannerExit.textContent   = completedCnt;
-
-      // KPI cards
-      const setKPI = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-      setKPI('kpi-present',   presentCnt);
-      setKPI('kpi-exit',      checkedOutCnt);
-      setKPI('kpi-pending',   pendingCnt);
-      setKPI('kpi-inside',    insideCnt);
-      setKPI('kpi-completed', completedCnt);
-      setKPI('kpi-keyword',   checks.length);
-
-      // Quick stats panel
-      setKPI('qs-entry',   insideCnt);
-      setKPI('qs-keyword', checks.length);
-      setKPI('qs-exit',    completedCnt);
-
-      // Enable/Disable Session QR controls
-      if (btnRegenSessionQR) btnRegenSessionQR.disabled = false;
-      if (btnToggleExitPhase) btnToggleExitPhase.disabled = false;
-      
-      const isPaused = activeSession.config ? activeSession.config.paused === true : false;
-      if (btnPauseSession) btnPauseSession.disabled = isPaused;
-      if (btnResumeSession) btnResumeSession.disabled = !isPaused;
-
-      // Update exit phase toggle UI
-      updateExitPhaseUI(activeSession.config ? activeSession.config.exitPhaseEnabled : false);
-
-    } else {
-      // — No session
-      if (sessionBanner) sessionBanner.classList.remove('is-active');
-      if (statusPill) statusPill.className = 'sh-status-pill inactive';
-      if (statusText) statusText.textContent = 'No Session';
-      if (btnStartSession)    btnStartSession.style.display    = 'flex';
-      if (btnFinalizeSession) btnFinalizeSession.style.display = 'none';
-
-      renderSessionQRCode(null);
-
-      if (btnRegenSessionQR) btnRegenSessionQR.disabled = true;
-      if (btnToggleExitPhase) {
-        btnToggleExitPhase.disabled = true;
-        updateExitPhaseUI(false);
-      }
-      if (btnPauseSession) btnPauseSession.disabled = true;
-      if (btnResumeSession) btnResumeSession.disabled = true;
-
-      ['stat-entry-scans','stat-keyword-rounds','stat-exit-scans',
-       'kpi-present','kpi-exit','kpi-pending','kpi-inside','kpi-completed','kpi-keyword',
-       'qs-entry','qs-keyword','qs-exit'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.textContent = '0';
-      });
-    }
-
-    await refreshKeywordResponses();
-    await refreshRosterView();
-    await refreshRiskView();
-    await refreshParentAlertsView();
-    } catch (e) {
-      console.error('refreshAllWardenViews error:', e);
-    } finally {
-      _refreshInProgress = false;
     }
   }
 

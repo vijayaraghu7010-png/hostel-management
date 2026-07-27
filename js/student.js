@@ -778,109 +778,49 @@ async function initStudentStudyHour(student) {
   const sessionTiming = document.getElementById('session-timing-text');
   const btnRefresh = document.getElementById('btn-refresh-session');
 
-  const keywordCard = document.getElementById('keyword-prompt-card');
-  const keywordTimerEl = document.getElementById('keyword-countdown-timer');
-  const keywordForm = document.getElementById('keyword-verify-form');
-  const keywordInput = document.getElementById('input-warden-keyword');
-  const keywordCheckIdInput = document.getElementById('active-check-id');
-  const keywordMsg = document.getElementById('keyword-response-msg');
-
   const btnStartCamera = document.getElementById('btn-start-camera');
   const entryStatusBadge = document.getElementById('entry-status-badge');
   const exitStatusBadge = document.getElementById('exit-status-badge');
   const statusDisplay = document.getElementById('student-session-status');
   const historyTbody = document.getElementById('student-study-history-tbody');
 
-  let currentActiveSession = null;
-  let keywordCountdownInterval = null;
+  function renderStudentPortal(snapshot) {
+    const { activeSession, attendanceList } = snapshot;
 
-  async function refreshSessionState() {
-    try {
-      currentActiveSession = await HostelDB.getActiveStudySession();
+    if (activeSession) {
+      if (sessionBadge) {
+        sessionBadge.textContent = 'ACTIVE SESSION';
+        sessionBadge.className = 'badge badge-present';
+      }
+      if (sessionTitle) sessionTitle.textContent = activeSession.sessionTitle;
+      if (sessionTiming) sessionTiming.textContent = `Date: ${activeSession.date} | Timings: ${activeSession.startTime} - ${activeSession.endTime}`;
 
-      if (currentActiveSession) {
-        if (sessionBadge) {
-          sessionBadge.textContent = 'ACTIVE SESSION';
-          sessionBadge.className = 'badge badge-present';
+      if (btnStartCamera) btnStartCamera.disabled = false;
+
+      // Find student's attendance record
+      const att = (attendanceList || []).find(a => a.studentReg === student.regNo);
+
+      if (att) {
+        if (entryStatusBadge) {
+          entryStatusBadge.textContent = att.entryStatus === 'PASS' ? 'Entry: Verified ✓' : 'Entry: Pending';
+          entryStatusBadge.className = att.entryStatus === 'PASS' ? 'badge badge-present' : 'badge badge-pending';
         }
-        if (sessionTitle) sessionTitle.textContent = currentActiveSession.sessionTitle;
-        if (sessionTiming) sessionTiming.textContent = `Date: ${currentActiveSession.date} | Timings: ${currentActiveSession.startTime} - ${currentActiveSession.endTime}`;
+        if (exitStatusBadge) {
+          exitStatusBadge.textContent = att.exitStatus === 'PASS' ? 'Exit: Verified ✓' : 'Exit: Pending';
+          exitStatusBadge.className = att.exitStatus === 'PASS' ? 'badge badge-present' : 'badge badge-pending';
+        }
 
-        if (btnStartCamera) btnStartCamera.disabled = false;
-
-        // Check Attendance status for student
-        const attList = await HostelDB.getStudyAttendance(currentActiveSession.id, student.regNo);
-        if (attList && attList.length > 0) {
-          const att = attList[0];
-          
-          if (entryStatusBadge) {
-            entryStatusBadge.textContent = att.entryStatus === 'PASS' ? 'Entry: Verified ✓' : 'Entry: Pending';
-            entryStatusBadge.className = att.entryStatus === 'PASS' ? 'badge badge-present' : 'badge badge-pending';
-          }
-          if (exitStatusBadge) {
-            exitStatusBadge.textContent = att.exitStatus === 'PASS' ? 'Exit: Verified ✓' : 'Exit: Pending';
-            exitStatusBadge.className = att.exitStatus === 'PASS' ? 'badge badge-present' : 'badge badge-pending';
-          }
-
-          if (statusDisplay) {
-            if (att.entryStatus === 'PASS' && att.exitStatus === 'PASS') {
-              statusDisplay.innerHTML = '<span style="color: var(--primary);">LEFT / COMPLETED</span>';
-              if (btnStartCamera) btnStartCamera.disabled = true;
-            } else if (att.entryStatus === 'PASS') {
-              statusDisplay.innerHTML = '<span style="color: var(--success);">INSIDE HALL</span>';
-            } else {
-              statusDisplay.innerHTML = '<span style="color: var(--text-secondary);">OUTSIDE</span>';
-            }
-          }
-        } else {
-          if (entryStatusBadge) {
-            entryStatusBadge.textContent = 'Entry: Pending';
-            entryStatusBadge.className = 'badge badge-pending';
-          }
-          if (exitStatusBadge) {
-            exitStatusBadge.textContent = 'Exit: Pending';
-            exitStatusBadge.className = 'badge badge-pending';
-          }
-          if (statusDisplay) {
+        if (statusDisplay) {
+          if (att.entryStatus === 'PASS' && att.exitStatus === 'PASS') {
+            statusDisplay.innerHTML = '<span style="color: var(--primary);">LEFT / COMPLETED</span>';
+            if (btnStartCamera) btnStartCamera.disabled = true;
+          } else if (att.entryStatus === 'PASS') {
+            statusDisplay.innerHTML = '<span style="color: var(--success);">INSIDE HALL</span>';
+          } else {
             statusDisplay.innerHTML = '<span style="color: var(--text-secondary);">OUTSIDE</span>';
           }
         }
-
-        // Check for active Keyword Verification Check
-        const checks = await HostelDB.getKeywordChecks(currentActiveSession.id);
-        const now = new Date();
-        const activeCheck = checks.find(c => new Date(c.expiresAt) > now);
-
-        if (activeCheck) {
-          // Check if student has already responded to this check
-          const responses = await HostelDB.getKeywordResponses(currentActiveSession.id, activeCheck.id);
-          const myResp = responses.find(r => r.studentReg === student.regNo);
-
-          if (!myResp) {
-            if (keywordCard) keywordCard.style.display = 'block';
-            if (keywordCheckIdInput) keywordCheckIdInput.value = activeCheck.id;
-
-            // Setup countdown timer
-            if (keywordTimerEl) {
-              const secondsLeft = Math.max(0, Math.floor((new Date(activeCheck.expiresAt) - now) / 1000));
-              keywordTimerEl.textContent = `00:${secondsLeft < 10 ? '0' + secondsLeft : secondsLeft}`;
-            }
-          } else {
-            if (keywordCard) keywordCard.style.display = 'none';
-          }
-        } else {
-          if (keywordCard) keywordCard.style.display = 'none';
-        }
-
       } else {
-        if (sessionBadge) {
-          sessionBadge.textContent = 'NO ACTIVE SESSION';
-          sessionBadge.className = 'badge badge-secondary';
-        }
-        if (sessionTitle) sessionTitle.textContent = 'No Active Study Hour Session';
-        if (sessionTiming) sessionTiming.textContent = 'Warden has not started a session currently.';
-        if (statusDisplay) statusDisplay.innerHTML = '<span style="color: var(--text-muted);">No Active Session</span>';
-        if (btnStartCamera) btnStartCamera.disabled = true;
         if (entryStatusBadge) {
           entryStatusBadge.textContent = 'Entry: Pending';
           entryStatusBadge.className = 'badge badge-pending';
@@ -889,58 +829,80 @@ async function initStudentStudyHour(student) {
           exitStatusBadge.textContent = 'Exit: Pending';
           exitStatusBadge.className = 'badge badge-pending';
         }
-        if (keywordCard) keywordCard.style.display = 'none';
+        if (statusDisplay) {
+          statusDisplay.innerHTML = '<span style="color: var(--text-secondary);">OUTSIDE</span>';
+        }
       }
-
-      await renderStudyHistory();
-    } catch (e) {
-      console.error('Error refreshing study session state:', e);
+    } else {
+      if (sessionBadge) {
+        sessionBadge.textContent = 'NO ACTIVE SESSION';
+        sessionBadge.className = 'badge badge-secondary';
+      }
+      if (sessionTitle) sessionTitle.textContent = 'No Active Study Hour Session';
+      if (sessionTiming) sessionTiming.textContent = 'Warden has not started a session currently.';
+      if (statusDisplay) statusDisplay.innerHTML = '<span style="color: var(--text-muted);">No Active Session</span>';
+      if (btnStartCamera) btnStartCamera.disabled = true;
+      if (entryStatusBadge) {
+        entryStatusBadge.textContent = 'Entry: Pending';
+        entryStatusBadge.className = 'badge badge-pending';
+      }
+      if (exitStatusBadge) {
+        exitStatusBadge.textContent = 'Exit: Pending';
+        exitStatusBadge.className = 'badge badge-pending';
+      }
     }
+
+    renderStudyHistory();
   }
 
   async function renderStudyHistory() {
     if (!historyTbody) return;
-    const allSessions = await HostelDB.getStudySessions();
-    if (allSessions.length === 0) {
-      historyTbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted" style="padding: 2rem;">No previous study hour sessions recorded.</td></tr>';
-      return;
+    try {
+      const allSessions = await HostelDB.getStudySessions();
+      if (allSessions.length === 0) {
+        historyTbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted" style="padding: 2rem;">No previous study hour sessions recorded.</td></tr>';
+        return;
+      }
+
+      let rowsHtml = '';
+      for (const s of allSessions) {
+        const attList = await HostelDB.getStudyAttendance(s.id, student.regNo);
+        const att = attList.length > 0 ? attList[0] : null;
+
+        let badgeClass = 'badge-pending';
+        let statusStr = att ? att.finalStatus : 'ABSENT';
+        if (statusStr === 'PRESENT' || statusStr === 'COMPLETED') badgeClass = 'badge-present';
+        if (statusStr === 'PARTIAL') badgeClass = 'badge-primary';
+        if (statusStr === 'ABSENT') badgeClass = 'badge-absent';
+
+        rowsHtml += `
+          <tr>
+            <td><strong>${s.date}</strong> (${s.startTime} - ${s.endTime})</td>
+            <td>${att && att.entryStatus === 'PASS' ? '<span class="text-success"><i class="fa-solid fa-circle-check"></i> Verified</span>' : '<span class="text-muted">Missed</span>'}</td>
+            <td>${att && att.exitStatus === 'PASS' ? '<span class="text-success"><i class="fa-solid fa-circle-check"></i> Verified</span>' : '<span class="text-muted">Missed</span>'}</td>
+            <td><span class="badge ${badgeClass}">${statusStr}</span></td>
+            <td>${att ? (att.notes || 'Recorded') : 'Unexcused Absence'}</td>
+          </tr>
+        `;
+      }
+      historyTbody.innerHTML = rowsHtml;
+    } catch (err) {
+      console.warn('renderStudyHistory error:', err);
     }
-
-    let rowsHtml = '';
-    for (const s of allSessions) {
-      const attList = await HostelDB.getStudyAttendance(s.id, student.regNo);
-      const att = attList.length > 0 ? attList[0] : null;
-
-      let badgeClass = 'badge-pending';
-      let statusStr = att ? att.finalStatus : 'ABSENT';
-      if (statusStr === 'PRESENT') badgeClass = 'badge-present';
-      if (statusStr === 'PARTIAL') badgeClass = 'badge-primary';
-      if (statusStr === 'ABSENT') badgeClass = 'badge-absent';
-      if (statusStr === 'EXCUSED') badgeClass = 'badge-warning';
-
-      rowsHtml += `
-        <tr>
-          <td><strong>${s.date}</strong> (${s.startTime} - ${s.endTime})</td>
-          <td>${att && att.entryStatus === 'PASS' ? '<span class="text-success"><i class="fa-solid fa-circle-check"></i> Verified</span>' : '<span class="text-muted">Missed</span>'}</td>
-          <td>${att && att.exitStatus === 'PASS' ? '<span class="text-success"><i class="fa-solid fa-circle-check"></i> Verified</span>' : '<span class="text-muted">Missed</span>'}</td>
-          <td><span class="badge ${badgeClass}">${statusStr}</span></td>
-          <td>${att ? (att.notes || 'Recorded') : 'Unexcused Absence'}</td>
-        </tr>
-      `;
-    }
-    historyTbody.innerHTML = rowsHtml;
   }
 
-  // Scan QR Scanner Camera Trigger
+  // Camera Trigger
   if (btnStartCamera) {
-    btnStartCamera.addEventListener('click', async () => {
-      if (!currentActiveSession) {
+    btnStartCamera.addEventListener('click', () => {
+      const activeSession = window.StudyHourState.activeSession;
+      if (!activeSession) {
         showToast('No active session currently running.', 'warning');
         return;
       }
+
       if (window.HMSQRScanner) {
         window.HMSQRScanner.open({
-          title: 'Scan Study Hour QR',
+          title: 'Scan Session QR',
           mainText: 'Align Session QR Code inside frame',
           subText: 'Attendance status will be verified instantly.',
           onScan: async (decodedText) => {
@@ -952,7 +914,7 @@ async function initStudentStudyHour(student) {
                 if (window.HMSQRScanner.close) {
                   window.HMSQRScanner.close();
                 }
-                await refreshSessionState();
+                await window.StudyHourState.refresh();
               } else {
                 if (navigator.vibrate) navigator.vibrate(200);
                 showToast(res.message, 'danger');
@@ -968,51 +930,14 @@ async function initStudentStudyHour(student) {
 
   if (btnRefresh) {
     btnRefresh.addEventListener('click', async () => {
-      await refreshSessionState();
+      await window.StudyHourState.refresh();
       showToast('Study session state synced.', 'success');
     });
   }
 
-
-  if (keywordForm) {
-    keywordForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const checkId = keywordCheckIdInput.value;
-      const val = (keywordInput ? keywordInput.value : '').trim();
-      if (!val || !currentActiveSession || !checkId) return;
-
-      try {
-        const res = await HostelDB.submitKeywordResponse(checkId, currentActiveSession.id, student.regNo, val);
-        if (keywordMsg) {
-          keywordMsg.textContent = res.message;
-          keywordMsg.style.color = res.success ? 'var(--success)' : 'var(--danger)';
-        }
-        if (res.success) {
-          showToast('Presence keyword verified successfully!', 'success');
-          setTimeout(() => { if (keywordCard) keywordCard.style.display = 'none'; }, 1500);
-        } else {
-          showToast('Incorrect verification keyword.', 'danger');
-        }
-      } catch (err) {
-        if (keywordMsg) {
-          keywordMsg.textContent = err.message || 'Verification error.';
-          keywordMsg.style.color = 'var(--danger)';
-        }
-      }
-    });
-  }
-
-  await refreshSessionState();
-  // Non-overlapping poll: next poll starts only after previous completes
-  let _studentPollTimer = null;
-  function scheduleStudentPoll() {
-    _studentPollTimer = setTimeout(async () => {
-      await refreshSessionState();
-      scheduleStudentPoll();
-    }, 4000);
-  }
-  scheduleStudentPoll();
-  window.addEventListener('beforeunload', () => { if (_studentPollTimer) clearTimeout(_studentPollTimer); });
+  // Subscribe to Central Reactive State
+  window.StudyHourState.subscribe(renderStudentPortal);
+  window.StudyHourState.startPolling(4000);
 }
 
 // 8. Student Discipline Credit Portal
