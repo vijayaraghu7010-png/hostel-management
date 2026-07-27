@@ -2232,7 +2232,7 @@ async function initWardenGateControl() {
     `;
   };
 
-  // Render Study Hour Validation Card
+  // Render Study Hour Scan result card
   const renderStudyHourValidationResult = async (res, studentReg, purpose, sessionId) => {
     if (!scanDetailContainer || !emptyStateContainer) return;
     emptyStateContainer.style.display = 'none';
@@ -2283,7 +2283,7 @@ async function initWardenGateControl() {
     `;
   };
 
-  // Render Unrecognized Validation Card
+  // Render Unrecognized QR Scan result card
   const renderUnrecognizedValidationResult = (qrString) => {
     if (!scanDetailContainer || !emptyStateContainer) return;
     emptyStateContainer.style.display = 'none';
@@ -2306,44 +2306,56 @@ async function initWardenGateControl() {
   const handleValidateQrString = async (qrString) => {
     let finalPayloadStr = qrString.trim();
 
-    // 1. Identify Study Hour QR
+    // 1. Study Hour Scanner Route
     if (finalPayloadStr.startsWith('HMSQR_')) {
       const parts = finalPayloadStr.split('_');
       if (parts.length < 4) {
-        showToast('Invalid Study Hour QR code format.', 'danger');
+        showToast('Invalid Study Hour QR format.', 'danger');
         return;
       }
       const purpose = parts[1];
       const sessionId = parts[2];
       const studentReg = parts[3];
-
       const warden = HMSAuth.getCurrentUser();
-      const res = await HostelDB.verifyQRToken(finalPayloadStr, purpose, sessionId, warden ? warden.name : 'Warden');
-      
-      await renderStudyHourValidationResult(res, studentReg, purpose, sessionId);
-      if (res.success) {
-        showToast('✓ Student Study Hour Verified Successfully!', 'success');
-      } else {
-        showToast(res.message, 'danger');
+
+      try {
+        const res = await HostelDB.verifyQRToken(finalPayloadStr, purpose, sessionId, warden ? warden.name : 'Warden');
+        await renderStudyHourValidationResult(res, studentReg, purpose, sessionId);
+        if (res.success) {
+          showToast('✓ Study Hour QR Verified Successfully!', 'success');
+        } else {
+          showToast(res.message, 'danger');
+        }
+      } catch (err) {
+        showToast('Error verifying Study Hour QR.', 'danger');
       }
       return;
     }
 
-    // 2. Identify Outpass QR
-    const isJson = finalPayloadStr.startsWith('{') && finalPayloadStr.endsWith('}');
-    const isOutpassId = finalPayloadStr.startsWith('OP-');
+    // 2. Outpass Scanner Route
+    let isOutpass = false;
+    let outpassPayload = finalPayloadStr;
 
-    if (isJson || isOutpassId) {
-      if (isOutpassId) {
-        const passes = await HostelDB.getOutpasses();
-        const pass = passes.find(p => p.id === finalPayloadStr);
-        if (pass) {
-          finalPayloadStr = JSON.stringify({ op: pass.id, tok: pass.secureToken });
-        }
+    if (finalPayloadStr.startsWith('OP-')) {
+      isOutpass = true;
+      const passes = await HostelDB.getOutpasses();
+      const pass = passes.find(p => p.id === finalPayloadStr);
+      if (pass) {
+        outpassPayload = JSON.stringify({ op: pass.id, tok: pass.secureToken });
       }
+    } else {
+      try {
+        const parsed = JSON.parse(finalPayloadStr);
+        if (parsed && parsed.op && parsed.tok) {
+          isOutpass = true;
+        }
+      } catch (e) {
+        // Not a JSON outpass QR
+      }
+    }
 
-      const res = await HostelDB.validateOutpassQR(finalPayloadStr);
-
+    if (isOutpass) {
+      const res = await HostelDB.validateOutpassQR(outpassPayload);
       if (!res.valid) {
         if (window.HMSQRScanner) {
           window.HMSQRScanner.showInvalidPopup(res.message, () => {
@@ -2358,9 +2370,9 @@ async function initWardenGateControl() {
       return;
     }
 
-    // 3. Unrecognized or Future QR types
+    // 3. Fallback: Future / Unrecognized QR Route
     renderUnrecognizedValidationResult(finalPayloadStr);
-    showToast('⚠️ Scanned unrecognized QR format.', 'warning');
+    showToast('Warning: Unrecognized QR Code scanned.', 'warning');
   };
 
   window.handleGateScanResult = async function(scannedText) {
