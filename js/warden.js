@@ -2232,32 +2232,135 @@ async function initWardenGateControl() {
     `;
   };
 
+  // Render Study Hour Validation Card
+  const renderStudyHourValidationResult = async (res, studentReg, purpose, sessionId) => {
+    if (!scanDetailContainer || !emptyStateContainer) return;
+    emptyStateContainer.style.display = 'none';
+    scanDetailContainer.style.display = 'block';
+
+    const students = await HostelDB.getStudents();
+    const student = students.find(s => s.regNo === studentReg) || { name: 'Student', regNo: studentReg, dept: 'CSE', room: '-' };
+
+    let bannerBg = res.success ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)';
+    let bannerColor = res.success ? 'var(--success)' : 'var(--danger)';
+
+    scanDetailContainer.innerHTML = `
+      <div style="background: ${bannerBg}; border-radius: var(--border-radius-sm); padding: 0.85rem 1rem; border-left: 4px solid ${bannerColor}; margin-bottom: 1.25rem;">
+        <h3 style="font-size: 1.1rem; font-weight: 800; color: ${bannerColor}; margin: 0;">${res.success ? '✓ Attendance Presence Verified' : '✗ Verification Failed'}</h3>
+        <p style="font-size: 0.82rem; color: var(--text-secondary); margin-top: 0.25rem;">${res.message}</p>
+      </div>
+
+      <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1.25rem; background: var(--bg-primary); padding: 0.85rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color);">
+        <div style="width: 52px; height: 52px; border-radius: 50%; background: var(--grad-primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: bold; flex-shrink: 0;">
+          ${student.name ? student.name.charAt(0).toUpperCase() : 'S'}
+        </div>
+        <div>
+          <h4 style="font-size: 1.05rem; font-weight: 800; color: var(--text-primary); margin: 0;">${student.name}</h4>
+          <p style="font-size: 0.82rem; color: var(--text-secondary); margin: 0.15rem 0 0 0;">
+            Reg No: <strong>${student.regNo}</strong> | Dept: <strong>${student.dept || 'CSE'}</strong> | Room: <strong>${student.room || '-'}</strong>
+          </p>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; font-size: 0.82rem; margin-bottom: 1.25rem; text-align: left;">
+        <div style="background: var(--bg-primary); padding: 0.65rem; border-radius: 4px; border: 1px solid var(--border-color);">
+          <span style="font-size: 0.72rem; color: var(--text-muted); display: block;">VERIFICATION TYPE</span>
+          <strong>STUDY HOUR</strong>
+        </div>
+        <div style="background: var(--bg-primary); padding: 0.65rem; border-radius: 4px; border: 1px solid var(--border-color);">
+          <span style="font-size: 0.72rem; color: var(--text-muted); display: block;">DIRECTION / PHASE</span>
+          <strong>${purpose}</strong>
+        </div>
+        <div style="background: var(--bg-primary); padding: 0.65rem; border-radius: 4px; border: 1px solid var(--border-color);">
+          <span style="font-size: 0.72rem; color: var(--text-muted); display: block;">SESSION ID</span>
+          <strong>${sessionId}</strong>
+        </div>
+        <div style="background: var(--bg-primary); padding: 0.65rem; border-radius: 4px; border: 1px solid var(--border-color);">
+          <span style="font-size: 0.72rem; color: var(--text-muted); display: block;">VERIFIED TIME</span>
+          <strong>${new Date().toLocaleTimeString()}</strong>
+        </div>
+      </div>
+    `;
+  };
+
+  // Render Unrecognized Validation Card
+  const renderUnrecognizedValidationResult = (qrString) => {
+    if (!scanDetailContainer || !emptyStateContainer) return;
+    emptyStateContainer.style.display = 'none';
+    scanDetailContainer.style.display = 'block';
+
+    scanDetailContainer.innerHTML = `
+      <div style="background: rgba(245, 158, 11, 0.1); border-radius: var(--border-radius-sm); padding: 0.85rem 1rem; border-left: 4px solid var(--warning); margin-bottom: 1.25rem;">
+        <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--warning); margin: 0;">⚠️ Unrecognized QR Format</h3>
+        <p style="font-size: 0.82rem; color: var(--text-secondary); margin-top: 0.25rem;">The scanned payload structure is valid but not recognized by Gate Control or Study Hour. It might be for a future system module.</p>
+      </div>
+
+      <div style="background: var(--bg-primary); padding: 1rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); text-align: left; margin-bottom: 1.25rem;">
+        <span style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">RAW DECODED TEXT</span>
+        <pre style="font-family: monospace; font-size: 0.8rem; margin: 0; background: var(--bg-surface); padding: 0.75rem; border-radius: 4px; border: 1px solid var(--border-color); overflow-x: auto; white-space: pre-wrap; word-break: break-all;">${qrString}</pre>
+      </div>
+    `;
+  };
+
   // Perform Validation Logic
   const handleValidateQrString = async (qrString) => {
     let finalPayloadStr = qrString.trim();
 
-    // If manual entry was raw pass ID (e.g. OP-L1029381), find pass token
-    if (finalPayloadStr.startsWith('OP-')) {
-      const passes = await HostelDB.getOutpasses();
-      const pass = passes.find(p => p.id === finalPayloadStr);
-      if (pass) {
-        finalPayloadStr = JSON.stringify({ op: pass.id, tok: pass.secureToken });
+    // 1. Identify Study Hour QR
+    if (finalPayloadStr.startsWith('HMSQR_')) {
+      const parts = finalPayloadStr.split('_');
+      if (parts.length < 4) {
+        showToast('Invalid Study Hour QR code format.', 'danger');
+        return;
       }
+      const purpose = parts[1];
+      const sessionId = parts[2];
+      const studentReg = parts[3];
+
+      const warden = HMSAuth.getCurrentUser();
+      const res = await HostelDB.verifyQRToken(finalPayloadStr, purpose, sessionId, warden ? warden.name : 'Warden');
+      
+      await renderStudyHourValidationResult(res, studentReg, purpose, sessionId);
+      if (res.success) {
+        showToast('✓ Student Study Hour Verified Successfully!', 'success');
+      } else {
+        showToast(res.message, 'danger');
+      }
+      return;
     }
 
-    const res = await HostelDB.validateOutpassQR(finalPayloadStr);
+    // 2. Identify Outpass QR
+    const isJson = finalPayloadStr.startsWith('{') && finalPayloadStr.endsWith('}');
+    const isOutpassId = finalPayloadStr.startsWith('OP-');
 
-    if (!res.valid) {
-      if (window.HMSQRScanner) {
-        window.HMSQRScanner.showInvalidPopup(res.message, () => {
-          startScanner();
-        });
+    if (isJson || isOutpassId) {
+      if (isOutpassId) {
+        const passes = await HostelDB.getOutpasses();
+        const pass = passes.find(p => p.id === finalPayloadStr);
+        if (pass) {
+          finalPayloadStr = JSON.stringify({ op: pass.id, tok: pass.secureToken });
+        }
       }
-      renderValidationResult(res);
-    } else {
-      renderValidationResult(res);
-      showToast('✓ Outpass QR Verified Successfully!', 'success');
+
+      const res = await HostelDB.validateOutpassQR(finalPayloadStr);
+
+      if (!res.valid) {
+        if (window.HMSQRScanner) {
+          window.HMSQRScanner.showInvalidPopup(res.message, () => {
+            startScanner();
+          });
+        }
+        renderValidationResult(res);
+      } else {
+        renderValidationResult(res);
+        showToast('✓ Outpass QR Verified Successfully!', 'success');
+      }
+      return;
     }
+
+    // 3. Unrecognized or Future QR types
+    renderUnrecognizedValidationResult(finalPayloadStr);
+    showToast('⚠️ Scanned unrecognized QR format.', 'warning');
   };
 
   window.handleGateScanResult = async function(scannedText) {
