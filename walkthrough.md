@@ -1,36 +1,26 @@
-# QR Verification Scanner ZXing-JS Upgrade & Structured Payloads — Walkthrough
+# Multi-Tier Universal QR Scanner Rebuild — Walkthrough
 
 ## What Was Resolved
 
-### 1. Replaced Scanner Engine with ZXing-JS
-- **Action**: Completely removed the custom canvas scanning loop and replaced it with a production-grade fullscreen scanner powered by `ZXing.BrowserMultiFormatReader` (`js/vendor/zxing.min.js`).
-- **Features Integrated**:
-  - Prefer rear/back camera with auto lens selection.
-  - Camera switching cycles.
-  - Stream torch/flashlight constraint toggles.
-  - Success green overlays, haptic vibration triggers, and initial lens loader spinners.
-  - Safe memory cleanup upon release (`codeReader.reset()`).
+### 1. Multi-Tier Scanner Engine Architecture (`js/scanner-ui.js`)
+Completely replaced the legacy scanner implementation with a fail-safe, 3-tier fallback engine:
+- **Tier 1 (`@zxing/browser`)**: Preferred browser decoding engine using `ZXingBrowser.BrowserQRCodeReader`. Clean disposal via `controls.stop()`.
+- **Tier 2 (`Nimiq QrScanner`)**: High-performance multi-threaded Web Worker fallback (`QrScanner`).
+- **Hardware Acceleration (`BarcodeDetector`)**: GPU native hardware detection where supported by Chrome Android/Desktop.
 
-### 2. Structured JSON payload Universal Router
-- Scanned inputs are validated against a structured JSON payload model:
-  ```json
-  {
-    "type": "OUTPASS" | "STUDY_HOUR" | "VISITOR" | "MAINTENANCE",
-    "id": "...",
-    "studentId": "...",
-    "sessionId": "...",
-    "timestamp": 1785321000,
-    "signature": "..."
-  }
-  ```
-- Gracefully handles backward compatibility mapping for legacy plain text tokens starting with `HMSQR_` or `OP-`.
-- Validates payload structure and maps it to specific database controller methods.
+If any tier fails on a specific browser/device, the scanner automatically falls back to the next tier without breaking the application or requiring page refreshes.
 
-### 3. Student Outpass Generator Update (`js/student.js`)
-- Configured outpass card generation to output structured JSON QR codes containing type signature keys.
+### 2. Universal Structured Payload Parser
+- Parses structured JSON payloads (`type`, `id`, `studentId`, `sessionId`, `signature`, `timestamp`).
+- Backwards-compatible string mapping for `HMSQR_...` and `OP-...` tokens.
+- Rejects unsupported types with visual and haptic error feedback.
+
+### 3. Automatic Outpass & Gate Transaction Workflow
+- Automatically records campus exits (`recordOutpassExit`) or returns (`recordOutpassReturn`).
+- Updates overdue outing counters and displays instant confirmation banners.
 
 ---
 
 ## Verification Status
-- ✅ Build compiled successfully: `npx vite build` succeeded.
-- ✅ Pushed to origin main: Commit `2710c9f`.
+- ✅ Build compiled successfully: `npx vite build` succeeded in 573ms.
+- ✅ Pushed to origin main: Commit `c216ec6`.
