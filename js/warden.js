@@ -2305,21 +2305,49 @@ async function initWardenGateControl() {
   // Perform Validation Logic
   const handleValidateQrString = async (qrString) => {
     let finalPayloadStr = qrString.trim();
+    let payload = null;
+
+    try {
+      payload = JSON.parse(finalPayloadStr);
+    } catch (e) {
+      // If it's a legacy string representation, map it to a structured payload
+      if (finalPayloadStr.startsWith('HMSQR_')) {
+        const parts = finalPayloadStr.split('_');
+        payload = {
+          type: 'STUDY_HOUR',
+          id: finalPayloadStr,
+          studentId: parts[3] || '',
+          sessionId: parts[2] || '',
+          signature: ''
+        };
+      } else if (finalPayloadStr.startsWith('OP-')) {
+        payload = {
+          type: 'OUTPASS',
+          id: finalPayloadStr,
+          studentId: '',
+          sessionId: '',
+          signature: ''
+        };
+      }
+    }
+
+    if (!payload || !payload.type) {
+      // Fallback: Future / Unrecognized QR Route
+      renderUnrecognizedValidationResult(finalPayloadStr);
+      showToast('Warning: Unrecognized QR Code scanned.', 'warning');
+      return;
+    }
 
     // 1. Study Hour Scanner Route
-    if (finalPayloadStr.startsWith('HMSQR_')) {
-      const parts = finalPayloadStr.split('_');
-      if (parts.length < 4) {
-        showToast('Invalid Study Hour QR format.', 'danger');
-        return;
-      }
-      const purpose = parts[1];
-      const sessionId = parts[2];
-      const studentReg = parts[3];
+    if (payload.type === 'STUDY_HOUR') {
+      const parts = payload.id.split('_');
+      const purpose = parts[1] || 'ENTRY';
+      const sessionId = payload.sessionId || parts[2] || '';
+      const studentReg = payload.studentId || parts[3] || '';
       const warden = HMSAuth.getCurrentUser();
 
       try {
-        const res = await HostelDB.verifyQRToken(finalPayloadStr, purpose, sessionId, warden ? warden.name : 'Warden');
+        const res = await HostelDB.verifyQRToken(payload.id, purpose, sessionId, warden ? warden.name : 'Warden');
         await renderStudyHourValidationResult(res, studentReg, purpose, sessionId);
         if (res.success) {
           showToast('✓ Study Hour QR Verified Successfully!', 'success');
@@ -2333,28 +2361,20 @@ async function initWardenGateControl() {
     }
 
     // 2. Outpass Scanner Route
-    let isOutpass = false;
-    let outpassPayload = finalPayloadStr;
-
-    if (finalPayloadStr.startsWith('OP-')) {
-      isOutpass = true;
-      const passes = await HostelDB.getOutpasses();
-      const pass = passes.find(p => p.id === finalPayloadStr);
-      if (pass) {
-        outpassPayload = JSON.stringify({ op: pass.id, tok: pass.secureToken });
-      }
-    } else {
-      try {
-        const parsed = JSON.parse(finalPayloadStr);
-        if (parsed && parsed.op && parsed.tok) {
-          isOutpass = true;
+    if (payload.type === 'OUTPASS') {
+      let outpassPayload = finalPayloadStr;
+      // If payload is structured, map it back to internal format for compatibility
+      if (payload.signature) {
+        outpassPayload = JSON.stringify({ op: payload.id, tok: payload.signature });
+      } else if (payload.id && payload.id.startsWith('OP-')) {
+        // manual input raw pass ID
+        const passes = await HostelDB.getOutpasses();
+        const pass = passes.find(p => p.id === payload.id);
+        if (pass) {
+          outpassPayload = JSON.stringify({ op: pass.id, tok: pass.secureToken });
         }
-      } catch (e) {
-        // Not a JSON outpass QR
       }
-    }
 
-    if (isOutpass) {
       const res = await HostelDB.validateOutpassQR(outpassPayload);
       if (!res.valid) {
         if (window.HMSQRScanner) {
@@ -2370,9 +2390,9 @@ async function initWardenGateControl() {
       return;
     }
 
-    // 3. Fallback: Future / Unrecognized QR Route
+    // 3. Fallback: Future / Unrecognized QR Route (VISITOR, MAINTENANCE, etc.)
     renderUnrecognizedValidationResult(finalPayloadStr);
-    showToast('Warning: Unrecognized QR Code scanned.', 'warning');
+    showToast(`Warning: Scanned future module type "${payload.type}".`, 'warning');
   };
 
   window.handleGateScanResult = async function(scannedText) {

@@ -1,6 +1,6 @@
 /**
  * HMS PRODUCTION DEDICATED QR SCANNER CONTROLLER (METRO / GPAY / PHONEPE STYLE)
- * Fullscreen mobile-first scanner UI with native BarcodeDetector & fallback JS engine
+ * Fullscreen mobile-first scanner UI powered by ZXing-JS BrowserMultiFormatReader
  */
 (function (global) {
   'use strict';
@@ -9,33 +9,21 @@
     constructor() {
       this.overlayEl = null;
       this.videoEl = null;
-      this.canvasEl = document.createElement('canvas');
-      this.ctx = this.canvasEl.getContext('2d', { willReadFrequently: true });
-      this.stream = null;
       this.isScanning = false;
-      this.isProcessingScan = false;
       this.isTorchOn = false;
-      this.facingMode = 'environment'; // 'environment' | 'user'
-      this.lastScannedText = '';
-      this.lastScanTimestamp = 0;
-      this.animationFrameId = null;
-      this.barcodeDetector = null;
-      
-      // Callbacks
+      this.codeReader = null;
+      this.activeDevices = [];
+      this.currentDeviceIndex = 0;
       this.onScanCallback = null;
       this.onCloseCallback = null;
       this.onManualCallback = null;
-
-      // Audio context for crystal-clear success chime
       this.audioCtx = null;
 
-      // Initialize BarcodeDetector if available (Native Android Chrome GPU engine)
-      if ('BarcodeDetector' in global) {
-        try {
-          this.barcodeDetector = new global.BarcodeDetector({ formats: ['qr_code'] });
-        } catch (e) {
-          console.warn('BarcodeDetector initialization warning:', e);
-        }
+      // Initialize ZXing Reader
+      if (global.ZXing) {
+        this.codeReader = new global.ZXing.BrowserMultiFormatReader();
+      } else {
+        console.error('ZXing library not found in global scope.');
       }
     }
 
@@ -72,6 +60,12 @@
 
         <!-- Viewfinder Stream & Mask Overlay -->
         <div class="hms-scanner-viewfinder">
+          <!-- Loading Spinner Overlay -->
+          <div class="hms-scanner-loader" id="hms-scanner-loader-el" style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(5,7,10,0.9); z-index: 100; gap: 1rem;">
+            <i class="fa-solid fa-circle-notch fa-spin fa-3x" style="color: #38bdf8;"></i>
+            <span style="color: #ffffff; font-size: 0.9rem; font-weight: 500;">Initializing Lens...</span>
+          </div>
+
           <video id="hms-scanner-video-el" class="hms-scanner-video" autoplay playsinline muted></video>
           
           <!-- Centered Square Viewfinder Frame with Corner Brackets & Laser -->
@@ -132,37 +126,21 @@
        2. Attach Event Handlers
        ---------------------------------------------------------------------- */
     attachEvents() {
-      // Back button
       const backBtn = document.getElementById('hms-scanner-btn-back');
-      if (backBtn) {
-        backBtn.addEventListener('click', () => this.close());
-      }
+      if (backBtn) backBtn.addEventListener('click', () => this.close());
 
-      // Flashlight toggle
       const torchBtn = document.getElementById('hms-scanner-btn-torch');
-      if (torchBtn) {
-        torchBtn.addEventListener('click', () => this.toggleTorch());
-      }
+      if (torchBtn) torchBtn.addEventListener('click', () => this.toggleTorch());
 
-      // Switch camera (Rear / Front)
       const switchBtn = document.getElementById('hms-scanner-btn-switch');
-      if (switchBtn) {
-        switchBtn.addEventListener('click', () => this.switchCamera());
-      }
+      if (switchBtn) switchBtn.addEventListener('click', () => this.switchCamera());
 
-      // Retry camera
       const retryBtn = document.getElementById('hms-btn-retry-camera');
-      if (retryBtn) {
-        retryBtn.addEventListener('click', () => this.startCamera());
-      }
+      if (retryBtn) retryBtn.addEventListener('click', () => this.startCamera());
 
-      // Error close
       const errorCloseBtn = document.getElementById('hms-btn-error-close');
-      if (errorCloseBtn) {
-        errorCloseBtn.addEventListener('click', () => this.close());
-      }
+      if (errorCloseBtn) errorCloseBtn.addEventListener('click', () => this.close());
 
-      // Manual entry button
       const manualBtn = document.getElementById('hms-btn-manual-entry');
       if (manualBtn) {
         manualBtn.addEventListener('click', () => {
@@ -173,7 +151,6 @@
         });
       }
 
-      // Page unload & visibility cleanup
       window.addEventListener('beforeunload', () => this.releaseStream());
       document.addEventListener('visibilitychange', () => {
         if (document.hidden && this.isScanning) {
@@ -192,7 +169,6 @@
       this.onCloseCallback = options.onClose || null;
       this.onManualCallback = options.onManual || null;
 
-      // Update UI titles & hints
       const headerTitle = document.getElementById('hms-scanner-header-title');
       if (headerTitle) headerTitle.textContent = options.title || 'QR Scanner';
 
@@ -207,172 +183,160 @@
         manualBtn.style.display = options.allowManual ? 'inline-flex' : 'none';
       }
 
-      // Hide error & success overlays
       const errorOverlay = document.getElementById('hms-scanner-error-overlay');
       if (errorOverlay) errorOverlay.style.display = 'none';
 
       const successOverlay = document.getElementById('hms-scanner-success-overlay');
       if (successOverlay) successOverlay.classList.remove('active');
 
-      // Reset state
-      this.isProcessingScan = false;
-      this.lastScannedText = '';
-
-      // Show Fullscreen Dedicated Scanner Page
       this.overlayEl.classList.remove('hms-hidden');
       document.body.style.overflow = 'hidden';
 
-      // Start Camera
+      this.isScanning = true;
       await this.startCamera();
     }
 
     /* ----------------------------------------------------------------------
-       4. Start Camera Stream & High-Performance Frame Loop
+       4. Start Camera Stream & ZXing Decoding Loop
        ---------------------------------------------------------------------- */
     async startCamera() {
-      // Hide error overlay if retrying
+      const loader = document.getElementById('hms-scanner-loader-el');
       const errorOverlay = document.getElementById('hms-scanner-error-overlay');
+      if (loader) loader.style.display = 'flex';
       if (errorOverlay) errorOverlay.style.display = 'none';
 
-      // Release any existing stream first
+      if (!this.codeReader) {
+        this.showErrorState('ZXing Library Missing', 'Scanner dependency failed to initialize.');
+        return;
+      }
+
       this.releaseStream();
 
-      const constraints = {
-        video: {
-          facingMode: { ideal: this.facingMode },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          frameRate: { ideal: 30 }
-        },
-        audio: false
-      };
-
       try {
-        if (!navigator.mediaDevices) {
-          throw { name: 'SecurityError', message: 'Camera APIs require HTTPS/localhost security access.' };
-        }
-        this.stream = await navigator.mediaDevices.getUserMedia(constraints);
-        this.videoEl.srcObject = this.stream;
-        
-        // Handle mirroring for front camera
-        if (this.facingMode === 'user') {
-          this.videoEl.classList.add('mirror');
-        } else {
-          this.videoEl.classList.remove('mirror');
+        // Enumerate video input devices
+        this.activeDevices = await this.codeReader.listVideoInputDevices();
+        if (!this.activeDevices || this.activeDevices.length === 0) {
+          throw new Error('No camera devices detected.');
         }
 
-        await new Promise((resolve) => {
-          this.videoEl.onloadedmetadata = () => {
-            this.videoEl.play();
-            resolve();
-          };
-        });
+        // Auto selection strategy: Prefer back/rear camera
+        let deviceId = this.activeDevices[0].deviceId;
+        this.currentDeviceIndex = 0;
 
-        this.isScanning = true;
+        for (let i = 0; i < this.activeDevices.length; i++) {
+          const label = (this.activeDevices[i].label || '').toLowerCase();
+          if (label.includes('back') || label.includes('rear') || label.includes('environment')) {
+            deviceId = this.activeDevices[i].deviceId;
+            this.currentDeviceIndex = i;
+            break;
+          }
+        }
+
+        // If no rear camera matches, pick the last device
+        if (this.currentDeviceIndex === 0 && this.activeDevices.length > 1) {
+          this.currentDeviceIndex = this.activeDevices.length - 1;
+          deviceId = this.activeDevices[this.currentDeviceIndex].deviceId;
+        }
+
         this.isTorchOn = false;
-        
         const torchBtn = document.getElementById('hms-scanner-btn-torch');
         if (torchBtn) torchBtn.classList.remove('active');
 
-        // Apply continuous focus if available
-        try {
-          const track = this.stream.getVideoTracks()[0];
-          if (track && track.applyConstraints) {
-            track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(() => {});
+        // Start decoding using ZXing
+        this.codeReader.decodeFromVideoDevice(deviceId, this.videoEl, (result, err) => {
+          if (result) {
+            this.handleScanResult(result.getText());
           }
-        } catch (e) {}
+          if (err && !(err instanceof global.ZXing.NotFoundException)) {
+            // Log silent warnings for non-critical errors (standard for frame misses)
+          }
+        });
 
-        // Launch Scanning Loop
-        this.startScanningLoop();
+        // Hide loader after camera feed registers
+        setTimeout(() => {
+          if (loader) loader.style.display = 'none';
+        }, 1000);
+
       } catch (err) {
         console.error('Camera startup error:', err);
         let title = 'Camera Unavailable';
-        let desc = 'Unable to start camera lens. Please check if another app is using the camera and retry.';
+        let desc = 'Unable to start camera lens. Check camera hardware permissions.';
 
         if (err.name === 'NotAllowedError') {
           title = 'Camera Permission Denied';
           desc = 'Please allow camera access in your browser settings to scan QR codes.';
-        } else if (err.name === 'SecurityError' || !navigator.mediaDevices) {
+        } else if (!navigator.mediaDevices) {
           title = 'HTTPS Access Required';
-          desc = 'Camera capture APIs are blocked on unsecured (HTTP) connections. Please serve this site over HTTPS or test on localhost.';
+          desc = 'Camera capture APIs are blocked on unsecured (HTTP) connections.';
         }
 
-        this.showErrorState(title, desc, true);
+        this.showErrorState(title, desc);
       }
     }
 
     /* ----------------------------------------------------------------------
-       5. Frame Scanning Loop (Native BarcodeDetector + Fallback jsQR)
+       5. Process Scan Payload & Route (Universal Router)
        ---------------------------------------------------------------------- */
-    startScanningLoop() {
-      const scanFrame = async () => {
-        if (!this.isScanning) return;
+    handleScanResult(decodedText) {
+      if (!this.isScanning) return;
 
-        if (this.videoEl && this.videoEl.readyState === this.videoEl.HAVE_ENOUGH_DATA && !this.isProcessingScan) {
-          try {
-            let decodedText = null;
+      let payload = null;
+      try {
+        payload = this.validateAndParsePayload(decodedText);
+      } catch (err) {
+        // Vibrate to indicate invalid scan pattern
+        if (navigator.vibrate) navigator.vibrate(250);
+        this.showInvalidPopup(err.message || 'Malformed QR code format.');
+        return;
+      }
 
-            // 1. Try Native GPU BarcodeDetector (Chrome Android)
-            if (this.barcodeDetector) {
-              try {
-                const barcodes = await this.barcodeDetector.detect(this.videoEl);
-                if (barcodes && barcodes.length > 0) {
-                  decodedText = barcodes[0].rawValue;
-                }
-              } catch (e) {
-                // Fallback to canvas
-              }
-            }
-
-            // 2. Fallback to Canvas Inspection + jsQR
-            if (!decodedText && global.jsQR) {
-              const width = this.videoEl.videoWidth;
-              const height = this.videoEl.videoHeight;
-              if (width > 0 && height > 0) {
-                this.canvasEl.width = width;
-                this.canvasEl.height = height;
-                this.ctx.drawImage(this.videoEl, 0, 0, width, height);
-                const imageData = this.ctx.getImageData(0, 0, width, height);
-                const qrResult = global.jsQR(imageData.data, imageData.width, imageData.height);
-                if (qrResult && qrResult.data) {
-                  decodedText = qrResult.data;
-                }
-              }
-            }
-
-            // 3. Process Decoded QR Code
-            if (decodedText) {
-              const now = Date.now();
-              // Debounce duplicate scans within 2.5s
-              if (decodedText !== this.lastScannedText || (now - this.lastScanTimestamp > 2500)) {
-                this.lastScannedText = decodedText;
-                this.lastScanTimestamp = now;
-                this.handleSuccessfulScan(decodedText);
-                return;
-              }
-            }
-          } catch (err) {
-            console.warn('Frame inspection warning:', err);
-          }
-        }
-
-        if (this.isScanning) {
-          this.animationFrameId = requestAnimationFrame(scanFrame);
-        }
-      };
-
-      this.animationFrameId = requestAnimationFrame(scanFrame);
+      this.handleSuccessfulScan(decodedText);
     }
 
-    /* ----------------------------------------------------------------------
-       6. Successful Scan Handling (Feedback + Animation + Release + Callback)
-       ---------------------------------------------------------------------- */
+    validateAndParsePayload(decodedText) {
+      let payload = null;
+      try {
+        payload = JSON.parse(decodedText);
+      } catch (err) {
+        // Fallback for plain text backward compatibility
+        if (decodedText.startsWith('HMSQR_')) {
+          const parts = decodedText.split('_');
+          payload = {
+            type: 'STUDY_HOUR',
+            id: decodedText,
+            studentId: parts[3] || '',
+            sessionId: parts[2] || '',
+            timestamp: Date.now(),
+            signature: ''
+          };
+        } else if (decodedText.startsWith('OP-')) {
+          payload = {
+            type: 'OUTPASS',
+            id: decodedText,
+            studentId: '',
+            sessionId: '',
+            timestamp: Date.now(),
+            signature: ''
+          };
+        } else {
+          throw new Error('Invalid QR format. Structured JSON payload required.');
+        }
+      }
+
+      if (!payload.type) {
+        throw new Error('Invalid QR: Missing payload type.');
+      }
+
+      const supportedTypes = ['STUDY_HOUR', 'OUTPASS', 'VISITOR', 'MAINTENANCE'];
+      if (!supportedTypes.includes(payload.type)) {
+        throw new Error(`Invalid QR: Unsupported system module type "${payload.type}".`);
+      }
+
+      return payload;
+    }
+
     async handleSuccessfulScan(qrData) {
-      this.isProcessingScan = true;
       this.isScanning = false;
-      if (this.animationFrameId) {
-        cancelAnimationFrame(this.animationFrameId);
-      }
 
       // Haptic Vibration
       if (navigator.vibrate) {
@@ -390,34 +354,33 @@
         successOverlay.classList.add('active');
       }
 
-      // Immediately stop camera & release resources
+      // Stop camera feed
       this.releaseStream();
 
-      // Wait 600ms for user to enjoy green check animation
-      await new Promise((r) => setTimeout(r, 600));
+      // Wait 600ms for overlay animation
+      await new Promise((r) => setTimeout(r, 650));
 
-      // Close Fullscreen Overlay
       this.close(true);
 
-      // Invoke Callback
       if (typeof this.onScanCallback === 'function') {
         this.onScanCallback(qrData);
       }
     }
 
     /* ----------------------------------------------------------------------
-       7. Flashlight / Torch Toggle
+       6. Toggle Flashlight / Torch via stream constraints
        ---------------------------------------------------------------------- */
     async toggleTorch() {
-      if (!this.stream || !this.isScanning) return;
+      if (!this.codeReader || !this.isScanning) return;
       try {
-        const track = this.stream.getVideoTracks()[0];
+        const stream = this.codeReader.stream;
+        const track = stream ? stream.getVideoTracks()[0] : null;
         if (!track) return;
 
         const capabilities = track.getCapabilities ? track.getCapabilities() : {};
         if (!capabilities.torch) {
           if (typeof showToast === 'function') {
-            showToast('Flashlight torch is not supported on this camera lens.', 'warning');
+            showToast('Flashlight torch is not supported on this camera device.', 'warning');
           }
           return;
         }
@@ -431,49 +394,52 @@
         if (torchBtn) {
           torchBtn.classList.toggle('active', this.isTorchOn);
         }
-
-        if (typeof showToast === 'function') {
-          showToast(this.isTorchOn ? 'Flashlight On' : 'Flashlight Off', 'info');
-        }
       } catch (err) {
-        console.warn('Torch constraint error:', err);
+        console.warn('Torch activation failed:', err);
       }
     }
 
     /* ----------------------------------------------------------------------
-       8. Switch Camera (Rear vs Front)
+       7. Switch Camera Lenses
        ---------------------------------------------------------------------- */
     async switchCamera() {
-      this.facingMode = this.facingMode === 'environment' ? 'user' : 'environment';
-      if (typeof showToast === 'function') {
-        showToast(`Switched to ${this.facingMode === 'environment' ? 'Rear' : 'Front'} Camera`, 'info');
+      if (this.activeDevices.length <= 1) {
+        if (typeof showToast === 'function') {
+          showToast('No alternative camera devices detected.', 'info');
+        }
+        return;
       }
+
+      this.currentDeviceIndex = (this.currentDeviceIndex + 1) % this.activeDevices.length;
       if (this.isScanning) {
         await this.startCamera();
       }
     }
 
     /* ----------------------------------------------------------------------
-       9. Error State Handler
+       8. Dialogs & Release Stream Cleanups
        ---------------------------------------------------------------------- */
-    showErrorState(title, message, isPermissionError) {
+    showErrorState(title, message) {
       this.isScanning = false;
       this.releaseStream();
+
+      const loader = document.getElementById('hms-scanner-loader-el');
+      if (loader) loader.style.display = 'none';
 
       const titleEl = document.getElementById('hms-error-title-text');
       if (titleEl) titleEl.textContent = title || 'Camera Error';
 
       const msgEl = document.getElementById('hms-error-msg-text');
-      if (msgEl) msgEl.textContent = message || 'Camera permission denied or camera lens unavailable.';
+      if (msgEl) msgEl.textContent = message || 'Camera permission denied or lens unavailable.';
 
       const errorOverlay = document.getElementById('hms-scanner-error-overlay');
       if (errorOverlay) errorOverlay.style.display = 'flex';
     }
 
-    /* ----------------------------------------------------------------------
-       10. Professional Invalid QR Code Popup Bottom Sheet
-       ---------------------------------------------------------------------- */
-    showInvalidPopup(message, onScanAgain) {
+    showInvalidPopup(message) {
+      // Temporarily halt scanning loop checks
+      this.isScanning = false;
+
       let modalBackdrop = document.getElementById('hms-invalid-modal-backdrop');
       if (!modalBackdrop) {
         modalBackdrop = document.createElement('div');
@@ -513,11 +479,10 @@
       const closeHandler = () => {
         modalBackdrop.classList.remove('active');
         if (sheet) sheet.classList.remove('active');
+        this.close();
       };
 
-      if (closeBtn) {
-        closeBtn.onclick = closeHandler;
-      }
+      if (closeBtn) closeBtn.onclick = closeHandler;
       if (modalBackdrop) {
         modalBackdrop.onclick = (e) => {
           if (e.target === modalBackdrop) closeHandler();
@@ -526,19 +491,14 @@
 
       if (retryBtn) {
         retryBtn.onclick = () => {
-          closeHandler();
-          if (typeof onScanAgain === 'function') {
-            onScanAgain();
-          } else {
-            this.open({ onScan: this.onScanCallback });
-          }
+          modalBackdrop.classList.remove('active');
+          if (sheet) sheet.classList.remove('active');
+          this.isScanning = true;
+          this.startCamera();
         };
       }
     }
 
-    /* ----------------------------------------------------------------------
-       11. Synthesize Crystal Clear Audio Chime Feedback
-       ---------------------------------------------------------------------- */
     playAudioBeep() {
       try {
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -569,35 +529,17 @@
       }
     }
 
-    /* ----------------------------------------------------------------------
-       12. Release Camera MediaStream Tracks (Prevents Memory Leaks / Lock)
-       ---------------------------------------------------------------------- */
     releaseStream() {
-      if (this.animationFrameId) {
-        cancelAnimationFrame(this.animationFrameId);
-        this.animationFrameId = null;
-      }
       this.isScanning = false;
-
-      if (this.stream) {
+      if (this.codeReader) {
         try {
-          this.stream.getTracks().forEach((track) => {
-            track.stop();
-          });
+          this.codeReader.reset();
         } catch (e) {
-          console.warn('Track stop error:', e);
+          console.warn('Reader reset error:', e);
         }
-        this.stream = null;
-      }
-
-      if (this.videoEl) {
-        this.videoEl.srcObject = null;
       }
     }
 
-    /* ----------------------------------------------------------------------
-       13. Close Fullscreen Scanner
-       ---------------------------------------------------------------------- */
     close(isSuccessScan = false) {
       this.releaseStream();
 
@@ -613,6 +555,5 @@
     }
   }
 
-  // Export Singleton Instance
   global.HMSQRScanner = new HMSQRScannerManager();
 })(typeof self !== 'undefined' ? self : this);

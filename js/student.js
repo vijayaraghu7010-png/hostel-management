@@ -1203,7 +1203,14 @@ window.openOutpassModal = async function(passId) {
       if (!qrTarget) return;
 
       qrTarget.innerHTML = '';
-      const payloadStr = JSON.stringify({ op: pass.id, tok: pass.secureToken });
+      const payloadStr = JSON.stringify({
+        type: "OUTPASS",
+        id: pass.id,
+        studentId: pass.studentReg,
+        sessionId: pass.sourceOutingId || pass.sourceLeaveId || "",
+        timestamp: Date.now(),
+        signature: pass.secureToken
+      });
       console.log("QR VALUE:", payloadStr);
 
       if (typeof QRCode !== 'undefined') {
