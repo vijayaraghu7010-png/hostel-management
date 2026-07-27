@@ -2375,6 +2375,7 @@ async function initWardenGateControl() {
         }
       }
 
+      // Validate outpass first
       const res = await HostelDB.validateOutpassQR(outpassPayload);
       if (!res.valid) {
         if (window.HMSQRScanner) {
@@ -2384,8 +2385,38 @@ async function initWardenGateControl() {
         }
         renderValidationResult(res);
       } else {
-        renderValidationResult(res);
-        showToast('✓ Outpass QR Verified Successfully!', 'success');
+        // Automatic gate transaction workflow
+        const pass = res.pass;
+        let actionMsg = "";
+        try {
+          if (pass.status === 'VALID' || pass.status === 'NOT_YET_VALID') {
+            await HostelDB.recordOutpassExit(pass.id);
+            actionMsg = "✓ Permitted: Exit Recorded Successfully!";
+            showToast('✓ Campus Exit Recorded!', 'success');
+          } else if (pass.status === 'EXIT_RECORDED') {
+            const retRes = await HostelDB.recordOutpassReturn(pass.id);
+            if (retRes.isLate) {
+              actionMsg = `✓ Permitted: Late Return Recorded (${retRes.lateMinutes} mins late)`;
+              showToast('⚠ Campus Return Recorded (LATE)!', 'warning');
+            } else {
+              actionMsg = "✓ Permitted: Return Recorded Successfully!";
+              showToast('✓ Campus Return Recorded!', 'success');
+            }
+          } else {
+            actionMsg = `Outpass is already ${pass.status.toLowerCase().replace('_', ' ')}.`;
+          }
+
+          // Fetch updated status to render latest detail view
+          const updatedRes = await HostelDB.validateOutpassQR(outpassPayload);
+          updatedRes.message = actionMsg;
+          renderValidationResult(updatedRes);
+          await refreshOverdueOutings();
+
+        } catch (err) {
+          console.error('Auto gate record error:', err);
+          showToast('Failed to record gate transaction.', 'danger');
+          renderValidationResult(res);
+        }
       }
       return;
     }
