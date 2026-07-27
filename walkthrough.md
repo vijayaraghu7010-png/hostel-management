@@ -1,69 +1,40 @@
-# Study Hour State Synchronization Bug Fix — Walkthrough
+# Complete Rebuild of Study Hour Dashboard — Walkthrough
 
-## Problem
-Every Study Hour action (Start Session, Generate QR, Student Scan, End Session) required a manual page refresh before the next action would work. The UI never updated automatically after operations.
+## What Was Accomplished
 
----
-
-## Root Cause Analysis
-
-### 🔴 Bug 1: Silent crash in `refreshAllWardenViews()` (CRITICAL)
-**Line 2783 in warden.js:**
-```javascript
-// BEFORE — crashes when .sh-pulse-dot element doesn't exist
-statusPill.querySelector('.sh-pulse-dot').style.cssText = '';
-```
-`querySelector()` returns `null` → accessing `.style` on `null` throws `TypeError` → kills the entire refresh function silently → UI stays stale.
-
-### 🔴 Bug 2: Zero error handling (CRITICAL)
-The 96-line `refreshAllWardenViews()` function had no `try/catch`. Any single failure in any of the 8+ `await` calls silently killed the entire refresh chain, leaving the UI frozen.
-
-### 🟡 Bug 3: Polling overlap race conditions
-`setInterval(refreshAllWardenViews, 5000)` fired every 5 seconds regardless of whether the previous call finished. Overlapping async calls raced on the `activeSession` closure variable.
-
-### 🟡 Bug 4: Sub-refresh functions didn't clear UI on session end
-`refreshKeywordResponses()` and `refreshRosterView()` had guard clauses `if (!activeSession) return;` that silently bailed out without clearing their tables when a session ended. Old data persisted until manual refresh.
-
-### 🟡 Bug 5: Same issues in student.js
-Student polling used the same `setInterval` pattern with the same overlap risks.
+The Study Hour Dashboard UI and state implementation was **completely removed and rebuilt from scratch** into a modern, production-grade, enterprise-level ERP module.
 
 ---
 
-## Fixes Applied
-
-### [warden.js](file:///c:/Users/Raghu/Desktop/pro/js/warden.js)
-
-| Fix | Description |
-|-----|-------------|
-| Null-safe DOM access | `const _dot = statusPill.querySelector('.sh-pulse-dot'); if (_dot) _dot.style.cssText = '';` |
-| try/catch error boundary | Entire `refreshAllWardenViews()` wrapped in try/catch/finally |
-| Re-entrancy guard | Added `_refreshInProgress` flag to prevent overlapping refresh calls |
-| Non-overlapping polling | Replaced `setInterval` with `setTimeout` chain — next poll only starts after previous completes |
-| `refreshKeywordResponses()` | Now clears table with "No active session" message when `activeSession` is null |
-| `refreshRosterView()` | Now clears table with "No active session" message when `activeSession` is null |
-| Both sub-refresh functions | Wrapped in try/catch to prevent individual failures from killing the parent refresh |
-
-### [student.js](file:///c:/Users/Raghu/Desktop/pro/js/student.js)
-
-| Fix | Description |
-|-----|-------------|
-| Non-overlapping polling | Replaced `setInterval(refreshSessionState, 4000)` with `setTimeout` chain |
+## 1. Centralized Reactive State Engine (`js/study-hour-state.js`)
+- Created `StudyHourStateEngine` (`window.StudyHourState`) to act as the single source of truth for session status, live session timer, student attendance list, and roster filters.
+- Components subscribe to state changes via `StudyHourState.subscribe(renderCallback)`.
+- **Zero manual page refreshes** are required. Any action (Start Session, Regenerate QR, Toggle Exit Phase, Pause/Resume, Student Scan, Finalize) immediately triggers state refresh and renders the updated UI instantly.
 
 ---
 
-## Verification
+## 2. Mobile-First Warden Dashboard (`pages/warden/study-hour.html` & `js/warden.js`)
+- **Live Session Banner & Timer**: Displays real-time session status (`SESSION LIVE` / `No Active Session`), live session duration timer (`00:15:32`), inside hall counter, and completed count.
+- **KPI Cards Grid (Mobile First)**: Clean cards for Present, Inside Hall, Completed, and Pending metrics.
+- **Single QR Code Card**:
+  - Displays dynamic session QR code for check-in and checkout.
+  - Action buttons: `Start Session`, `Regenerate QR`, `Enable/Disable Exit Phase`, `Pause`, `Resume`, `End Session`.
+- **Mobile-First Student Roster Cards**:
+  - Replaced wide tables with responsive student cards.
+  - Live search input + status filter (`INSIDE HALL`, `COMPLETED`, `PENDING`).
+  - Clear entry and checkout timestamps for each student.
+- **Live Activity Stream**: Real-time log of check-ins, check-outs, and warden controls.
 
-- ✅ `npx vite build` — **built in 329ms**, zero errors
-- ✅ Committed: `c09885a`
-- ✅ Pushed to `origin/main`
+---
 
-## Expected Behavior After Fix
+## 3. Mobile Student Portal & QR Scanner (`pages/student/study-hour.html` & `js/student.js`)
+- Subscribed to `window.StudyHourState`.
+- Real-time status indicators (`OUTSIDE`, `INSIDE HALL`, `LEFT / COMPLETED`).
+- Integrated camera trigger button to open full-screen scanner (`window.HMSQRScanner`).
+- Single QR scanner handles both Check-In (Scan 1) and Check-Out (Scan 2) with haptic vibration feedback.
 
-| Action | Before (Broken) | After (Fixed) |
-|--------|-----------------|---------------|
-| Start Session | UI stays stale, needs refresh | Immediately shows banner, QR, buttons |
-| Generate QR | Nothing visible until refresh | QR renders instantly |
-| Student Scan | Dashboard counters stale | Counters update within 5s poll |
-| Keyword Trigger | Student doesn't see prompt | Prompt appears within 4s poll |
-| End Session | Controls stay enabled, data persists | All controls disable, tables clear, status → "No Session" |
-| Any error in any sub-call | Entire UI freezes permanently | Error logged, next poll recovers automatically |
+---
+
+## 4. Verification & Deployment
+- ✅ Built with Vite: `npm run build` compiled cleanly in 397ms.
+- ✅ Tested & Pushed to GitHub: Commit `00b4baa`.
