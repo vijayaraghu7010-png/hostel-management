@@ -1299,38 +1299,54 @@ async function initStudentDashboardStudyHour(student) {
   const renderRealtimeState = async (showNotification = false) => {
     const activeSession = await HostelDB.getActiveStudySession();
     const sessions = await HostelDB.getStudySessions();
-    const latestClosedSession = !activeSession ? (sessions.find(s => s.status === 'CLOSED') || null) : null;
 
-    const currentStatus = activeSession ? 'ACTIVE' : (latestClosedSession ? 'ENDED' : 'NO_SESSION');
-    const sessionToUse = activeSession || latestClosedSession;
+    // STRICT REQUIRED SESSION STATE MODEL:
+    // 'no_session' | 'active' | 'attended' | 'ended'
+    // Default initial state is ALWAYS 'no_session' — NEVER 'ended'!
+    let currentState = 'no_session';
+    let sessionToUse = null;
 
-    let attendance = [];
-    let myRecord = null;
-    let isPresent = false;
+    if (activeSession) {
+      sessionToUse = activeSession;
+      lastKnownSessionId = activeSession.id;
 
-    if (sessionToUse) {
-      attendance = await HostelDB.getStudyAttendance(sessionToUse.id, student.regNo);
-      myRecord = attendance[0] || null;
-      isPresent = myRecord && (myRecord.entryStatus === 'PRESENT' || myRecord.finalStatus === 'PRESENT');
+      // Check attendance status for active session
+      const attendance = await HostelDB.getStudyAttendance(activeSession.id, student.regNo);
+      const myRecord = attendance[0] || null;
+      const isPresent = myRecord && (myRecord.entryStatus === 'PRESENT' || myRecord.finalStatus === 'PRESENT');
+
+      currentState = isPresent ? 'attended' : 'active';
+    } else {
+      // Transition to 'ended' ONLY if a session was known to be active in this tracking context and just closed
+      if (lastKnownSessionId) {
+        const closedSession = sessions.find(s => s.id === lastKnownSessionId);
+        if (closedSession && closedSession.status === 'CLOSED') {
+          currentState = 'ended';
+          sessionToUse = closedSession;
+        } else {
+          currentState = 'no_session';
+        }
+      } else {
+        currentState = 'no_session';
+      }
     }
 
-    // Handle Toast Notifications on State Transitions
-    if (showNotification && lastKnownStatus !== null && lastKnownStatus !== currentStatus) {
-      if (currentStatus === 'ACTIVE') {
+    // Handle Notifications on State Transitions
+    if (showNotification && lastKnownStatus !== null && lastKnownStatus !== currentState) {
+      if (currentState === 'active') {
         showToast('🟢 Study Hour Session Started! Please scan QR code to mark attendance.', 'success');
         if (navigator.vibrate) navigator.vibrate([150, 50, 150]);
-      } else if (currentStatus === 'ENDED') {
+      } else if (currentState === 'ended') {
         showToast('🔴 The Study Hour session has ended.', 'warning');
       }
     }
-    lastKnownStatus = currentStatus;
-    if (sessionToUse) lastKnownSessionId = sessionToUse.id;
+    lastKnownStatus = currentState;
 
-    // Build Card Content HTML based on the 4 precise requirements
+    // Build Card Content HTML according to exact required states
     let cardHTML = '';
 
-    if (currentStatus === 'NO_SESSION') {
-      // 1. NO ACTIVE SESSION
+    if (currentState === 'no_session') {
+      // 'no_session' -> Student: "No Active Study Hour Session", scan button hidden
       cardHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
           <div>
@@ -1339,76 +1355,75 @@ async function initStudentDashboardStudyHour(student) {
               <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--text-primary); margin: 0;">Study Hour</h3>
               <span class="badge" style="background: rgba(148, 163, 184, 0.2); color: #64748b; font-weight: 800; font-size: 0.75rem;">Status: No Active Session</span>
             </div>
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.2rem 0 0 0;">Study Hour has not started yet.</p>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.2rem 0 0 0;">No Active Study Hour Session</p>
           </div>
         </div>
       `;
-    } else if (currentStatus === 'ACTIVE') {
-      if (isPresent) {
-        // 3. ATTENDANCE RECORDED (PRESENT)
-        const scanTimeStr = myRecord && myRecord.entryTime ? new Date(myRecord.entryTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'recently';
-        cardHTML = `
-          <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: var(--border-radius-md); padding: 1rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
-              <div>
-                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.2rem;">
-                  <span style="font-size: 1.2rem;">✅</span>
-                  <h3 style="font-size: 1.1rem; font-weight: 800; color: #10b981; margin: 0;">Attendance Recorded</h3>
-                  <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; font-weight: 800; font-size: 0.75rem;">Attendance Status: Present</span>
-                </div>
-                <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.2rem 0 0 0;">
-                  Scan Time: <strong style="color: var(--text-primary);">${scanTimeStr}</strong>
-                </p>
+    } else if (currentState === 'active') {
+      // 'active' -> Student: "🟢 Study Hour Started", scan button shown
+      const startTimeStr = sessionToUse ? (sessionToUse.startTime || '19:00') : '19:00';
+      cardHTML = `
+        <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%); border: 1.5px solid #10b981; border-radius: var(--border-radius-md); padding: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 260px;">
+              <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem;">
+                <span style="font-size: 1.1rem;">🟢</span>
+                <h3 style="font-size: 1.1rem; font-weight: 800; color: #10b981; margin: 0;">🟢 Study Hour Started</h3>
+                <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; font-weight: 800; font-size: 0.75rem;">Session Status: Active</span>
               </div>
-              <button type="button" class="btn btn-secondary" disabled style="opacity: 0.7; cursor: not-allowed; font-weight: 700;">
-                <i class="fa-solid fa-check"></i> Attendance Marked
-              </button>
+              <p style="font-size: 0.88rem; font-weight: 600; color: var(--text-primary); margin: 0 0 0.4rem 0;">
+                "Study Hour has started. Please scan the QR code to mark your attendance."
+              </p>
+              <div style="display: flex; gap: 1.25rem; font-size: 0.8rem; color: var(--text-muted); flex-wrap: wrap;">
+                <span><i class="fa-solid fa-clock" style="color: var(--primary); margin-right: 0.3rem;"></i> Started: <strong>${startTimeStr}</strong></span>
+                <span><i class="fa-solid fa-stopwatch" style="color: #f59e0b; margin-right: 0.3rem;"></i> Live Timer: <strong id="student-live-timer-text" style="color: var(--primary); font-family: monospace;">00:00:00</strong></span>
+              </div>
             </div>
-          </div>
-        `;
-      } else {
-        // 2. SESSION STARTED / ACTIVE (ATTENDANCE PENDING)
-        const startTimeStr = activeSession.startTime || '19:00';
-        cardHTML = `
-          <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%); border: 1.5px solid #10b981; border-radius: var(--border-radius-md); padding: 1rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
-              <div style="flex: 1; min-width: 260px;">
-                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem;">
-                  <span style="font-size: 1.1rem;">🟢</span>
-                  <h3 style="font-size: 1.1rem; font-weight: 800; color: #10b981; margin: 0;">Study Hour Session Started</h3>
-                  <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; font-weight: 800; font-size: 0.75rem;">Session Status: Active</span>
-                </div>
-                <p style="font-size: 0.88rem; font-weight: 600; color: var(--text-primary); margin: 0 0 0.4rem 0;">
-                  "Study Hour has started. Please scan the QR code to mark your attendance."
-                </p>
-                <div style="display: flex; gap: 1.25rem; font-size: 0.8rem; color: var(--text-muted); flex-wrap: wrap;">
-                  <span><i class="fa-solid fa-clock" style="color: var(--primary); margin-right: 0.3rem;"></i> Started: <strong>${startTimeStr}</strong></span>
-                  <span><i class="fa-solid fa-stopwatch" style="color: #f59e0b; margin-right: 0.3rem;"></i> Live Timer: <strong id="student-live-timer-text" style="color: var(--primary); font-family: monospace;">00:00:00</strong></span>
-                </div>
-              </div>
 
-              <!-- Scan QR Button (Large & Prominent) -->
-              <button type="button" class="btn btn-success btn-lg btn-scan-study-hour-qr-trigger" style="background: #10b981; border-color: #10b981; font-weight: 800; padding: 0.75rem 1.5rem; font-size: 0.95rem; border-radius: 12px; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);">
-                <i class="fa-solid fa-qrcode" style="margin-right: 0.4rem;"></i> Scan QR Code
-              </button>
-            </div>
+            <!-- Scan QR Button (Only shown for Students when status is active) -->
+            <button type="button" class="btn btn-success btn-lg btn-scan-study-hour-qr-trigger" style="background: #10b981; border-color: #10b981; font-weight: 800; padding: 0.75rem 1.5rem; font-size: 0.95rem; border-radius: 12px; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);">
+              <i class="fa-solid fa-qrcode" style="margin-right: 0.4rem;"></i> Scan QR Code
+            </button>
           </div>
-        `;
-      }
-    } else if (currentStatus === 'ENDED') {
-      // 4. SESSION ENDED
-      const subText = isPresent ? 'Attendance Recorded: Present' : 'Attendance not recorded for this session.';
+        </div>
+      `;
+    } else if (currentState === 'attended') {
+      // 'attended' -> Student: "✅ Attendance Recorded", scan button disabled
+      const attendance = await HostelDB.getStudyAttendance(sessionToUse.id, student.regNo);
+      const myRecord = attendance[0] || null;
+      const scanTimeStr = myRecord && myRecord.entryTime ? new Date(myRecord.entryTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'recently';
+      cardHTML = `
+        <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: var(--border-radius-md); padding: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.2rem;">
+                <span style="font-size: 1.2rem;">✅</span>
+                <h3 style="font-size: 1.1rem; font-weight: 800; color: #10b981; margin: 0;">✅ Attendance Recorded</h3>
+                <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; font-weight: 800; font-size: 0.75rem;">Attendance Status: Present</span>
+              </div>
+              <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.2rem 0 0 0;">
+                Scan Time: <strong style="color: var(--text-primary);">${scanTimeStr}</strong>
+              </p>
+            </div>
+            <button type="button" class="btn btn-secondary" disabled style="opacity: 0.7; cursor: not-allowed; font-weight: 700;">
+              <i class="fa-solid fa-check"></i> Attendance Marked
+            </button>
+          </div>
+        </div>
+      `;
+    } else if (currentState === 'ended') {
+      // 'ended' -> Student: "🔴 Study Hour Session Ended", scan button hidden
       cardHTML = `
         <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: var(--border-radius-md); padding: 1rem;">
           <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
             <div>
               <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.2rem;">
                 <span style="font-size: 1.1rem;">🔴</span>
-                <h3 style="font-size: 1.1rem; font-weight: 800; color: #ef4444; margin: 0;">Study Hour Session Ended</h3>
+                <h3 style="font-size: 1.1rem; font-weight: 800; color: #ef4444; margin: 0;">🔴 Study Hour Session Ended</h3>
                 <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; font-weight: 800; font-size: 0.75rem;">Session Status: Ended</span>
               </div>
               <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.2rem 0 0 0;">
-                The Study Hour session has ended. ${subText}
+                The Study Hour session has ended.
               </p>
             </div>
           </div>

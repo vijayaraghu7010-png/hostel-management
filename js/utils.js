@@ -1075,7 +1075,16 @@ class HostelDB {
 
   static async getActiveStudySession() {
     const sessions = await this.getStudySessions();
-    return sessions.find(s => s.status === 'ACTIVE') || null;
+    const active = sessions.find(s => s.status === 'ACTIVE') || null;
+
+    if (!active) {
+      const localList = this.getData('hms_study_sessions') || [];
+      if (localList.some(s => s.status === 'ACTIVE')) {
+        const cleaned = localList.map(s => s.status === 'ACTIVE' ? { ...s, status: 'CLOSED' } : s);
+        this.setData('hms_study_sessions', cleaned);
+      }
+    }
+    return active;
   }
 
   static async createStudySession(sessionData) {
