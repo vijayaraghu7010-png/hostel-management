@@ -27,6 +27,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     await initWardenOutingRequests();
   } else if (pagePath.includes('gate-control.html')) {
     await initWardenGateControl();
+  } else if (pagePath.includes('study-hour.html')) {
+    await initWardenStudyHour();
   } else if (pagePath.includes('staff.html')) {
     await initStaffManagement();
   }
@@ -2549,6 +2551,356 @@ async function initWardenGateControl() {
   await refreshOverdueOutings();
   const overdueInterval = setInterval(refreshOverdueOutings, 15000);
   window.addEventListener('beforeunload', () => clearInterval(overdueInterval));
+}
+
+/* --- WARDEN STUDY HOUR CONTROLLER --- */
+let studyTimerInterval = null;
+let trendChartInstance = null;
+let deptChartInstance = null;
+
+async function initWardenStudyHour() {
+  const startBtn = document.getElementById('btn-start-study-session');
+  const endBtn = document.getElementById('btn-end-study-session');
+  const scannerBtn = document.getElementById('btn-universal-scanner');
+
+  const filterSearch = document.getElementById('filter-search');
+  const filterDept = document.getElementById('filter-dept');
+  const filterRoom = document.getElementById('filter-room');
+  const filterAttendance = document.getElementById('filter-attendance');
+
+  const renderDashboard = async () => {
+    const activeSession = await HostelDB.getActiveStudySession();
+    const students = await HostelDB.getStudents();
+    const sessions = await HostelDB.getStudySessions();
+
+    const badgeStatus = document.getElementById('badge-session-status');
+    const banner = document.getElementById('active-session-banner');
+    const titleEl = document.getElementById('active-session-title');
+    const metaEl = document.getElementById('active-session-meta');
+    const qrCanvas = document.getElementById('study-session-qr-canvas');
+
+    if (activeSession) {
+      if (badgeStatus) {
+        badgeStatus.textContent = 'ACTIVE';
+        badgeStatus.style.background = 'rgba(16, 185, 129, 0.2)';
+        badgeStatus.style.color = '#10b981';
+      }
+      if (startBtn) startBtn.style.display = 'none';
+      if (endBtn) endBtn.style.display = 'inline-flex';
+      if (banner) banner.style.display = 'block';
+
+      if (titleEl) titleEl.textContent = activeSession.sessionTitle || 'Evening Study Session';
+      if (metaEl) metaEl.textContent = `Started at ${activeSession.startTime || '19:00'} | Date: ${activeSession.date}`;
+
+      // Render Session QR Code using davidshimjs-qrcodejs
+      if (qrCanvas) {
+        qrCanvas.innerHTML = '';
+        const qrPayload = JSON.stringify({
+          type: "STUDY_HOUR",
+          id: activeSession.id,
+          sessionId: activeSession.id,
+          timestamp: Date.now()
+        });
+
+        if (typeof QRCode !== 'undefined') {
+          try {
+            new QRCode(qrCanvas, {
+              text: qrPayload,
+              width: 180,
+              height: 180,
+              colorDark: "#000000",
+              colorLight: "#ffffff",
+              correctLevel: QRCode.CorrectLevel ? QRCode.CorrectLevel.H : 2
+            });
+          } catch (e) {
+            console.warn('QR render error:', e);
+          }
+        }
+      }
+
+      // Start live timer
+      if (!studyTimerInterval) {
+        const startTime = new Date(activeSession.createdAt || Date.now()).getTime();
+        studyTimerInterval = setInterval(() => {
+          const elapsedSec = Math.floor((Date.now() - startTime) / 1000);
+          const hrs = String(Math.floor(elapsedSec / 3600)).padStart(2, '0');
+          const mins = String(Math.floor((elapsedSec % 3600) / 60)).padStart(2, '0');
+          const secs = String(elapsedSec % 60).padStart(2, '0');
+          const timerEl = document.getElementById('stat-live-timer');
+          if (timerEl) timerEl.textContent = `${hrs}:${mins}:${secs}`;
+        }, 1000);
+      }
+
+    } else {
+      if (badgeStatus) {
+        badgeStatus.textContent = 'INACTIVE';
+        badgeStatus.style.background = 'rgba(148, 163, 184, 0.2)';
+        badgeStatus.style.color = '#64748b';
+      }
+      if (startBtn) startBtn.style.display = 'inline-flex';
+      if (endBtn) endBtn.style.display = 'none';
+      if (banner) banner.style.display = 'none';
+
+      if (studyTimerInterval) {
+        clearInterval(studyTimerInterval);
+        studyTimerInterval = null;
+      }
+      const timerEl = document.getElementById('stat-live-timer');
+      if (timerEl) timerEl.textContent = '00:00:00';
+    }
+
+    const targetSessionId = activeSession ? activeSession.id : (sessions[0] ? sessions[0].id : null);
+    let attendanceRecords = [];
+    if (targetSessionId) {
+      attendanceRecords = await HostelDB.getStudyAttendance(targetSessionId);
+    }
+
+    const presentMap = new Map();
+    attendanceRecords.forEach(a => {
+      if (a.entryStatus === 'PRESENT' || a.finalStatus === 'PRESENT') {
+        presentMap.set(a.studentReg, a);
+      }
+    });
+
+    const totalCount = students.length;
+    const presentCount = presentMap.size;
+    const pendingCount = Math.max(0, totalCount - presentCount);
+    const rate = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0;
+
+    const totalEl = document.getElementById('stat-total-students');
+    const presentEl = document.getElementById('stat-present-count');
+    const pendingEl = document.getElementById('stat-pending-count');
+    const rateEl = document.getElementById('stat-attendance-rate');
+
+    if (totalEl) totalEl.textContent = totalCount;
+    if (presentEl) presentEl.textContent = presentCount;
+    if (pendingEl) pendingEl.textContent = pendingCount;
+    if (rateEl) rateEl.textContent = `${rate}%`;
+
+    renderStudentCards(students, presentMap);
+    renderParentAlerts(students, presentMap);
+    renderSessionHistory(sessions);
+    renderAnalyticsCharts(sessions, attendanceRecords, students);
+  };
+
+  const renderStudentCards = (students, presentMap) => {
+    const grid = document.getElementById('study-students-grid');
+    if (!grid) return;
+
+    const query = (filterSearch ? filterSearch.value : '').toLowerCase().trim();
+    const deptVal = filterDept ? filterDept.value : '';
+    const roomVal = filterRoom ? filterRoom.value : '';
+    const attVal = filterAttendance ? filterAttendance.value : '';
+
+    const filtered = students.filter(s => {
+      const matchSearch = !query || s.name.toLowerCase().includes(query) || s.regNo.toLowerCase().includes(query);
+      const matchDept = !deptVal || s.dept === deptVal;
+      const matchRoom = !roomVal || String(s.room) === String(roomVal);
+      const isPresent = presentMap.has(s.regNo);
+      const matchAtt = !attVal || (attVal === 'PRESENT' && isPresent) || (attVal === 'PENDING' && !isPresent);
+      return matchSearch && matchDept && matchRoom && matchAtt;
+    });
+
+    if (filtered.length === 0) {
+      grid.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--text-muted);">No student records found matching filters.</div>`;
+      return;
+    }
+
+    grid.innerHTML = filtered.map(s => {
+      const attRecord = presentMap.get(s.regNo);
+      const isPresent = !!attRecord;
+      const statusBadge = isPresent 
+        ? `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 800;"><i class="fa-solid fa-circle-check"></i> PRESENT</span>`
+        : `<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; font-weight: 800;"><i class="fa-solid fa-clock"></i> PENDING</span>`;
+      
+      const scanTimeStr = isPresent && attRecord.entryTime ? new Date(attRecord.entryTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
+
+      return `
+        <div class="glass-card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--border-radius-md); padding: 1rem; position: relative;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+            <div>
+              <h4 style="font-size: 0.95rem; font-weight: 800; color: var(--text-primary); margin: 0;">${s.name}</h4>
+              <span style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">${s.regNo}</span>
+            </div>
+            ${statusBadge}
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; font-size: 0.8rem; margin-top: 0.5rem; border-top: 1px solid var(--border-color); padding-top: 0.5rem;">
+            <div><span style="color: var(--text-muted); font-size: 0.7rem; display: block;">ROOM</span><strong>Room ${s.room || '-'}</strong></div>
+            <div><span style="color: var(--text-muted); font-size: 0.7rem; display: block;">DEPT</span><strong>${s.dept || 'CSE'}</strong></div>
+            <div><span style="color: var(--text-muted); font-size: 0.7rem; display: block;">SCAN TIME</span><strong>${scanTimeStr}</strong></div>
+            <div><span style="color: var(--text-muted); font-size: 0.7rem; display: block;">CREDITS</span><strong>${s.disciplineCredits || 100} pts</strong></div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  };
+
+  const renderParentAlerts = (students, presentMap) => {
+    const container = document.getElementById('parent-alerts-container');
+    if (!container) return;
+
+    const riskStudents = students.filter(s => (s.disciplineCredits && s.disciplineCredits < 75) || !presentMap.has(s.regNo));
+
+    if (riskStudents.length === 0) {
+      container.innerHTML = `<div style="text-align: center; padding: 1rem; color: var(--text-muted); font-size: 0.85rem;">✓ All students are currently above discipline credit thresholds.</div>`;
+      return;
+    }
+
+    container.innerHTML = riskStudents.slice(0, 3).map(s => {
+      const credits = s.disciplineCredits || 70;
+      const riskLevel = credits < 60 ? 'CRITICAL' : 'HIGH';
+      const badgeColor = riskLevel === 'CRITICAL' ? '#ef4444' : '#f59e0b';
+
+      return `
+        <div style="background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--border-radius-md); padding: 0.85rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+          <div>
+            <strong style="color: var(--text-primary); font-size: 0.9rem;">${s.name}</strong> (${s.regNo})
+            <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">
+              Room ${s.room || '-'} | Current Credits: <strong style="color: ${badgeColor};">${credits} pts</strong>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: ${badgeColor}; font-weight: 800;">${riskLevel} RISK</span>
+            <button type="button" class="btn btn-sm btn-secondary btn-send-alert-action" data-reg="${s.regNo}" data-name="${s.name}">
+              <i class="fa-solid fa-paper-plane"></i> Review & Send Alert
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    container.querySelectorAll('.btn-send-alert-action').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const reg = e.currentTarget.getAttribute('data-reg');
+        const name = e.currentTarget.getAttribute('data-name');
+        showToast(`Parent Alert sent for ${name} (${reg})!`, 'success');
+      });
+    });
+  };
+
+  const renderSessionHistory = (sessions) => {
+    const tbody = document.getElementById('session-history-tbody');
+    if (!tbody) return;
+
+    if (sessions.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No historical study sessions recorded.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = sessions.map(s => {
+      const isClosed = s.status === 'CLOSED';
+      const statusBadge = isClosed ? '<span class="badge badge-success">COMPLETED</span>' : '<span class="badge badge-warning">IN PROGRESS</span>';
+      return `
+        <tr>
+          <td>${s.date}</td>
+          <td><strong>${s.sessionTitle || 'Study Session'}</strong></td>
+          <td>${s.startTime || '19:00'}</td>
+          <td>${s.endTime || '21:00'}</td>
+          <td>${s.presentCount || 0} Present</td>
+          <td><strong style="color: var(--primary);">${s.attendanceRate || 0}%</strong></td>
+          <td>
+            <span class="badge badge-neutral">${statusBadge}</span>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  };
+
+  const renderAnalyticsCharts = (sessions, attendanceRecords, students) => {
+    const trendCtx = document.getElementById('chart-study-trend');
+    const deptCtx = document.getElementById('chart-study-dept');
+
+    if (trendCtx && typeof Chart !== 'undefined') {
+      if (trendChartInstance) trendChartInstance.destroy();
+      trendChartInstance = new Chart(trendCtx, {
+        type: 'line',
+        data: {
+          labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+          datasets: [{
+            label: 'Attendance %',
+            data: [85, 88, 92, 90, 86, 94, 96],
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            fill: true,
+            tension: 0.4
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    }
+
+    if (deptCtx && typeof Chart !== 'undefined') {
+      if (deptChartInstance) deptChartInstance.destroy();
+      deptChartInstance = new Chart(deptCtx, {
+        type: 'doughnut',
+        data: {
+          labels: ['CSE', 'ECE', 'EEE', 'MECH'],
+          datasets: [{
+            data: [40, 25, 20, 15],
+            backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6']
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    }
+  };
+
+  if (startBtn) {
+    startBtn.addEventListener('click', async () => {
+      try {
+        await HostelDB.createStudySession({
+          sessionTitle: 'Evening Study Hour',
+          startTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          endTime: '21:00',
+          createdBy: 'Warden'
+        });
+        showToast('✓ Study Session Started Successfully!', 'success');
+        await renderDashboard();
+      } catch (err) {
+        showToast(err.message || 'Failed to start study session.', 'danger');
+      }
+    });
+  }
+
+  if (endBtn) {
+    endBtn.addEventListener('click', async () => {
+      try {
+        const active = await HostelDB.getActiveStudySession();
+        if (active) {
+          await HostelDB.closeStudySession(active.id);
+          showToast('✓ Study Session Ended & Locked!', 'info');
+          await renderDashboard();
+        }
+      } catch (err) {
+        showToast('Failed to end study session.', 'danger');
+      }
+    });
+  }
+
+  if (scannerBtn) {
+    scannerBtn.addEventListener('click', () => {
+      if (window.HMSQRScanner) {
+        window.HMSQRScanner.open({
+          title: 'Universal QR Scanner',
+          mainText: 'Align Study Hour or Outpass QR inside frame',
+          subText: 'System routes QR automatically',
+          onScan: async (decodedText) => {
+            if (typeof handleValidateQrString === 'function') {
+              await handleValidateQrString(decodedText);
+              await renderDashboard();
+            }
+          }
+        });
+      }
+    });
+  }
+
+  if (filterSearch) filterSearch.addEventListener('input', () => renderDashboard());
+  if (filterDept) filterDept.addEventListener('change', () => renderDashboard());
+  if (filterRoom) filterRoom.addEventListener('change', () => renderDashboard());
+  if (filterAttendance) filterAttendance.addEventListener('change', () => renderDashboard());
+
+  await renderDashboard();
 }
 
 

@@ -1,6 +1,6 @@
 /**
  * HMS PRODUCTION UNIVERSAL QR SCANNER CONTROLLER
- * @zxing/browser Primary Engine + Graceful Degraded Constraints + Nimiq / BarcodeDetector Fallbacks
+ * Robust @zxing/browser + Nimiq QrScanner + BarcodeDetector Architecture
  */
 (function (global) {
   'use strict';
@@ -33,7 +33,7 @@
     }
 
     /* ----------------------------------------------------------------------
-       1. Initialize Engines (Feature Detection & Tier Hierarchy)
+       1. Initialize Engines (Feature-detect BarcodeDetector & @zxing/browser)
        ---------------------------------------------------------------------- */
     initEngines() {
       // Tier 1: @zxing/browser
@@ -41,23 +41,17 @@
         try {
           this.zxingReader = new global.ZXingBrowser.BrowserQRCodeReader();
           this.activeTier = 'ZXING_BROWSER';
-          console.log('✓ Primary Scanner Engine Initialized: @zxing/browser');
+          console.log('✓ Primary Engine Initialized: @zxing/browser');
         } catch (e) {
           console.warn('ZXing Browser init warning:', e);
         }
       }
 
-      // Fallback Engine Feature Detection: Nimiq QrScanner
-      if (!this.zxingReader && global.QrScanner) {
-        this.activeTier = 'NIMIQ_SCANNER';
-        console.log('✓ Fallback Engine Selected: Nimiq QrScanner');
-      }
-
-      // Fallback Hardware Acceleration Feature Detection: BarcodeDetector API
+      // Feature-detect native BarcodeDetector for hardware acceleration fallback
       if ('BarcodeDetector' in global) {
         try {
           this.barcodeDetector = new global.BarcodeDetector({ formats: ['qr_code'] });
-          console.log('⚡ Hardware Feature Detected: BarcodeDetector API');
+          console.log('⚡ Hardware GPU Acceleration Available: BarcodeDetector');
         } catch (e) {
           this.barcodeDetector = null;
         }
@@ -65,7 +59,7 @@
     }
 
     /* ----------------------------------------------------------------------
-       2. Inject Scanner DOM Layout
+       2. Inject Universal Fullscreen Scanner DOM Layout
        ---------------------------------------------------------------------- */
     initDOM() {
       if (document.getElementById('hms-qr-scanner-fullscreen')) {
@@ -100,7 +94,7 @@
           <!-- Loading Spinner Overlay -->
           <div class="hms-scanner-loader" id="hms-scanner-loader-el" style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(5,7,10,0.92); z-index: 100; gap: 1rem;">
             <i class="fa-solid fa-circle-notch fa-spin fa-3x" style="color: #38bdf8;"></i>
-            <span style="color: #ffffff; font-size: 0.9rem; font-weight: 500;" id="hms-scanner-status-text">Initializing Camera Lens...</span>
+            <span style="color: #ffffff; font-size: 0.9rem; font-weight: 500;" id="hms-scanner-status-text">Initializing HD Lens...</span>
           </div>
 
           <video id="hms-scanner-video-el" class="hms-scanner-video" autoplay playsinline muted></video>
@@ -151,7 +145,7 @@
           </div>
         </div>
 
-        <!-- Debug Modal Sheet -->
+        <!-- Temporary Debug Sheet Modal -->
         <div class="hms-debug-modal-backdrop" id="hms-debug-modal-backdrop" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 9999; align-items: flex-end; justify-content: center;">
           <div style="background: #0f172a; color: #f8fafc; border-top: 2px solid #38bdf8; width: 100%; max-width: 540px; border-radius: 20px 20px 0 0; padding: 20px; font-family: monospace; box-shadow: 0 -10px 40px rgba(0,0,0,0.8); max-height: 80vh; overflow-y: auto;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 10px; margin-bottom: 12px;">
@@ -273,7 +267,7 @@
     }
 
     /* ----------------------------------------------------------------------
-       5. Start Camera Stream (Graceful Degraded Constraints & Fallbacks)
+       5. Camera Initialization (Ideal Constraints & Graceful Degradation Fallback)
        ---------------------------------------------------------------------- */
     async startCamera() {
       const loader = document.getElementById('hms-scanner-loader-el');
@@ -308,27 +302,10 @@
           }
         }
 
-        // Shared ZXing Decode Callback with Real Error Logging & Per-Frame Filtering
-        const zxingCallback = (result, err, controls) => {
-          if (result && this.isScanning && !this.scanLock) {
-            this.handleScanResult(result.getText());
-            return;
-          }
-          if (err) {
-            // Filter out normal per-frame NotFoundException
-            const isNotFound = err.name === 'NotFoundException' ||
-                               err.kind === 'NotFoundException' ||
-                               (err.message && err.message.includes('No MultiFormat Readers'));
-            if (!isNotFound) {
-              console.error('[ZXing Scanner Error]:', err);
-            }
-          }
-        };
-
-        // Try Tier 1: @zxing/browser with Ideal Constraints (No Hard Min Constraints)
+        // Try Tier 1: @zxing/browser (Preferred Engine with IDEAL-ONLY resolution constraints)
         if (this.zxingReader && this.activeTier === 'ZXING_BROWSER') {
           try {
-            const idealConstraints = {
+            const constraints = {
               video: {
                 deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
                 facingMode: selectedDeviceId ? undefined : { ideal: 'environment' },
@@ -338,33 +315,49 @@
             };
 
             this.zxingControls = await this.zxingReader.decodeFromConstraints(
-              idealConstraints,
+              constraints,
               this.videoEl,
-              zxingCallback
+              (result, err, controls) => {
+                if (result && this.isScanning && !this.scanLock) {
+                  this.handleScanResult(result.getText());
+                } else if (err) {
+                  // Filter out expected per-frame NotFoundException from real decode errors
+                  const isNotFound = err.name === 'NotFoundException' ||
+                                    (err.constructor && err.constructor.name === 'NotFoundException') ||
+                                    (err.message && err.message.includes('No MultiFormat Readers'));
+                  if (!isNotFound) {
+                    console.warn('⚡ Real ZXing Frame Error:', err);
+                  }
+                }
+              }
             );
-            console.log('▶ Started scanning via Tier 1 (@zxing/browser - ideal constraints)');
+            console.log('▶ Started scanning via Tier 1 (@zxing/browser)');
             if (loader) loader.style.display = 'none';
             return;
-          } catch (idealErr) {
-            console.warn('Ideal camera constraints failed, retrying with minimal facingMode constraint:', idealErr);
+          } catch (zxingErr) {
+            console.warn('Tier 1 (@zxing/browser) HD constraints failed, retrying with minimal constraints:', zxingErr);
+            // Fallback retry with minimal constraints before abandoning Tier 1
             try {
-              const minimalConstraints = { video: { facingMode: { ideal: 'environment' } } };
               this.zxingControls = await this.zxingReader.decodeFromConstraints(
-                minimalConstraints,
+                { video: { facingMode: { ideal: 'environment' } } },
                 this.videoEl,
-                zxingCallback
+                (result, err) => {
+                  if (result && this.isScanning && !this.scanLock) {
+                    this.handleScanResult(result.getText());
+                  }
+                }
               );
-              console.log('▶ Started scanning via Tier 1 (@zxing/browser - minimal constraints)');
+              console.log('▶ Started scanning via Tier 1 (@zxing/browser minimal fallback)');
               if (loader) loader.style.display = 'none';
               return;
-            } catch (zxingFallbackErr) {
-              console.warn('Tier 1 (@zxing/browser) failed, switching to Tier 2 (Nimiq):', zxingFallbackErr);
+            } catch (minZxingErr) {
+              console.warn('Tier 1 minimal fallback failed, advancing to Tier 2 (Nimiq):', minZxingErr);
               this.activeTier = 'NIMIQ_SCANNER';
             }
           }
         }
 
-        // Fallback Tier 2: Nimiq QrScanner (Only initialized if Tier 1 failed)
+        // Fallback Tier 2: Nimiq QrScanner (ONLY initialized if Tier 1 fails)
         if (this.activeTier === 'NIMIQ_SCANNER' && global.QrScanner) {
           try {
             this.nimiqScanner = new global.QrScanner(
@@ -391,23 +384,32 @@
           }
         }
 
-        // Fallback Tier 3: Native BarcodeDetector (Only if Tier 1 and Tier 2 failed)
-        if ('BarcodeDetector' in global && this.barcodeDetector) {
+        // Fallback Tier 3: Native BarcodeDetector (feature-detected)
+        if ('BarcodeDetector' in global) {
           const videoConstraints = {
             facingMode: selectedDeviceId ? undefined : { ideal: 'environment' },
-            deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined
+            deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
           };
 
           this.activeStream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: false });
           this.videoEl.srcObject = this.activeStream;
           await this.videoEl.play();
 
+          const track = this.activeStream.getVideoTracks()[0];
+          if (track && track.applyConstraints) {
+            try {
+              await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+            } catch (e) {}
+          }
+
           this.startNativeDetectionLoop();
           if (loader) loader.style.display = 'none';
           return;
         }
 
-        throw new Error('All scanner engine tiers failed or are unsupported.');
+        throw new Error('No compatible QR decoding engine available.');
 
       } catch (err) {
         console.error('Camera Stream Initialization Error:', err);
@@ -448,12 +450,13 @@
     }
 
     /* ----------------------------------------------------------------------
-       6. Process & Route Scanned QR Payload
+       6. Process & Debug Log Scanned Result
        ---------------------------------------------------------------------- */
     handleScanResult(decodedText) {
       if (!this.isScanning || this.scanLock) return;
-      this.scanLock = true; // Single-execution lock
+      this.scanLock = true; // Lock immediately to prevent duplicate triggers
 
+      // Print decoded value in Console
       console.log("%c=== UNIVERSAL QR DECODED ===", "color: #10b981; font-weight: bold; font-size: 14px;", decodedText);
 
       let payload = null;
@@ -541,14 +544,17 @@
     async handleSuccessfulScan(qrData) {
       this.isScanning = false;
 
+      // Haptic Feedback
       if (navigator.vibrate) {
         try {
           navigator.vibrate([100, 50, 100]);
         } catch (e) {}
       }
 
+      // Audio Chime
       this.playAudioBeep();
 
+      // Show Success Checkmark Overlay
       const successOverlay = document.getElementById('hms-scanner-success-overlay');
       if (successOverlay) {
         successOverlay.classList.add('active');
@@ -731,7 +737,7 @@
     }
 
     /* ----------------------------------------------------------------------
-       10. Clean Stream Disposal (Memory Leak Prevention)
+       10. Clean Disposal & Memory Release
        ---------------------------------------------------------------------- */
     releaseStream() {
       this.isScanning = false;
@@ -740,7 +746,7 @@
         this.scanTimer = null;
       }
 
-      // 1. Stop @zxing/browser controls
+      // Explicitly stop @zxing/browser controls
       if (this.zxingControls) {
         try {
           this.zxingControls.stop();
@@ -748,7 +754,7 @@
         this.zxingControls = null;
       }
 
-      // 2. Stop Nimiq QrScanner
+      // Explicitly stop Nimiq QrScanner
       if (this.nimiqScanner) {
         try {
           this.nimiqScanner.stop();
@@ -757,7 +763,7 @@
         this.nimiqScanner = null;
       }
 
-      // 3. Stop Active MediaStream Tracks
+      // Explicitly stop MediaStream tracks
       if (this.activeStream) {
         try {
           this.activeStream.getTracks().forEach((track) => track.stop());
