@@ -77,6 +77,9 @@ async function initDashboard(student) {
         `).join('');
       }
     }
+
+    // Synchronize Real-time Live Study Hour Card
+    await initStudentDashboardStudyHour(student);
   } catch (error) {
     console.error('Failed to load student dashboard:', error);
     if (tbody) {
@@ -1281,98 +1284,221 @@ window.openOutpassModalForLeave = async function(leaveId) {
   }
 };
 
-/* --- STUDENT STUDY HOUR CONTROLLER --- */
-async function initStudentStudyHour(student) {
-  const cardContent = document.getElementById('student-session-content');
+/* --- REALTIME STUDY HOUR LIVE DASHBOARD SYNCHRONIZER --- */
+let studentLiveTimerInterval = null;
+let lastKnownSessionId = null;
+let lastKnownStatus = null;
+
+async function initStudentDashboardStudyHour(student) {
+  const bannerContainer = document.getElementById('student-study-hour-banner');
+  const sessionCardContainer = document.getElementById('student-session-card');
   const historyTbody = document.getElementById('student-study-history-tbody');
 
-  const renderStudentPage = async () => {
+  if (!bannerContainer && !sessionCardContainer) return;
+
+  const renderRealtimeState = async (showNotification = false) => {
     const activeSession = await HostelDB.getActiveStudySession();
     const sessions = await HostelDB.getStudySessions();
+    const latestClosedSession = !activeSession ? (sessions.find(s => s.status === 'CLOSED') || null) : null;
 
-    if (!cardContent) return;
+    const currentStatus = activeSession ? 'ACTIVE' : (latestClosedSession ? 'ENDED' : 'NO_SESSION');
+    const sessionToUse = activeSession || latestClosedSession;
 
-    if (!activeSession) {
-      cardContent.innerHTML = `
-        <div style="padding: 1.5rem 0;">
-          <div style="background: rgba(148, 163, 184, 0.15); width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem auto; color: #64748b; font-size: 1.8rem;">
-            <i class="fa-solid fa-bell-slash"></i>
+    let attendance = [];
+    let myRecord = null;
+    let isPresent = false;
+
+    if (sessionToUse) {
+      attendance = await HostelDB.getStudyAttendance(sessionToUse.id, student.regNo);
+      myRecord = attendance[0] || null;
+      isPresent = myRecord && (myRecord.entryStatus === 'PRESENT' || myRecord.finalStatus === 'PRESENT');
+    }
+
+    // Handle Toast Notifications on State Transitions
+    if (showNotification && lastKnownStatus !== null && lastKnownStatus !== currentStatus) {
+      if (currentStatus === 'ACTIVE') {
+        showToast('🟢 Study Hour Session Started! Please scan QR code to mark attendance.', 'success');
+        if (navigator.vibrate) navigator.vibrate([150, 50, 150]);
+      } else if (currentStatus === 'ENDED') {
+        showToast('🔴 The Study Hour session has ended.', 'warning');
+      }
+    }
+    lastKnownStatus = currentStatus;
+    if (sessionToUse) lastKnownSessionId = sessionToUse.id;
+
+    // Build Card Content HTML based on the 4 precise requirements
+    let cardHTML = '';
+
+    if (currentStatus === 'NO_SESSION') {
+      // 1. NO ACTIVE SESSION
+      cardHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.2rem;">
+              <span style="font-size: 1.2rem;">📚</span>
+              <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--text-primary); margin: 0;">Study Hour</h3>
+              <span class="badge" style="background: rgba(148, 163, 184, 0.2); color: #64748b; font-weight: 800; font-size: 0.75rem;">Status: No Active Session</span>
+            </div>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.2rem 0 0 0;">Study Hour has not started yet.</p>
           </div>
-          <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--text-primary); margin: 0 0 0.4rem 0;">No active Study Hour session.</h3>
-          <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Please check back during designated evening study hour timings (19:00 - 21:00).</p>
         </div>
       `;
-    } else {
-      const attendance = await HostelDB.getStudyAttendance(activeSession.id, student.regNo);
-      const myRecord = attendance[0];
-      const isPresent = myRecord && (myRecord.entryStatus === 'PRESENT' || myRecord.finalStatus === 'PRESENT');
-
+    } else if (currentStatus === 'ACTIVE') {
       if (isPresent) {
-        const scanTimeStr = myRecord.entryTime ? new Date(myRecord.entryTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'recently';
-        cardContent.innerHTML = `
-          <div style="padding: 1rem 0;">
-            <div style="background: rgba(16, 185, 129, 0.15); width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem auto; color: #10b981; font-size: 2rem;">
-              <i class="fa-solid fa-circle-check"></i>
+        // 3. ATTENDANCE RECORDED (PRESENT)
+        const scanTimeStr = myRecord && myRecord.entryTime ? new Date(myRecord.entryTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'recently';
+        cardHTML = `
+          <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: var(--border-radius-md); padding: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+              <div>
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.2rem;">
+                  <span style="font-size: 1.2rem;">✅</span>
+                  <h3 style="font-size: 1.1rem; font-weight: 800; color: #10b981; margin: 0;">Attendance Recorded</h3>
+                  <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; font-weight: 800; font-size: 0.75rem;">Attendance Status: Present</span>
+                </div>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.2rem 0 0 0;">
+                  Scan Time: <strong style="color: var(--text-primary);">${scanTimeStr}</strong>
+                </p>
+              </div>
+              <button type="button" class="btn btn-secondary" disabled style="opacity: 0.7; cursor: not-allowed; font-weight: 700;">
+                <i class="fa-solid fa-check"></i> Attendance Marked
+              </button>
             </div>
-            <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; font-weight: 800; font-size: 0.85rem;">ATTENDANCE RECORDED</span>
-            <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--text-primary); margin: 0.5rem 0 0.2rem 0;">Marked Present</h3>
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Scanned at ${scanTimeStr} for ${activeSession.sessionTitle || 'Study Session'}</p>
           </div>
         `;
       } else {
-        cardContent.innerHTML = `
-          <div style="padding: 1rem 0;">
-            <span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; font-weight: 800; font-size: 0.8rem; text-transform: uppercase;">SESSION IN PROGRESS</span>
-            <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--text-primary); margin: 0.4rem 0 0.2rem 0;">${activeSession.sessionTitle || 'Evening Study Hour'}</h3>
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0 0 1.25rem 0;">Started at ${activeSession.startTime || '19:00'} | Tap button below to scan warden QR</p>
-            
-            <button type="button" class="btn btn-primary btn-lg" id="btn-student-scan-study-qr" style="font-weight: 800; width: 100%; max-width: 320px; padding: 0.85rem; font-size: 1rem; border-radius: 12px; box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35);">
-              <i class="fa-solid fa-qrcode" style="margin-right: 0.4rem;"></i> Scan Study Hour QR Code
-            </button>
+        // 2. SESSION STARTED / ACTIVE (ATTENDANCE PENDING)
+        const startTimeStr = activeSession.startTime || '19:00';
+        cardHTML = `
+          <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%); border: 1.5px solid #10b981; border-radius: var(--border-radius-md); padding: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+              <div style="flex: 1; min-width: 260px;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem;">
+                  <span style="font-size: 1.1rem;">🟢</span>
+                  <h3 style="font-size: 1.1rem; font-weight: 800; color: #10b981; margin: 0;">Study Hour Session Started</h3>
+                  <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; font-weight: 800; font-size: 0.75rem;">Session Status: Active</span>
+                </div>
+                <p style="font-size: 0.88rem; font-weight: 600; color: var(--text-primary); margin: 0 0 0.4rem 0;">
+                  "Study Hour has started. Please scan the QR code to mark your attendance."
+                </p>
+                <div style="display: flex; gap: 1.25rem; font-size: 0.8rem; color: var(--text-muted); flex-wrap: wrap;">
+                  <span><i class="fa-solid fa-clock" style="color: var(--primary); margin-right: 0.3rem;"></i> Started: <strong>${startTimeStr}</strong></span>
+                  <span><i class="fa-solid fa-stopwatch" style="color: #f59e0b; margin-right: 0.3rem;"></i> Live Timer: <strong id="student-live-timer-text" style="color: var(--primary); font-family: monospace;">00:00:00</strong></span>
+                </div>
+              </div>
+
+              <!-- Scan QR Button (Large & Prominent) -->
+              <button type="button" class="btn btn-success btn-lg btn-scan-study-hour-qr-trigger" style="background: #10b981; border-color: #10b981; font-weight: 800; padding: 0.75rem 1.5rem; font-size: 0.95rem; border-radius: 12px; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);">
+                <i class="fa-solid fa-qrcode" style="margin-right: 0.4rem;"></i> Scan QR Code
+              </button>
+            </div>
           </div>
         `;
+      }
+    } else if (currentStatus === 'ENDED') {
+      // 4. SESSION ENDED
+      const subText = isPresent ? 'Attendance Recorded: Present' : 'Attendance not recorded for this session.';
+      cardHTML = `
+        <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: var(--border-radius-md); padding: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.2rem;">
+                <span style="font-size: 1.1rem;">🔴</span>
+                <h3 style="font-size: 1.1rem; font-weight: 800; color: #ef4444; margin: 0;">Study Hour Session Ended</h3>
+                <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; font-weight: 800; font-size: 0.75rem;">Session Status: Ended</span>
+              </div>
+              <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.2rem 0 0 0;">
+                The Study Hour session has ended. ${subText}
+              </p>
+            </div>
+          </div>
+        </div>
+      `;
+    }
 
-        const scanBtn = document.getElementById('btn-student-scan-study-qr');
-        if (scanBtn) {
-          scanBtn.addEventListener('click', () => {
-            if (window.HMSQRScanner) {
-              window.HMSQRScanner.open({
-                title: 'Scan Study Hour QR',
-                mainText: 'Align the Warden\'s Study Session QR inside the frame',
-                subText: 'Attendance will be registered automatically',
-                onScan: async (decodedText) => {
-                  try {
-                    let payload = null;
-                    try { payload = JSON.parse(decodedText); } catch (e) {}
+    // Hydrate DOM containers
+    if (bannerContainer) {
+      const contentEl = document.getElementById('study-banner-content') || bannerContainer;
+      contentEl.innerHTML = cardHTML;
+    }
+    if (sessionCardContainer) {
+      const cardContentEl = document.getElementById('student-session-content') || sessionCardContainer;
+      cardContentEl.innerHTML = cardHTML;
+    }
 
-                    if (payload && payload.type === 'STUDY_HOUR') {
-                      await HostelDB.upsertStudyAttendance({
-                        sessionId: activeSession.id,
-                        studentReg: student.regNo,
-                        studentName: student.name,
-                        dept: student.dept || 'CSE',
-                        room: student.room || '-',
-                        entryStatus: 'PRESENT',
-                        entryTime: new Date().toISOString(),
-                        finalStatus: 'PRESENT'
-                      });
-                      showToast('✓ Study Hour Attendance Marked Present!', 'success');
-                      await renderStudentPage();
-                    } else {
-                      showToast('Invalid QR Code. Please scan the Warden\'s Study Hour QR.', 'danger');
-                    }
-                  } catch (err) {
-                    console.error('Scan error:', err);
-                    showToast('Failed to record attendance.', 'danger');
+    // Attach Scan QR Button Click Handlers
+    document.querySelectorAll('.btn-scan-study-hour-qr-trigger').forEach(btn => {
+      btn.onclick = () => {
+        if (!activeSession) {
+          showToast('Study Hour session is not currently active.', 'warning');
+          return;
+        }
+        if (window.HMSQRScanner) {
+          window.HMSQRScanner.open({
+            title: 'Scan Study Hour QR',
+            mainText: 'Align the Warden\'s Study Session QR inside frame',
+            subText: 'Attendance will be registered automatically',
+            onScan: async (decodedText) => {
+              try {
+                let payload = null;
+                try { payload = JSON.parse(decodedText); } catch (e) {}
+
+                if (payload && payload.type === 'STUDY_HOUR') {
+                  await HostelDB.upsertStudyAttendance({
+                    sessionId: activeSession.id,
+                    studentReg: student.regNo,
+                    studentName: student.name,
+                    dept: student.dept || 'CSE',
+                    room: student.room || '-',
+                    entryStatus: 'PRESENT',
+                    entryTime: new Date().toISOString(),
+                    finalStatus: 'PRESENT'
+                  });
+
+                  if ('BroadcastChannel' in window) {
+                    try {
+                      const bc = new BroadcastChannel('hms_study_channel');
+                      bc.postMessage({ type: 'ATTENDANCE_RECORDED', studentReg: student.regNo, timestamp: Date.now() });
+                      bc.close();
+                    } catch (e) {}
                   }
+
+                  showToast('✓ Attendance Recorded: Present!', 'success');
+                  await renderRealtimeState(false);
+                } else {
+                  showToast('Invalid QR Code. Please scan the Warden\'s Study Hour QR.', 'danger');
                 }
-              });
+              } catch (err) {
+                console.error('Scan error:', err);
+                showToast('Failed to record attendance.', 'danger');
+              }
             }
           });
         }
+      };
+    });
+
+    // Handle Live Timer
+    if (activeSession && currentStatus === 'ACTIVE' && !isPresent) {
+      if (!studentLiveTimerInterval) {
+        const startTime = new Date(activeSession.createdAt || Date.now()).getTime();
+        studentLiveTimerInterval = setInterval(() => {
+          const elapsedSec = Math.floor((Date.now() - startTime) / 1000);
+          const hrs = String(Math.floor(elapsedSec / 3600)).padStart(2, '0');
+          const mins = String(Math.floor((elapsedSec % 3600) / 60)).padStart(2, '0');
+          const secs = String(elapsedSec % 60).padStart(2, '0');
+          const timerEl = document.getElementById('student-live-timer-text');
+          if (timerEl) timerEl.textContent = `${hrs}:${mins}:${secs}`;
+        }, 1000);
+      }
+    } else {
+      if (studentLiveTimerInterval) {
+        clearInterval(studentLiveTimerInterval);
+        studentLiveTimerInterval = null;
       }
     }
 
+    // Render Student Study History Table if present
     if (historyTbody) {
       if (sessions.length === 0) {
         historyTbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1.25rem;">No historical records found.</td></tr>`;
@@ -1380,11 +1506,11 @@ async function initStudentStudyHour(student) {
         const rows = await Promise.all(sessions.map(async s => {
           const atts = await HostelDB.getStudyAttendance(s.id, student.regNo);
           const rec = atts[0];
-          const isPresent = rec && (rec.entryStatus === 'PRESENT' || rec.finalStatus === 'PRESENT');
-          const badge = isPresent 
+          const isPresentRec = rec && (rec.entryStatus === 'PRESENT' || rec.finalStatus === 'PRESENT');
+          const badge = isPresentRec 
             ? `<span class="badge badge-success">PRESENT</span>` 
             : `<span class="badge badge-danger">MISSED / ABSENT</span>`;
-          const time = isPresent && rec.entryTime ? new Date(rec.entryTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
+          const time = isPresentRec && rec.entryTime ? new Date(rec.entryTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
 
           return `
             <tr>
@@ -1400,7 +1526,27 @@ async function initStudentStudyHour(student) {
     }
   };
 
-  await renderStudentPage();
+  // Initial Sync
+  await renderRealtimeState(false);
+
+  // BroadcastChannel Listener for Sub-Millisecond Multi-Tab Sync
+  if ('BroadcastChannel' in window) {
+    try {
+      const bc = new BroadcastChannel('hms_study_channel');
+      bc.onmessage = async (event) => {
+        console.log('⚡ Realtime Study Broadcast Received:', event.data);
+        await renderRealtimeState(true);
+      };
+    } catch (e) {}
+  }
+
+  // 2.5s Background Polling Fallback (Zero Refresh Automation)
+  const pollInterval = setInterval(() => renderRealtimeState(true), 2500);
+  window.addEventListener('beforeunload', () => clearInterval(pollInterval));
+}
+
+async function initStudentStudyHour(student) {
+  await initStudentDashboardStudyHour(student);
 }
 
 

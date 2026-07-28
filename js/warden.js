@@ -2854,6 +2854,13 @@ async function initWardenStudyHour() {
           endTime: '21:00',
           createdBy: 'Warden'
         });
+        if ('BroadcastChannel' in window) {
+          try {
+            const bc = new BroadcastChannel('hms_study_channel');
+            bc.postMessage({ type: 'SESSION_STARTED', timestamp: Date.now() });
+            bc.close();
+          } catch (e) {}
+        }
         showToast('✓ Study Session Started Successfully!', 'success');
         await renderDashboard();
       } catch (err) {
@@ -2868,6 +2875,13 @@ async function initWardenStudyHour() {
         const active = await HostelDB.getActiveStudySession();
         if (active) {
           await HostelDB.closeStudySession(active.id);
+          if ('BroadcastChannel' in window) {
+            try {
+              const bc = new BroadcastChannel('hms_study_channel');
+              bc.postMessage({ type: 'SESSION_ENDED', timestamp: Date.now() });
+              bc.close();
+            } catch (e) {}
+          }
           showToast('✓ Study Session Ended & Locked!', 'info');
           await renderDashboard();
         }
