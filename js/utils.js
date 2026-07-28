@@ -1045,26 +1045,32 @@ class HostelDB {
   static async getStudySessions() {
     if (USE_SUPABASE) {
       try {
-        const data = await supabaseFetch('hms_study_sessions?order=created_at.desc', { method: 'GET' });
-        return (data || []).map(s => ({
-          id: s.id,
-          sessionTitle: s.session_title,
-          date: s.date,
-          startTime: s.start_time,
-          endTime: s.end_time,
-          status: s.status,
-          createdBy: s.created_by,
-          createdAt: s.created_at,
-          closedAt: s.closed_at,
-          config: s.config || {}
-        }));
+        const data = await supabaseFetch(`hms_study_sessions?order=created_at.desc&_t=${Date.now()}`, { 
+          method: 'GET',
+          headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
+        });
+        if (data && Array.isArray(data)) {
+          const mapped = data.map(s => ({
+            id: s.id,
+            sessionTitle: s.session_title,
+            date: s.date,
+            startTime: s.start_time,
+            endTime: s.end_time,
+            status: s.status,
+            createdBy: s.created_by,
+            createdAt: s.created_at,
+            closedAt: s.closed_at,
+            config: s.config || {}
+          }));
+          this.setData('hms_study_sessions', mapped);
+          return mapped;
+        }
       } catch (e) {
         console.warn('Supabase hms_study_sessions query failed (falling back to LocalStorage):', e.message);
         return this.getData('hms_study_sessions');
       }
-    } else {
-      return this.getData('hms_study_sessions');
     }
+    return this.getData('hms_study_sessions');
   }
 
   static async getActiveStudySession() {
@@ -1571,35 +1577,41 @@ class HostelDB {
   static async getStudyAttendance(sessionId, studentReg) {
     let query = `hms_study_attendance?session_id=eq.${sessionId}`;
     if (studentReg) query += `&student_reg=eq.${studentReg}`;
+    query += `&_t=${Date.now()}`;
 
     if (USE_SUPABASE) {
       try {
-        const data = await supabaseFetch(query, { method: 'GET' });
-        return (data || []).map(a => ({
-          id: a.id,
-          sessionId: a.session_id,
-          studentReg: a.student_reg,
-          studentName: a.student_name,
-          dept: a.dept,
-          room: a.room,
-          entryStatus: a.entry_status,
-          entryTime: a.entry_time,
-          exitStatus: a.exit_status,
-          exitTime: a.exit_time,
-          finalStatus: a.final_status,
-          notes: a.notes,
-          createdAt: a.created_at,
-          updatedAt: a.updated_at
-        }));
+        const data = await supabaseFetch(query, { 
+          method: 'GET',
+          headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
+        });
+        if (data && Array.isArray(data)) {
+          const mapped = data.map(a => ({
+            id: a.id,
+            sessionId: a.session_id,
+            studentReg: a.student_reg,
+            studentName: a.student_name,
+            dept: a.dept,
+            room: a.room,
+            entryStatus: a.entry_status,
+            entryTime: a.entry_time,
+            exitStatus: a.exit_status,
+            exitTime: a.exit_time,
+            finalStatus: a.final_status,
+            notes: a.notes,
+            createdAt: a.created_at,
+            updatedAt: a.updated_at
+          }));
+          return mapped;
+        }
       } catch (e) {
         console.warn('Error fetching study attendance from Supabase (falling back to LocalStorage):', e.message);
         let list = this.getData('hms_study_attendance') || [];
         return list.filter(a => a.sessionId === sessionId && (!studentReg || a.studentReg === studentReg));
       }
-    } else {
-      let list = this.getData('hms_study_attendance') || [];
-      return list.filter(a => a.sessionId === sessionId && (!studentReg || a.studentReg === studentReg));
     }
+    let list = this.getData('hms_study_attendance') || [];
+    return list.filter(a => a.sessionId === sessionId && (!studentReg || a.studentReg === studentReg));
   }
 
   static async upsertStudyAttendance(att) {

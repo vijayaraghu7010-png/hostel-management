@@ -1540,8 +1540,25 @@ async function initStudentDashboardStudyHour(student) {
     } catch (e) {}
   }
 
-  // 2.5s Background Polling Fallback (Zero Refresh Automation)
-  const pollInterval = setInterval(() => renderRealtimeState(true), 2500);
+  // Mobile OS & Browser Lifecycle Event Hooks for 100% Guaranteed Mobile Synchronization
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      renderRealtimeState(true);
+    }
+  });
+
+  window.addEventListener('focus', () => renderRealtimeState(true));
+  window.addEventListener('pageshow', () => renderRealtimeState(true));
+  window.addEventListener('online', () => renderRealtimeState(true));
+
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'hms_study_sessions' || e.key === 'hms_study_attendance') {
+      renderRealtimeState(true);
+    }
+  });
+
+  // 3s Automatic Background Polling Fallback (Zero Refresh Automation)
+  const pollInterval = setInterval(() => renderRealtimeState(true), 3000);
   window.addEventListener('beforeunload', () => clearInterval(pollInterval));
 }
 
