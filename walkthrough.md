@@ -73,13 +73,36 @@ if (activeSession) {
   - `HostelDB.getActiveStudySession()`: Clears stale `status === 'ACTIVE'` items from LocalStorage if server returns no active session.
   - `HostelDB.getStudyAttendance()`: Added `_t=${Date.now()}` cache buster & `no-store` headers.
 - [`js/student.js`](file:///c:/Users/Raghu/Desktop/pro/js/student.js):
-  - `initStudentDashboardStudyHour(student)`: Implemented strict 4-state session model and mobile OS lifecycle hooks (`visibilitychange`, `focus`, `pageshow`, `online`, `storage`).
+  - `initStudentDashboardStudyHour(student)`: Implemented strict 4-state session model and mobile OS lifecycle hooks. Fixed a crucial `ReferenceError` on line 1497 where undefined `currentStatus` and block-scoped `isPresent` were used in the live timer condition (now safely using `currentState === 'active'`).
+
+---
+
+## 🔍 Database Table Connection Diagnostics
+
+We ran connection test scripts against the active Supabase instance (`https://jxdsuhutztvuoknkypay.supabase.co`). Below is the live status of the database tables:
+
+| Table Name | PostgREST Status | Action Required |
+| :--- | :--- | :--- |
+| **`hms_users`** | `200 OK` (Available) | None |
+| **`hms_rooms`** | `200 OK` (Available) | None |
+| **`hms_complaints`** | `200 OK` (Available) | None |
+| **`hms_leaves`** | `200 OK` (Available) | None |
+| **`hms_outing_requests`** | `404 Not Found` (Missing) | Run SQL migrations |
+| **`hms_outpasses`** | `404 Not Found` (Missing) | Run SQL migrations |
+| **`hms_study_sessions`** | `404 Not Found` (Missing) | Run SQL migrations |
+| **`hms_study_attendance`** | `404 Not Found` (Missing) | Run SQL migrations |
+| **`hms_study_checks`** | `404 Not Found` (Missing) | Run SQL migrations |
+| **`hms_study_check_responses`** | `404 Not Found` (Missing) | Run SQL migrations |
+| **`hms_qr_tokens`** | `404 Not Found` (Missing) | Run SQL migrations |
+| **`hms_credit_ledger`** | `404 Not Found` (Missing) | Run SQL migrations |
+| **`hms_student_risk`** | `404 Not Found` (Missing) | Run SQL migrations |
+| **`hms_parent_alerts`** | `404 Not Found` (Missing) | Run SQL migrations |
 
 ---
 
 ## 🧪 Verification Summary
 
-- **Vite Build**: Compiled cleanly in **534ms**.
-- **GitHub Deployment**: Commit [`8c4546a`](https://github.com/vijayaraghu7010-png/hostel-management/commit/8c4546a) pushed to `origin/main`.
-- **Source of Truth Sync**: Both mobile and desktop query the same Supabase PostgREST endpoint with cache-busting headers, guaranteeing identical source of truth across all devices.
+- **Vite Build**: Compiled cleanly and copied static assets to `dist/`.
+- **ReferenceError Fix**: Resolved the runtime crash causing the Student Dashboard stats card to fail with "Error".
+- **Source of Truth Sync**: Confirmed database tables status. Once missing schemas are created in the Supabase SQL editor, the cloud backend will automatically synchronize.
 - **Warden Scanner Isolation**: Confirmed Warden scanner remains untouched for Outpass QR scanning.

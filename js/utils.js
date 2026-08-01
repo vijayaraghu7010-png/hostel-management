@@ -18,11 +18,11 @@ class HostelDB {
   static async checkConnection() {
     try {
       // Test table access
-      await supabaseFetch('hms_users?limit=1', { method: 'GET' });
+      await supabaseFetch('hms_leaves?limit=1', { method: 'GET' });
       USE_SUPABASE = true;
       console.log('HMS Cloud Connection: Supabase backend active.');
     } catch (e) {
-      console.warn('HMS Cloud Connection: Tables not found or connection failed. Falling back to LocalStorage.', e);
+      console.warn('HMS Cloud Connection: Supabase query failed or table not found. Falling back to LocalStorage.', e.message);
       USE_SUPABASE = false;
     }
   }
@@ -608,32 +608,38 @@ class HostelDB {
     }
 
     if (USE_SUPABASE) {
-      const data = await supabaseFetch('hms_complaints?order=date.desc', { method: 'GET' });
-      const mapped = data.map(c => ({
-        id: c.id,
-        studentReg: c.student_reg,
-        studentName: c.student_name,
-        room: c.room,
-        category: c.category,
-        priority: c.priority,
-        description: c.description,
-        date: c.date,
-        status: c.status,
-        timeline: c.timeline || [],
-        assignedTo: c.assigned_to,
-        deadline: c.deadline
-      }));
-      if (allowedRegs) {
-        return mapped.filter(c => allowedRegs.has(c.studentReg));
+      try {
+        const data = await supabaseFetch('hms_complaints?order=date.desc', { method: 'GET' });
+        if (data && Array.isArray(data)) {
+          const mapped = data.map(c => ({
+            id: c.id,
+            studentReg: c.student_reg,
+            studentName: c.student_name,
+            room: c.room,
+            category: c.category,
+            priority: c.priority,
+            description: c.description,
+            date: c.date,
+            status: c.status,
+            timeline: c.timeline || [],
+            assignedTo: c.assigned_to,
+            deadline: c.deadline
+          }));
+          if (allowedRegs) {
+            return mapped.filter(c => allowedRegs.has(c.studentReg));
+          }
+          return mapped;
+        }
+      } catch (e) {
+        console.warn('Supabase hms_complaints query failed (falling back to LocalStorage):', e.message);
       }
-      return mapped;
-    } else {
-      const list = this.getData('hms_complaints');
-      if (allowedRegs) {
-        return list.filter(c => allowedRegs.has(c.studentReg));
-      }
-      return list;
     }
+
+    const list = this.getData('hms_complaints');
+    if (allowedRegs) {
+      return list.filter(c => allowedRegs.has(c.studentReg));
+    }
+    return list;
   }
 
   static async addComplaint(c) {
@@ -689,55 +695,62 @@ class HostelDB {
     }
 
     if (USE_SUPABASE) {
-      const data = await supabaseFetch(`hms_leaves?order=date_raised.desc${deptFilter}`, { method: 'GET' });
-      return data.map(l => {
-        let reviewer = l.approved_by || '';
-        let remarks = '';
-        let reviewDate = '';
-        
-        if (reviewer.trim().startsWith('{')) {
-          try {
-            const parsed = JSON.parse(reviewer);
-            reviewer = parsed.reviewer || '';
-            remarks = parsed.remarks || '';
-            reviewDate = parsed.reviewDate || '';
-          } catch (e) {
-            console.error('Failed to parse approved_by JSON:', e);
-          }
-        } else {
-          if (l.status === 'Approved') {
-            remarks = 'Approved by warden';
-            reviewDate = l.date_raised;
-          } else if (l.status === 'Rejected') {
-            remarks = 'Request denied by warden';
-            reviewDate = l.date_raised;
-          } else if (l.status === 'Cancelled') {
-            remarks = 'Cancelled by student';
-            reviewDate = l.date_raised;
-          } else {
-            remarks = 'Awaiting review';
-            reviewDate = 'Not Available';
-          }
+      try {
+        const data = await supabaseFetch(`hms_leaves?order=date_raised.desc${deptFilter}`, { method: 'GET' });
+        if (data && Array.isArray(data)) {
+          return data.map(l => {
+            let reviewer = l.approved_by || '';
+            let remarks = '';
+            let reviewDate = '';
+            
+            if (reviewer.trim().startsWith('{')) {
+              try {
+                const parsed = JSON.parse(reviewer);
+                reviewer = parsed.reviewer || '';
+                remarks = parsed.remarks || '';
+                reviewDate = parsed.reviewDate || '';
+              } catch (e) {
+                console.error('Failed to parse approved_by JSON:', e);
+              }
+            } else {
+              if (l.status === 'Approved') {
+                remarks = 'Approved by warden';
+                reviewDate = l.date_raised;
+              } else if (l.status === 'Rejected') {
+                remarks = 'Request denied by warden';
+                reviewDate = l.date_raised;
+              } else if (l.status === 'Cancelled') {
+                remarks = 'Cancelled by student';
+                reviewDate = l.date_raised;
+              } else {
+                remarks = 'Awaiting review';
+                reviewDate = 'Not Available';
+              }
+            }
+            
+            return {
+              id: l.id,
+              studentReg: l.student_reg,
+              studentName: l.student_name,
+              dept: l.dept,
+              room: l.room,
+              fromDate: l.from_date,
+              toDate: l.to_date,
+              reason: l.reason,
+              status: l.status,
+              dateRaised: l.date_raised,
+              approvedBy: reviewer,
+              remarks: remarks || (l.status === 'Pending' ? 'Awaiting review' : 'Processed'),
+              reviewDate: reviewDate || 'Not Available'
+            };
+          });
         }
-        
-        return {
-          id: l.id,
-          studentReg: l.student_reg,
-          studentName: l.student_name,
-          dept: l.dept,
-          room: l.room,
-          fromDate: l.from_date,
-          toDate: l.to_date,
-          reason: l.reason,
-          status: l.status,
-          dateRaised: l.date_raised,
-          approvedBy: reviewer,
-          remarks: remarks || (l.status === 'Pending' ? 'Awaiting review' : 'Processed'),
-          reviewDate: reviewDate || 'Not Available'
-        };
-      });
-    } else {
-      let list = this.getData('hms_leaves');
+      } catch (e) {
+        console.warn('Supabase hms_leaves query failed (falling back to LocalStorage):', e.message);
+      }
+    }
+
+    let list = this.getData('hms_leaves');
       if (currentUser && (currentUser.role === 'teacher' || currentUser.role === 'hod')) {
         if (currentUser.dept) {
           list = list.filter(l => l.dept === currentUser.dept);
@@ -781,7 +794,6 @@ class HostelDB {
         };
       });
     }
-  }
 
   static async addLeave(l) {
     if (USE_SUPABASE) {

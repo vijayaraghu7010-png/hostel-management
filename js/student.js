@@ -1494,7 +1494,7 @@ async function initStudentDashboardStudyHour(student) {
     });
 
     // Handle Live Timer
-    if (activeSession && currentStatus === 'ACTIVE' && !isPresent) {
+    if (activeSession && currentState === 'active') {
       if (!studentLiveTimerInterval) {
         const startTime = new Date(activeSession.createdAt || Date.now()).getTime();
         studentLiveTimerInterval = setInterval(() => {

@@ -2568,18 +2568,123 @@ async function initWardenStudyHour() {
   const filterRoom = document.getElementById('filter-room');
   const filterAttendance = document.getElementById('filter-attendance');
 
+  const hydrateSelectOptions = (selectEl, values, formatter, emptyLabel) => {
+    if (!selectEl) return;
+
+    const currentValue = selectEl.value;
+    const options = values.map(value => {
+      const label = formatter ? formatter(value) : value;
+      return `<option value="${value}">${label}</option>`;
+    }).join('');
+
+    selectEl.innerHTML = `<option value="">${emptyLabel}</option>${options}`;
+
+    if (currentValue && values.includes(currentValue)) {
+      selectEl.value = currentValue;
+    }
+  };
+
+  const buildSessionSummary = async (session, students) => {
+    if (!session) {
+      return {
+        presentMap: new Map(),
+        attendanceRecords: [],
+        presentCount: 0,
+        pendingCount: students.length,
+        totalCount: students.length,
+        attendanceRate: 0,
+        latestScanLabel: 'None'
+      };
+    }
+
+    const attendanceRecords = await HostelDB.getStudyAttendance(session.id);
+    const presentMap = new Map();
+
+    attendanceRecords.forEach(record => {
+      const isPresent = record.entryStatus === 'PRESENT' ||
+        record.entryStatus === 'PASS' ||
+        record.finalStatus === 'PRESENT';
+
+      if (isPresent) {
+        presentMap.set(record.studentReg, record);
+      }
+    });
+
+    const latestScanRecord = attendanceRecords
+      .filter(record => record.entryTime)
+      .sort((a, b) => new Date(b.entryTime) - new Date(a.entryTime))[0] || null;
+
+    const totalCount = students.length;
+    const presentCount = presentMap.size;
+    const pendingCount = Math.max(0, totalCount - presentCount);
+    const attendanceRate = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0;
+
+    return {
+      ...session,
+      presentMap,
+      attendanceRecords,
+      presentCount,
+      pendingCount,
+      totalCount,
+      attendanceRate,
+      latestScanLabel: latestScanRecord && latestScanRecord.entryTime
+        ? new Date(latestScanRecord.entryTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        : 'None'
+    };
+  };
+
+  const buildStudentMetrics = async (students) => {
+    const metrics = await Promise.all(students.map(async student => {
+      const [creditBalance, riskProfile] = await Promise.all([
+        HostelDB.getCreditBalance(student.regNo),
+        HostelDB.getStudentRiskProfile(student.regNo)
+      ]);
+
+      return {
+        ...student,
+        creditBalance,
+        riskProfile
+      };
+    }));
+
+    const departments = [...new Set(metrics.map(student => student.dept).filter(Boolean))].sort();
+    const rooms = [...new Set(metrics.map(student => String(student.room)).filter(room => room && room !== '-'))].sort();
+
+    hydrateSelectOptions(filterDept, departments, null, 'All Depts');
+    hydrateSelectOptions(filterRoom, rooms, room => `Room ${room}`, 'All Rooms');
+
+    return metrics;
+  };
+
   const renderDashboard = async () => {
-    const activeSession = await HostelDB.getActiveStudySession();
-    const students = await HostelDB.getStudents();
-    const sessions = await HostelDB.getStudySessions();
+    const [activeSession, rawStudents, sessions] = await Promise.all([
+      HostelDB.getActiveStudySession(),
+      HostelDB.getStudents(),
+      HostelDB.getStudySessions()
+    ]);
+    const students = await buildStudentMetrics(rawStudents);
+    const sessionSummaries = await Promise.all(sessions.map(session => buildSessionSummary(session, students)));
+    const activeSummary = activeSession
+      ? (sessionSummaries.find(session => session.id === activeSession.id) || await buildSessionSummary(activeSession, students))
+      : null;
+    const dashboardSummary = activeSummary || sessionSummaries[0] || {
+      presentMap: new Map(),
+      attendanceRecords: [],
+      presentCount: 0,
+      pendingCount: students.length,
+      totalCount: students.length,
+      attendanceRate: 0,
+      latestScanLabel: 'None'
+    };
 
     const badgeStatus = document.getElementById('badge-session-status');
     const banner = document.getElementById('active-session-banner');
     const titleEl = document.getElementById('active-session-title');
     const metaEl = document.getElementById('active-session-meta');
     const qrCanvas = document.getElementById('study-session-qr-canvas');
+    const lastScanEl = document.getElementById('active-session-last-scan');
 
-    if (activeSession) {
+    if (activeSummary) {
       if (badgeStatus) {
         badgeStatus.textContent = 'ACTIVE';
         badgeStatus.style.background = 'rgba(16, 185, 129, 0.2)';
@@ -2589,16 +2694,16 @@ async function initWardenStudyHour() {
       if (endBtn) endBtn.style.display = 'inline-flex';
       if (banner) banner.style.display = 'block';
 
-      if (titleEl) titleEl.textContent = activeSession.sessionTitle || 'Evening Study Session';
-      if (metaEl) metaEl.textContent = `Started at ${activeSession.startTime || '19:00'} | Date: ${activeSession.date}`;
+      if (titleEl) titleEl.textContent = activeSummary.sessionTitle || 'Evening Study Session';
+      if (metaEl) metaEl.textContent = `Started at ${activeSummary.startTime || '19:00'} | Date: ${activeSummary.date}`;
+      if (lastScanEl) lastScanEl.textContent = activeSummary.latestScanLabel;
 
-      // Render Session QR Code using davidshimjs-qrcodejs
       if (qrCanvas) {
         qrCanvas.innerHTML = '';
         const qrPayload = JSON.stringify({
           type: "STUDY_HOUR",
-          id: activeSession.id,
-          sessionId: activeSession.id,
+          id: activeSummary.id,
+          sessionId: activeSummary.id,
           timestamp: Date.now()
         });
 
@@ -2618,9 +2723,8 @@ async function initWardenStudyHour() {
         }
       }
 
-      // Start live timer
       if (!studyTimerInterval) {
-        const startTime = new Date(activeSession.createdAt || Date.now()).getTime();
+        const startTime = new Date(activeSummary.createdAt || Date.now()).getTime();
         studyTimerInterval = setInterval(() => {
           const elapsedSec = Math.floor((Date.now() - startTime) / 1000);
           const hrs = String(Math.floor(elapsedSec / 3600)).padStart(2, '0');
@@ -2630,7 +2734,6 @@ async function initWardenStudyHour() {
           if (timerEl) timerEl.textContent = `${hrs}:${mins}:${secs}`;
         }, 1000);
       }
-
     } else {
       if (badgeStatus) {
         badgeStatus.textContent = 'INACTIVE';
@@ -2640,6 +2743,7 @@ async function initWardenStudyHour() {
       if (startBtn) startBtn.style.display = 'inline-flex';
       if (endBtn) endBtn.style.display = 'none';
       if (banner) banner.style.display = 'none';
+      if (lastScanEl) lastScanEl.textContent = 'None';
 
       if (studyTimerInterval) {
         clearInterval(studyTimerInterval);
@@ -2649,38 +2753,20 @@ async function initWardenStudyHour() {
       if (timerEl) timerEl.textContent = '00:00:00';
     }
 
-    const targetSessionId = activeSession ? activeSession.id : (sessions[0] ? sessions[0].id : null);
-    let attendanceRecords = [];
-    if (targetSessionId) {
-      attendanceRecords = await HostelDB.getStudyAttendance(targetSessionId);
-    }
-
-    const presentMap = new Map();
-    attendanceRecords.forEach(a => {
-      if (a.entryStatus === 'PRESENT' || a.finalStatus === 'PRESENT') {
-        presentMap.set(a.studentReg, a);
-      }
-    });
-
-    const totalCount = students.length;
-    const presentCount = presentMap.size;
-    const pendingCount = Math.max(0, totalCount - presentCount);
-    const rate = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0;
-
     const totalEl = document.getElementById('stat-total-students');
     const presentEl = document.getElementById('stat-present-count');
     const pendingEl = document.getElementById('stat-pending-count');
     const rateEl = document.getElementById('stat-attendance-rate');
 
-    if (totalEl) totalEl.textContent = totalCount;
-    if (presentEl) presentEl.textContent = presentCount;
-    if (pendingEl) pendingEl.textContent = pendingCount;
-    if (rateEl) rateEl.textContent = `${rate}%`;
+    if (totalEl) totalEl.textContent = dashboardSummary.totalCount;
+    if (presentEl) presentEl.textContent = dashboardSummary.presentCount;
+    if (pendingEl) pendingEl.textContent = dashboardSummary.pendingCount;
+    if (rateEl) rateEl.textContent = `${dashboardSummary.attendanceRate}%`;
 
-    renderStudentCards(students, presentMap);
-    renderParentAlerts(students, presentMap);
-    renderSessionHistory(sessions);
-    renderAnalyticsCharts(sessions, attendanceRecords, students);
+    renderStudentCards(students, dashboardSummary.presentMap);
+    renderParentAlerts(students, dashboardSummary.presentMap);
+    renderSessionHistory(sessionSummaries);
+    renderAnalyticsCharts(sessionSummaries, dashboardSummary.presentMap, students);
   };
 
   const renderStudentCards = (students, presentMap) => {
@@ -2728,7 +2814,7 @@ async function initWardenStudyHour() {
             <div><span style="color: var(--text-muted); font-size: 0.7rem; display: block;">ROOM</span><strong>Room ${s.room || '-'}</strong></div>
             <div><span style="color: var(--text-muted); font-size: 0.7rem; display: block;">DEPT</span><strong>${s.dept || 'CSE'}</strong></div>
             <div><span style="color: var(--text-muted); font-size: 0.7rem; display: block;">SCAN TIME</span><strong>${scanTimeStr}</strong></div>
-            <div><span style="color: var(--text-muted); font-size: 0.7rem; display: block;">CREDITS</span><strong>${s.disciplineCredits || 100} pts</strong></div>
+            <div><span style="color: var(--text-muted); font-size: 0.7rem; display: block;">CREDITS</span><strong>${s.creditBalance ?? 1000} pts</strong></div>
           </div>
         </div>
       `;
@@ -2739,29 +2825,50 @@ async function initWardenStudyHour() {
     const container = document.getElementById('parent-alerts-container');
     if (!container) return;
 
-    const riskStudents = students.filter(s => (s.disciplineCredits && s.disciplineCredits < 75) || !presentMap.has(s.regNo));
+    const riskStudents = students
+      .map(student => {
+        const creditBalance = student.creditBalance ?? 1000;
+        const riskLevel = student.riskProfile ? student.riskProfile.riskLevel : 'NORMAL';
+        const isPresent = presentMap.has(student.regNo);
+        const needsAlert = !isPresent || creditBalance < 500 || ['WARNING', 'CRITICAL'].includes(riskLevel);
+
+        return {
+          ...student,
+          creditBalance,
+          riskLevel,
+          isPresent,
+          needsAlert
+        };
+      })
+      .filter(student => student.needsAlert)
+      .sort((a, b) => {
+        if (a.isPresent !== b.isPresent) return a.isPresent ? 1 : -1;
+        return a.creditBalance - b.creditBalance;
+      });
 
     if (riskStudents.length === 0) {
       container.innerHTML = `<div style="text-align: center; padding: 1rem; color: var(--text-muted); font-size: 0.85rem;">✓ All students are currently above discipline credit thresholds.</div>`;
       return;
     }
 
-    container.innerHTML = riskStudents.slice(0, 3).map(s => {
-      const credits = s.disciplineCredits || 70;
-      const riskLevel = credits < 60 ? 'CRITICAL' : 'HIGH';
-      const badgeColor = riskLevel === 'CRITICAL' ? '#ef4444' : '#f59e0b';
+    container.innerHTML = riskStudents.slice(0, 3).map(student => {
+      const riskLevel = !student.isPresent ? 'ABSENT' : student.riskLevel;
+      const badgeColor = riskLevel === 'CRITICAL' || riskLevel === 'ABSENT' ? '#ef4444' : '#f59e0b';
+      const reasonText = !student.isPresent
+        ? 'Absent from current study session'
+        : `Discipline balance at ${student.creditBalance} pts`;
 
       return `
         <div style="background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--border-radius-md); padding: 0.85rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
           <div>
-            <strong style="color: var(--text-primary); font-size: 0.9rem;">${s.name}</strong> (${s.regNo})
+            <strong style="color: var(--text-primary); font-size: 0.9rem;">${student.name}</strong> (${student.regNo})
             <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">
-              Room ${s.room || '-'} | Current Credits: <strong style="color: ${badgeColor};">${credits} pts</strong>
+              Room ${student.room || '-'} | ${reasonText}
             </div>
           </div>
           <div style="display: flex; align-items: center; gap: 0.75rem;">
-            <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: ${badgeColor}; font-weight: 800;">${riskLevel} RISK</span>
-            <button type="button" class="btn btn-sm btn-secondary btn-send-alert-action" data-reg="${s.regNo}" data-name="${s.name}">
+            <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: ${badgeColor}; font-weight: 800;">${riskLevel}</span>
+            <button type="button" class="btn btn-sm btn-secondary btn-send-alert-action" data-reg="${student.regNo}" data-name="${student.name}">
               <i class="fa-solid fa-paper-plane"></i> Review & Send Alert
             </button>
           </div>
@@ -2796,48 +2903,74 @@ async function initWardenStudyHour() {
           <td><strong>${s.sessionTitle || 'Study Session'}</strong></td>
           <td>${s.startTime || '19:00'}</td>
           <td>${s.endTime || '21:00'}</td>
-          <td>${s.presentCount || 0} Present</td>
+          <td>${s.presentCount || 0} / ${s.totalCount || 0}</td>
           <td><strong style="color: var(--primary);">${s.attendanceRate || 0}%</strong></td>
-          <td>
-            <span class="badge badge-neutral">${statusBadge}</span>
-          </td>
+          <td>${statusBadge}</td>
         </tr>
       `;
     }).join('');
   };
 
-  const renderAnalyticsCharts = (sessions, attendanceRecords, students) => {
+  const renderAnalyticsCharts = (sessions, presentMap, students) => {
     const trendCtx = document.getElementById('chart-study-trend');
     const deptCtx = document.getElementById('chart-study-dept');
+    const recentSessions = sessions.slice(0, 7).reverse();
+    const trendLabels = recentSessions.length > 0
+      ? recentSessions.map(session => formatDateString(session.date))
+      : ['No Sessions'];
+    const trendData = recentSessions.length > 0
+      ? recentSessions.map(session => session.attendanceRate || 0)
+      : [0];
 
     if (trendCtx && typeof Chart !== 'undefined') {
       if (trendChartInstance) trendChartInstance.destroy();
       trendChartInstance = new Chart(trendCtx, {
         type: 'line',
         data: {
-          labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+          labels: trendLabels,
           datasets: [{
             label: 'Attendance %',
-            data: [85, 88, 92, 90, 86, 94, 96],
+            data: trendData,
             borderColor: '#3b82f6',
             backgroundColor: 'rgba(59, 130, 246, 0.1)',
             fill: true,
             tension: 0.4
           }]
         },
-        options: { responsive: true, maintainAspectRatio: false }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100
+            }
+          }
+        }
       });
     }
+
+    const deptStats = students.reduce((acc, student) => {
+      const dept = student.dept || 'General';
+      if (!acc[dept]) acc[dept] = 0;
+      if (presentMap.has(student.regNo)) {
+        acc[dept] += 1;
+      }
+      return acc;
+    }, {});
+
+    const deptLabels = Object.keys(deptStats);
+    const deptData = deptLabels.length > 0 ? deptLabels.map(label => deptStats[label]) : [0];
 
     if (deptCtx && typeof Chart !== 'undefined') {
       if (deptChartInstance) deptChartInstance.destroy();
       deptChartInstance = new Chart(deptCtx, {
         type: 'doughnut',
         data: {
-          labels: ['CSE', 'ECE', 'EEE', 'MECH'],
+          labels: deptLabels.length > 0 ? deptLabels : ['No Data'],
           datasets: [{
-            data: [40, 25, 20, 15],
-            backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6']
+            data: deptData,
+            backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6']
           }]
         },
         options: { responsive: true, maintainAspectRatio: false }
@@ -2916,5 +3049,3 @@ async function initWardenStudyHour() {
 
   await renderDashboard();
 }
-
-
