@@ -1162,6 +1162,9 @@ body.modal-open {
     left: 0 !important;
     bottom: 0 !important;
     width: var(--sidebar-width) !important;
+    max-width: 85vw !important;
+    flex: 0 0 0px !important;
+    min-width: 0 !important;
     transform: translateX(-100%);
     transition: transform var(--transition-normal);
     z-index: var(--z-sidebar, 1001) !important;
@@ -1197,11 +1200,23 @@ body.modal-open {
   .main-content {
     width: 100% !important;
     max-width: 100% !important;
+    flex: 1 1 100% !important;
+    min-width: 0 !important;
     padding-left: 0 !important;
+    margin-left: 0 !important;
   }
 
-  .col-md-3, .col-md-4, .col-md-6, .col-md-8 {
-    width: 100%;
+  .page-body,
+  .container-fluid {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .col-md-3, .col-md-4, .col-md-6, .col-md-8, .col-md-12 {
+    width: 100% !important;
+    max-width: 100% !important;
   }
 }
 
