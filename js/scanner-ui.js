@@ -528,7 +528,7 @@
         this.handleSuccessfulScan(decodedText);
       };
 
-      if (debugBackdrop) {
+      if (debugBackdrop && window.location.search.includes('debug=true')) {
         debugBackdrop.style.display = 'flex';
         const closeDebug = document.getElementById('hms-debug-btn-close');
         if (closeDebug) closeDebug.onclick = () => {
