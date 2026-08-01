@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="../../css/variables.css">
   <link rel="stylesheet" href="../../css/global.css">
   <link rel="stylesheet" href="../../css/components.css">
-  <link rel="stylesheet" href="../../css/student.css">
+  <link rel="stylesheet" href="../../css/teacher.css">
   
   <!-- FontAwesome & Google Fonts -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -46,16 +46,16 @@
             <div class="col-md-4">
               <div class="glass-card text-center" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2.5rem 1.5rem;">
                 <div id="profile-avatar-big" style="width: 100px; height: 100px; border-radius: 50%; background: var(--grad-primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: 800; margin-bottom: 1.5rem; box-shadow: 0 8px 24px rgba(124, 58, 237, 0.3);">
-                  U
+                  T
                 </div>
                 
-                <h3 id="profile-name" style="font-size: 1.2rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem;">User Name</h3>
-                <span class="badge badge-present" id="profile-role-badge" style="margin-bottom: 1.5rem;">User Role</span>
+                <h3 id="profile-name" style="font-size: 1.2rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem;">Teacher Name</h3>
+                <span class="badge badge-present" id="profile-role-badge" style="margin-bottom: 1.5rem;">Faculty Member</span>
                 
                 <div style="width: 100%; border-top: 1px solid var(--border-color); padding-top: 1.5rem; text-align: left; display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.8rem; color: var(--text-muted);">
                   <div>
-                    <i class="fa-solid fa-hotel" style="margin-right: 0.5rem; color: var(--primary);"></i>
-                    <span>Campus Location: <strong id="profile-residence-card">—</strong></span>
+                    <i class="fa-solid fa-building" style="margin-right: 0.5rem; color: var(--primary);"></i>
+                    <span>Department: <strong id="profile-residence-card">—</strong></span>
                   </div>
                   <div>
                     <i class="fa-solid fa-shield-halved" style="margin-right: 0.5rem; color: var(--primary);"></i>
@@ -79,26 +79,20 @@
                   
                   <!-- Reg Number / ID -->
                   <div class="profile-info-item">
-                    <span class="profile-info-label">ID / Register Number</span>
+                    <span class="profile-info-label">Faculty ID / Email</span>
                     <span class="profile-info-value" id="profile-reg">—</span>
                   </div>
 
                   <!-- Role -->
                   <div class="profile-info-item">
                     <span class="profile-info-label">System Role</span>
-                    <span class="profile-info-value" id="profile-role">—</span>
+                    <span class="profile-info-value" id="profile-role">Faculty Member</span>
                   </div>
 
                   <!-- Dept -->
                   <div class="profile-info-item">
                     <span class="profile-info-label">Department</span>
                     <span class="profile-info-value" id="profile-dept">—</span>
-                  </div>
-
-                  <!-- Room / Residence -->
-                  <div class="profile-info-item">
-                    <span class="profile-info-label">Allocated Room / Residence</span>
-                    <span class="profile-info-value" id="profile-room">—</span>
                   </div>
 
                   <!-- Email -->
@@ -123,24 +117,6 @@
                   <div class="profile-info-item">
                     <span class="profile-info-label">Date of Birth</span>
                     <span class="profile-info-value" id="profile-dob">—</span>
-                  </div>
-
-                  <!-- Parent Name (Student specific) -->
-                  <div class="profile-info-item student-field">
-                    <span class="profile-info-label">Parent / Guardian Name</span>
-                    <span class="profile-info-value" id="profile-parent-name">—</span>
-                  </div>
-
-                  <!-- Parent Phone (Student specific) -->
-                  <div class="profile-info-item student-field">
-                    <span class="profile-info-label">Parent Phone</span>
-                    <span class="profile-info-value" id="profile-parent-phone">—</span>
-                  </div>
-
-                  <!-- Bed Number (Student specific) -->
-                  <div class="profile-info-item student-field">
-                    <span class="profile-info-label">Bed Number</span>
-                    <span class="profile-info-value" id="profile-bed">—</span>
                   </div>
 
                   <!-- Address -->
@@ -217,25 +193,7 @@
 
           <div class="form-group">
             <label class="form-label" for="edit-profile-dept">Department / Division</label>
-            <input type="text" class="form-control" id="edit-profile-dept" placeholder="e.g. CSE, Administration">
-          </div>
-
-          <!-- Student Extra Fields -->
-          <div id="student-extra-fields" style="display: none;">
-            <div class="row">
-              <div class="col-md-6">
-                <div class="form-group">
-                  <label class="form-label" for="edit-profile-parent-name">Parent / Guardian Name</label>
-                  <input type="text" class="form-control" id="edit-profile-parent-name" placeholder="Parent Name">
-                </div>
-              </div>
-              <div class="col-md-6">
-                <div class="form-group">
-                  <label class="form-label" for="edit-profile-parent-phone">Parent Phone</label>
-                  <input type="tel" class="form-control" id="edit-profile-parent-phone" placeholder="Parent Contact">
-                </div>
-              </div>
-            </div>
+            <input type="text" class="form-control" id="edit-profile-dept" placeholder="e.g. CSE">
           </div>
 
           <div class="form-group">
@@ -264,6 +222,6 @@
   <script src="../../js/auth.js"></script>
   <script src="../../js/notifications.js"></script>
   <script src="../../js/app.js"></script>
-  <script src="../../js/student.js"></script>
+  <script src="../../js/teacher.js"></script>
 </body>
 </html>

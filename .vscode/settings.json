@@ -1,0 +1,12 @@
+{
+  "javascript.validate.enable": true,
+  "typescript.validate.enable": true,
+  "files.watcherExclude": {
+    "**/js/vendor/**": true,
+    "**/dist/**": true
+  },
+  "search.exclude": {
+    "**/js/vendor/**": true,
+    "**/dist/**": true
+  }
+}

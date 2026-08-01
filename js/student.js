@@ -794,7 +794,9 @@ async function initStudentMyCredits(student) {
       if (tierBadge) {
         tierBadge.textContent = evalTier.tier;
         tierBadge.className = `badge ${evalTier.badgeClass}`;
-        tierBadge.style.backgroundColor = evalTier.color;
+        tierBadge.style.backgroundColor = evalTier.bgColor || 'rgba(52, 211, 153, 0.15)';
+        tierBadge.style.color = evalTier.textColor || evalTier.color || '#34d399';
+        tierBadge.style.border = `1px solid ${evalTier.color || 'rgba(52, 211, 153, 0.3)'}`;
       }
 
       if (progressBar) {

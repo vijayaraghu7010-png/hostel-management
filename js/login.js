@@ -1,11 +1,11 @@
-/* --- Login Controller --- */
+/* --- LUXURY SPLIT-SCREEN ENTERPRISE LOGIN CONTROLLER --- */
 
 const initLoginPage = () => {
   const loginForm = document.getElementById('login-form');
   const togglePasswordBtn = document.getElementById('toggle-password');
   const passwordInput = document.getElementById('password');
 
-  // 1. Password Visibility Toggle
+  // Password Visibility Eye Toggle
   if (togglePasswordBtn && passwordInput) {
     togglePasswordBtn.addEventListener('click', (e) => {
       e.preventDefault();
@@ -15,7 +15,7 @@ const initLoginPage = () => {
     });
   }
 
-  // 2. Demo Credentials Autofill & Auto-Submit Helper for Mobile & Desktop
+  // Quick 1-Tap Demo Credentials Autofill Handler
   const autofillButtons = document.querySelectorAll('.demo-autofill-btn');
   autofillButtons.forEach(btn => {
     const handleAutofill = (e) => {
@@ -30,9 +30,9 @@ const initLoginPage = () => {
       if (passwordInput) passwordInput.value = 'password';
       if (roleInput) roleInput.value = role;
       
-      showToast(`Logging in as ${role.toUpperCase()}...`, 'info');
+      showToast(`Selected ${role.toUpperCase()} Demo Profile`, 'info');
 
-      // Auto-trigger form submission for seamless 1-tap mobile login
+      // Auto-trigger submission for seamless testing
       if (loginForm) {
         if (typeof loginForm.requestSubmit === 'function') {
           loginForm.requestSubmit();
@@ -45,7 +45,7 @@ const initLoginPage = () => {
     btn.addEventListener('click', handleAutofill);
   });
 
-  // 3. Login Form Submission Handler
+  // Login Form Submission Handler (Main Auth Gateway)
   if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -57,11 +57,11 @@ const initLoginPage = () => {
       const password = passwordInput ? passwordInput.value : '';
       const role = roleInput ? roleInput.value : '';
       const submitBtn = loginForm.querySelector('button[type="submit"]');
-      const originalBtnHtml = submitBtn ? submitBtn.innerHTML : 'Enter Dashboard';
+      const originalBtnHtml = submitBtn ? submitBtn.innerHTML : 'Sign In';
 
-      // Simple Validation
+      // Validation
       if (!email || !password || !role) {
-        showToast('Please fill in all fields (Role, Email, Password).', 'warning');
+        showToast('Please fill in all required fields (Role, Email, Password).', 'warning');
         return;
       }
 
@@ -69,7 +69,7 @@ const initLoginPage = () => {
       if (submitBtn) {
         submitBtn.disabled = true;
         submitBtn.innerHTML = `
-          <span>Verifying...</span>
+          <span>Verifying Credentials...</span>
           <i class="fa-solid fa-circle-notch fa-spin"></i>
         `;
       }
@@ -82,7 +82,14 @@ const initLoginPage = () => {
         const result = await HMSAuth.login(email, password, role);
 
         if (result.success) {
-          showToast(`Welcome back, ${result.user.name}!`, 'success');
+          const roleTitle = role.charAt(0).toUpperCase() + role.slice(1);
+          if (submitBtn) {
+            submitBtn.innerHTML = `
+              <span>Redirecting to ${roleTitle} Dashboard...</span>
+              <i class="fa-solid fa-spinner fa-spin"></i>
+            `;
+          }
+          showToast(`Welcome back, ${result.user.name}! Redirecting to ${roleTitle} Dashboard...`, 'success');
           
           // Redirect with a tiny delay for user feedback
           setTimeout(() => {

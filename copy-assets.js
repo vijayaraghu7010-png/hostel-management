@@ -21,6 +21,9 @@ try {
   console.log('Copying static assets (js, components) to dist...');
   copyDir('js', 'dist/js');
   copyDir('components', 'dist/components');
+  if (fs.existsSync('images')) {
+    copyDir('images', 'dist/images');
+  }
   console.log('✅ Static assets copied successfully!');
 } catch (err) {
   console.error('Failed to copy static assets:', err);

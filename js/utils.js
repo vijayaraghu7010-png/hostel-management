@@ -1979,11 +1979,11 @@ class HostelDB {
   }
 
   static evaluateRatingTier(score) {
-    if (score >= 800) return { tier: 'EXCELLENT', color: 'var(--success)', badgeClass: 'badge-present' };
-    if (score >= 650) return { tier: 'GOOD', color: 'var(--primary)', badgeClass: 'badge-primary' };
-    if (score >= 500) return { tier: 'WATCH', color: 'var(--warning)', badgeClass: 'badge-pending' };
-    if (score >= 350) return { tier: 'WARNING', color: '#ff9800', badgeClass: 'badge-warning' };
-    return { tier: 'CRITICAL', color: 'var(--danger)', badgeClass: 'badge-absent' };
+    if (score >= 800) return { tier: 'EXCELLENT', color: '#34d399', bgColor: 'rgba(52, 211, 153, 0.15)', textColor: '#34d399', badgeClass: 'badge-present' };
+    if (score >= 650) return { tier: 'GOOD', color: '#818cf8', bgColor: 'rgba(129, 140, 248, 0.15)', textColor: '#818cf8', badgeClass: 'badge-primary' };
+    if (score >= 500) return { tier: 'WATCH', color: '#fbbf24', bgColor: 'rgba(251, 191, 36, 0.15)', textColor: '#fbbf24', badgeClass: 'badge-pending' };
+    if (score >= 350) return { tier: 'WARNING', color: '#f97316', bgColor: 'rgba(249, 115, 22, 0.15)', textColor: '#f97316', badgeClass: 'badge-warning' };
+    return { tier: 'CRITICAL', color: '#f87171', bgColor: 'rgba(248, 113, 113, 0.15)', textColor: '#f87171', badgeClass: 'badge-absent' };
   }
 
   // --- RISK & PATTERN ANALYSIS ENGINE ---
