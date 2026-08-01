@@ -1171,6 +1171,32 @@ class HostelDB {
   }
 
   static async getActiveStudySession() {
+    if (USE_SUPABASE) {
+      try {
+        const data = await supabaseFetch(`hms_study_sessions?status=eq.ACTIVE&order=created_at.desc&limit=1&_t=${Date.now()}`, {
+          method: 'GET',
+          headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
+        });
+        if (data && Array.isArray(data) && data.length > 0) {
+          const s = data[0];
+          return {
+            id: s.id,
+            sessionTitle: s.session_title,
+            date: s.date,
+            startTime: s.start_time,
+            endTime: s.end_time,
+            status: s.status,
+            createdBy: s.created_by,
+            createdAt: s.created_at,
+            closedAt: s.closed_at,
+            config: s.config || {}
+          };
+        }
+      } catch (e) {
+        this.handleSupabaseError(e);
+      }
+    }
+
     const sessions = await this.getStudySessions();
     const active = sessions.find(s => s.status === 'ACTIVE') || null;
 
