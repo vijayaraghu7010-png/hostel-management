@@ -1290,6 +1290,13 @@ let lastKnownSessionId = null;
 let lastKnownStatus = null;
 let studentQrRegenInterval = null;
 
+// FIX #2: guard so this controller only ever initializes ONE set of
+// intervals/listeners even if the function gets called again
+// (SPA navigation, re-auth, tab re-render, etc.)
+let studyHourControllerInitialized = false;
+let studyHourPollInterval = null;
+let studyHourListenersAttached = false;
+
 async function initStudentDashboardStudyHour(student) {
   const bannerContainer = document.getElementById('study-banner-content');
   const sessionCardContainer = document.getElementById('student-session-card');
@@ -1301,9 +1308,7 @@ async function initStudentDashboardStudyHour(student) {
     const activeSession = await HostelDB.getActiveStudySession();
     const sessions = await HostelDB.getStudySessions();
 
-    // STRICT REQUIRED SESSION STATE MODEL:
-    // 'no_session' | 'active' | 'attended' | 'ended'
-    // Default initial state is ALWAYS 'no_session' — NEVER 'ended'!
+    // STRICT REQUIRED SESSION STATE MODEL
     let currentState = 'no_session';
     let sessionToUse = null;
 
@@ -1311,14 +1316,12 @@ async function initStudentDashboardStudyHour(student) {
       sessionToUse = activeSession;
       lastKnownSessionId = activeSession.id;
 
-      // Check attendance status for active session
       const attendance = await HostelDB.getStudyAttendance(activeSession.id, student.regNo);
       const myRecord = attendance[0] || null;
       const isPresent = myRecord && (myRecord.entryStatus === 'PRESENT' || myRecord.finalStatus === 'PRESENT');
 
       currentState = isPresent ? 'attended' : 'active';
     } else {
-      // Transition to 'ended' ONLY if a session was known to be active in this tracking context and just closed
       if (lastKnownSessionId) {
         const closedSession = sessions.find(s => s.id === lastKnownSessionId);
         if (closedSession && closedSession.status === 'CLOSED') {
@@ -1332,7 +1335,6 @@ async function initStudentDashboardStudyHour(student) {
       }
     }
 
-    // Handle Notifications on State Transitions
     if (showNotification && lastKnownStatus !== null && lastKnownStatus !== currentState) {
       if (currentState === 'active') {
         showToast('🟢 Study Hour Session Started! Present your QR code to the Warden.', 'success');
@@ -1343,11 +1345,9 @@ async function initStudentDashboardStudyHour(student) {
     }
     lastKnownStatus = currentState;
 
-    // Build Card Content HTML according to exact required states
     let cardHTML = '';
 
     if (currentState === 'no_session') {
-      // 'no_session' -> Student: "No Active Study Hour Session", scan button hidden
       cardHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
           <div>
@@ -1361,7 +1361,6 @@ async function initStudentDashboardStudyHour(student) {
         </div>
       `;
     } else if (currentState === 'active') {
-      // 'active' -> Student: "🟢 Study Hour Started", show dynamic unique student QR
       const startTimeStr = sessionToUse ? (sessionToUse.startTime || '19:00') : '19:00';
       cardHTML = `
         <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%); border: 1.5px solid #10b981; border-radius: var(--border-radius-md); padding: 1.25rem;">
@@ -1383,8 +1382,6 @@ async function initStudentDashboardStudyHour(student) {
                 <i class="fa-solid fa-arrows-rotate fa-spin" style="color: var(--primary);"></i> Secure QR refreshes every 30s to prevent screenshots
               </p>
             </div>
-
-            <!-- Dynamic Student QR Display Card -->
             <div style="background: #ffffff; padding: 10px; border-radius: 12px; text-align: center; width: 170px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin: 0 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid var(--border-color);">
               <div id="student-study-session-qr-canvas" style="width: 150px; height: 150px; display: flex; align-items: center; justify-content: center;"></div>
               <span style="font-size: 0.65rem; font-weight: 800; color: #475569; display: block; margin-top: 4px; text-transform: uppercase;">Scan Student QR</span>
@@ -1393,7 +1390,6 @@ async function initStudentDashboardStudyHour(student) {
         </div>
       `;
     } else if (currentState === 'attended') {
-      // 'attended' -> Student: "✅ Attendance Recorded", QR hidden
       const attendance = await HostelDB.getStudyAttendance(sessionToUse.id, student.regNo);
       const myRecord = attendance[0] || null;
       const scanTimeStr = myRecord && myRecord.entryTime ? new Date(myRecord.entryTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'recently';
@@ -1406,12 +1402,8 @@ async function initStudentDashboardStudyHour(student) {
                 <h3 style="font-size: 1.1rem; font-weight: 800; color: #10b981; margin: 0;">Attendance Marked</h3>
                 <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; font-weight: 800; font-size: 0.75rem;">Attendance Status: Present</span>
               </div>
-              <p style="font-size: 0.88rem; color: var(--text-secondary); margin: 0.3rem 0 0 0;">
-                Warden verified your attendance successfully.
-              </p>
-              <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.2rem 0 0 0;">
-                Verified Time: <strong style="color: var(--text-primary);">${scanTimeStr}</strong>
-              </p>
+              <p style="font-size: 0.88rem; color: var(--text-secondary); margin: 0.3rem 0 0 0;">Warden verified your attendance successfully.</p>
+              <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.2rem 0 0 0;">Verified Time: <strong style="color: var(--text-primary);">${scanTimeStr}</strong></p>
             </div>
             <div style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1.5px solid #10b981; padding: 0.5rem 1rem; border-radius: 8px; font-weight: bold; font-size: 0.9rem; display: flex; align-items: center; gap: 0.4rem;">
               <i class="fa-solid fa-check-double"></i> Verified Present
@@ -1420,7 +1412,6 @@ async function initStudentDashboardStudyHour(student) {
         </div>
       `;
     } else if (currentState === 'ended') {
-      // 'ended' -> Student: "🔴 Study Hour Session Ended", QR hidden
       cardHTML = `
         <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: var(--border-radius-md); padding: 1.25rem;">
           <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
@@ -1430,25 +1421,49 @@ async function initStudentDashboardStudyHour(student) {
                 <h3 style="font-size: 1.1rem; font-weight: 800; color: #ef4444; margin: 0;">Study Hour Session Ended</h3>
                 <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; font-weight: 800; font-size: 0.75rem;">Session Status: Ended</span>
               </div>
-              <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.2rem 0 0 0;">
-                The Study Hour session has ended.
-              </p>
+              <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.2rem 0 0 0;">The Study Hour session has ended.</p>
             </div>
           </div>
         </div>
       `;
     }
 
-    // Hydrate DOM containers
-    if (bannerContainer) {
-      bannerContainer.innerHTML = cardHTML;
-    }
+    if (bannerContainer) bannerContainer.innerHTML = cardHTML;
     if (sessionCardContainer) {
       const cardContentEl = document.getElementById('student-session-content') || sessionCardContainer;
       cardContentEl.innerHTML = cardHTML;
     }
 
-    // Handle Dynamic QR Code Generation and Regen Loop
+    // FIX #1: History table was declared but NEVER populated in the original code.
+    // Build it here from all sessions where this student has an attendance record.
+    if (historyTbody) {
+      try {
+        const historyRows = [];
+        for (const s of sessions) {
+          const att = await HostelDB.getStudyAttendance(s.id, student.regNo);
+          const rec = att && att[0];
+          if (rec) historyRows.push({ session: s, record: rec });
+        }
+
+        // Most recent first
+        historyRows.sort((a, b) => new Date(b.session.createdAt) - new Date(a.session.createdAt));
+
+        historyTbody.innerHTML = historyRows.length
+          ? historyRows.map(({ session: s, record: r }) => `
+              <tr>
+                <td>${s.createdAt ? new Date(s.createdAt).toLocaleDateString() : '-'}</td>
+                <td>${s.sessionTitle || 'Study Session'}</td>
+                <td>${r.entryTime ? new Date(r.entryTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
+                <td>${r.entryStatus || r.finalStatus || 'PENDING'}</td>
+              </tr>
+            `).join('')
+          : `<tr><td colspan="4" style="text-align:center; color: var(--text-muted); padding: 1rem;">No attendance history yet</td></tr>`;
+      } catch (err) {
+        console.error('Failed to load study attendance history:', err);
+        historyTbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color: var(--text-muted); padding: 1rem;">Couldn't load history</td></tr>`;
+      }
+    }
+
     if (studentQrRegenInterval) {
       clearInterval(studentQrRegenInterval);
       studentQrRegenInterval = null;
@@ -1458,7 +1473,6 @@ async function initStudentDashboardStudyHour(student) {
       const generateStudentQR = () => {
         const qrCanvas = document.getElementById('student-study-session-qr-canvas');
         if (!qrCanvas) return;
-
         qrCanvas.innerHTML = '';
         const qrPayload = JSON.stringify({
           type: 'STUDY_HOUR_STUDENT',
@@ -1477,21 +1491,16 @@ async function initStudentDashboardStudyHour(student) {
               colorLight: "#ffffff",
               correctLevel: QRCode.CorrectLevel ? QRCode.CorrectLevel.H : 2
             });
-            console.log('Secure student QR code generated/refreshed:', qrPayload);
-          } catch (e) {
-            console.warn('QR render error:', e);
-          }
+          } catch (e) { console.warn('QR render failed:', e); }
+        } else {
+          console.warn('QRCode library not loaded — check js/vendor/qrcode.min.js path/order.');
+          qrCanvas.innerHTML = '<span style="font-size:0.7rem;color:#ef4444;">QR lib missing</span>';
         }
       };
-
-      // Generate immediately
       generateStudentQR();
-
-      // Refresh every 30 seconds
       studentQrRegenInterval = setInterval(generateStudentQR, 30000);
     }
 
-    // Handle Live Timer
     if (activeSession && currentState === 'active') {
       if (!studentLiveTimerInterval) {
         const startTime = new Date(activeSession.createdAt || Date.now()).getTime();
@@ -1510,73 +1519,46 @@ async function initStudentDashboardStudyHour(student) {
         studentLiveTimerInterval = null;
       }
     }
-
-    // Render Student Study History Table if present
-    if (historyTbody) {
-      if (sessions.length === 0) {
-        historyTbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1.25rem;">No historical records found.</td></tr>`;
-      } else {
-        const rows = await Promise.all(sessions.map(async s => {
-          const atts = await HostelDB.getStudyAttendance(s.id, student.regNo);
-          const rec = atts[0];
-          const isPresentRec = rec && (rec.entryStatus === 'PRESENT' || rec.finalStatus === 'PRESENT');
-          const badge = isPresentRec 
-            ? `<span class="badge badge-success">PRESENT</span>` 
-            : `<span class="badge badge-danger">MISSED / ABSENT</span>`;
-          const time = isPresentRec && rec.entryTime ? new Date(rec.entryTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
-
-          return `
-            <tr>
-              <td>${s.date}</td>
-              <td>${s.sessionTitle || 'Study Session'}</td>
-              <td>${time}</td>
-              <td>${badge}</td>
-            </tr>
-          `;
-        }));
-        historyTbody.innerHTML = rows.join('');
-      }
-    }
   };
 
-  // Initial Sync
   await renderRealtimeState(false);
 
-  // BroadcastChannel Listener for Sub-Millisecond Multi-Tab Sync
+  // FIX #2: everything below this line (BroadcastChannel, event listeners, poll
+  // interval) used to re-run and stack up every time initStudentDashboardStudyHour()
+  // was called. Now it only runs once per page load, guarded by
+  // studyHourControllerInitialized.
+  if (studyHourControllerInitialized) return;
+  studyHourControllerInitialized = true;
+
   if ('BroadcastChannel' in window) {
     try {
       const bc = new BroadcastChannel('hms_study_channel');
-      bc.onmessage = async (event) => {
-        console.log('⚡ Realtime Study Broadcast Received:', event.data);
+      bc.onmessage = async () => {
         await renderRealtimeState(true);
       };
-    } catch (e) {}
+    } catch (e) {
+      console.warn('BroadcastChannel unavailable:', e);
+    }
   }
 
-  // Mobile OS & Browser Lifecycle Event Hooks for 100% Guaranteed Mobile Synchronization
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) {
-      renderRealtimeState(true);
-    }
-  });
+  if (!studyHourListenersAttached) {
+    studyHourListenersAttached = true;
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) renderRealtimeState(true); });
+    window.addEventListener('focus', () => renderRealtimeState(true));
+    window.addEventListener('pageshow', () => renderRealtimeState(true));
+    window.addEventListener('online', () => renderRealtimeState(true));
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'hms_study_sessions' || e.key === 'hms_study_attendance') renderRealtimeState(true);
+    });
+  }
 
-  window.addEventListener('focus', () => renderRealtimeState(true));
-  window.addEventListener('pageshow', () => renderRealtimeState(true));
-  window.addEventListener('online', () => renderRealtimeState(true));
+  if (studyHourPollInterval) clearInterval(studyHourPollInterval);
+  studyHourPollInterval = setInterval(() => renderRealtimeState(true), 3000);
 
-  window.addEventListener('storage', (e) => {
-    if (e.key === 'hms_study_sessions' || e.key === 'hms_study_attendance') {
-      renderRealtimeState(true);
-    }
-  });
-
-  // 3s Automatic Background Polling Fallback (Zero Refresh Automation)
-  const pollInterval = setInterval(() => renderRealtimeState(true), 3000);
   window.addEventListener('beforeunload', () => {
-    clearInterval(pollInterval);
-    if (studentQrRegenInterval) {
-      clearInterval(studentQrRegenInterval);
-    }
+    clearInterval(studyHourPollInterval);
+    if (studentQrRegenInterval) clearInterval(studentQrRegenInterval);
+    if (studentLiveTimerInterval) clearInterval(studentLiveTimerInterval);
   });
 }
 
