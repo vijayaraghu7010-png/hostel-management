@@ -302,31 +302,45 @@
           }
         }
 
-        // Try Tier 1: @zxing/browser (Preferred Engine with IDEAL-ONLY resolution constraints)
+        // Try Tier 1: @zxing/browser (Preferred Engine with explicit stream metadata initialization)
         if (this.zxingReader && this.activeTier === 'ZXING_BROWSER') {
           try {
             const constraints = {
               video: {
                 deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
                 facingMode: selectedDeviceId ? undefined : { ideal: 'environment' },
-                width: { ideal: 1920 },
-                height: { ideal: 1080 }
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
               }
             };
 
-            this.zxingControls = await this.zxingReader.decodeFromConstraints(
-              constraints,
+            // 1. Acquire media stream first so video dimensions populate before ZXing attaches
+            this.activeStream = await navigator.mediaDevices.getUserMedia(constraints);
+            this.videoEl.srcObject = this.activeStream;
+            await this.videoEl.play();
+
+            // 2. Wait until video element reports positive non-zero dimensions (loadedmetadata)
+            await new Promise((resolve) => {
+              if (this.videoEl.videoWidth > 0 && this.videoEl.videoHeight > 0) {
+                resolve();
+              } else {
+                this.videoEl.onloadedmetadata = () => resolve();
+                setTimeout(resolve, 800);
+              }
+            });
+
+            // 3. Start ZXing decoding from the initialized video element
+            this.zxingControls = await this.zxingReader.decodeFromVideoElement(
               this.videoEl,
-              (result, err, controls) => {
+              (result, err) => {
                 if (result && this.isScanning && !this.scanLock) {
-                  this.handleScanResult(result.getText());
-                } else if (err) {
-                  // Filter out expected per-frame NotFoundException from real decode errors
-                  const isNotFound = err.name === 'NotFoundException' ||
-                                    (err.constructor && err.constructor.name === 'NotFoundException') ||
-                                    (err.message && err.message.includes('No MultiFormat Readers'));
-                  if (!isNotFound) {
-                    console.warn('⚡ Real ZXing Frame Error:', err);
+                  try {
+                    const text = typeof result.getText === 'function' ? result.getText() : (result.text || String(result));
+                    if (text) {
+                      this.handleScanResult(text);
+                    }
+                  } catch (e) {
+                    console.error('Error processing ZXing result:', e);
                   }
                 }
               }
@@ -335,25 +349,8 @@
             if (loader) loader.style.display = 'none';
             return;
           } catch (zxingErr) {
-            console.warn('Tier 1 (@zxing/browser) HD constraints failed, retrying with minimal constraints:', zxingErr);
-            // Fallback retry with minimal constraints before abandoning Tier 1
-            try {
-              this.zxingControls = await this.zxingReader.decodeFromConstraints(
-                { video: { facingMode: { ideal: 'environment' } } },
-                this.videoEl,
-                (result, err) => {
-                  if (result && this.isScanning && !this.scanLock) {
-                    this.handleScanResult(result.getText());
-                  }
-                }
-              );
-              console.log('▶ Started scanning via Tier 1 (@zxing/browser minimal fallback)');
-              if (loader) loader.style.display = 'none';
-              return;
-            } catch (minZxingErr) {
-              console.warn('Tier 1 minimal fallback failed, advancing to Tier 2 (Nimiq):', minZxingErr);
-              this.activeTier = 'NIMIQ_SCANNER';
-            }
+            console.warn('Tier 1 (@zxing/browser) initialization failed, advancing to fallback:', zxingErr);
+            this.activeTier = 'NIMIQ_SCANNER';
           }
         }
 
