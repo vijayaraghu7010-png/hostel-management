@@ -1527,6 +1527,8 @@ async function initStudentDashboardStudyHour(student) {
     }
   };
 
+  window.currentStudyHourRender = renderRealtimeState;
+
   await renderRealtimeState(false);
 
   // FIX #2: everything below this line (BroadcastChannel, event listeners, poll
@@ -1540,7 +1542,9 @@ async function initStudentDashboardStudyHour(student) {
     try {
       const bc = new BroadcastChannel('hms_study_channel');
       bc.onmessage = async () => {
-        await renderRealtimeState(true);
+        if (window.currentStudyHourRender) {
+          await window.currentStudyHourRender(true);
+        }
       };
     } catch (e) {
       console.warn('BroadcastChannel unavailable:', e);
@@ -1549,22 +1553,37 @@ async function initStudentDashboardStudyHour(student) {
 
   if (!studyHourListenersAttached) {
     studyHourListenersAttached = true;
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) renderRealtimeState(true); });
-    window.addEventListener('focus', () => renderRealtimeState(true));
-    window.addEventListener('pageshow', () => renderRealtimeState(true));
-    window.addEventListener('online', () => renderRealtimeState(true));
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && window.currentStudyHourRender) {
+        window.currentStudyHourRender(true);
+      }
+    });
+    window.addEventListener('focus', () => {
+      if (window.currentStudyHourRender) window.currentStudyHourRender(true);
+    });
+    window.addEventListener('pageshow', () => {
+      if (window.currentStudyHourRender) window.currentStudyHourRender(true);
+    });
+    window.addEventListener('online', () => {
+      if (window.currentStudyHourRender) window.currentStudyHourRender(true);
+    });
     window.addEventListener('storage', (e) => {
-      if (e.key === 'hms_study_sessions' || e.key === 'hms_study_attendance') renderRealtimeState(true);
+      if ((e.key === 'hms_study_sessions' || e.key === 'hms_study_attendance') && window.currentStudyHourRender) {
+        window.currentStudyHourRender(true);
+      }
     });
   }
 
   if (studyHourPollInterval) clearInterval(studyHourPollInterval);
-  studyHourPollInterval = setInterval(() => renderRealtimeState(true), 3000);
+  studyHourPollInterval = setInterval(() => {
+    if (window.currentStudyHourRender) window.currentStudyHourRender(true);
+  }, 3000);
 
   window.addEventListener('beforeunload', () => {
     clearInterval(studyHourPollInterval);
     if (studentQrRegenInterval) clearInterval(studentQrRegenInterval);
     if (studentLiveTimerInterval) clearInterval(studentLiveTimerInterval);
+    window.currentStudyHourRender = null;
   });
 }
 

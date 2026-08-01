@@ -15,16 +15,101 @@ async function loadSupabaseScript() {
 }
 
 class HostelDB {
+  static _retryInterval = null;
+
   static async checkConnection() {
     try {
-      // Test table access
       await supabaseFetch('hms_leaves?limit=1', { method: 'GET' });
       USE_SUPABASE = true;
       console.log('HMS Cloud Connection: Supabase backend active.');
+      if (this._retryInterval) {
+        clearInterval(this._retryInterval);
+        this._retryInterval = null;
+      }
+      await this.syncOfflineOutbox();
     } catch (e) {
-      console.warn('HMS Cloud Connection: Supabase query failed or table not found. Falling back to LocalStorage.', e.message);
+      console.warn('HMS Cloud Connection: Supabase query failed. Falling back to LocalStorage.', e.message);
       USE_SUPABASE = false;
+      this.scheduleConnectionRetry();
     }
+  }
+
+  static scheduleConnectionRetry() {
+    if (this._retryInterval) return;
+    this._retryInterval = setInterval(async () => {
+      try {
+        await supabaseFetch('hms_leaves?limit=1', { method: 'GET' });
+        USE_SUPABASE = true;
+        console.log('HMS Cloud Connection Restored: Supabase backend active.');
+        clearInterval(this._retryInterval);
+        this._retryInterval = null;
+        await this.syncOfflineOutbox();
+      } catch (e) {
+        USE_SUPABASE = false;
+      }
+    }, 15000);
+  }
+
+  static handleSupabaseError(error) {
+    console.warn('Supabase operation failed, scheduling connection check:', error.message);
+    USE_SUPABASE = false;
+    this.scheduleConnectionRetry();
+  }
+
+  static async addToOutbox(type, data) {
+    let outbox = this.getData('hms_offline_outbox') || [];
+    if (type === 'study_attendance') {
+      outbox = outbox.filter(item => !(item.type === 'study_attendance' && item.data.sessionId === data.sessionId && item.data.studentReg === data.studentReg));
+    }
+    outbox.push({ type, data, timestamp: Date.now() });
+    this.setData('hms_offline_outbox', outbox);
+    console.log('Saved offline check-in transaction to outbox:', data);
+  }
+
+  static async syncOfflineOutbox() {
+    let outbox = this.getData('hms_offline_outbox') || [];
+    if (outbox.length === 0) return;
+    console.log(`Syncing ${outbox.length} offline transactions...`);
+
+    const remaining = [];
+    for (const item of outbox) {
+      try {
+        if (item.type === 'study_attendance') {
+          const att = item.data;
+          const record = {
+            id: att.id || generateID('ATT'),
+            session_id: att.sessionId,
+            student_reg: att.studentReg,
+            student_name: att.studentName,
+            dept: att.dept,
+            room: att.room || '',
+            entry_status: att.entryStatus || 'MISSED',
+            entry_time: att.entryTime || null,
+            exit_status: att.exitStatus || 'MISSED',
+            exit_time: att.exitTime || null,
+            final_status: att.finalStatus || 'REVIEW',
+            notes: att.notes || '',
+            updated_at: new Date().toISOString()
+          };
+          const existing = await supabaseFetch(`hms_study_attendance?session_id=eq.${att.sessionId}&student_reg=eq.${att.studentReg}`, { method: 'GET' });
+          if (existing && existing.length > 0) {
+            await supabaseFetch(`hms_study_attendance?id=eq.${existing[0].id}`, {
+              method: 'PATCH',
+              body: JSON.stringify(record)
+            });
+          } else {
+            await supabaseFetch('hms_study_attendance', {
+              method: 'POST',
+              body: JSON.stringify(record)
+            });
+          }
+        }
+      } catch (e) {
+        console.error('Failed to sync item, leaving in outbox:', e);
+        remaining.push(item);
+      }
+    }
+    this.setData('hms_offline_outbox', remaining);
   }
 
   static async init() {
@@ -1652,6 +1737,7 @@ class HostelDB {
       updated_at: new Date().toISOString()
     };
 
+    let writeSuccess = false;
     if (USE_SUPABASE) {
       try {
         const existing = await supabaseFetch(`hms_study_attendance?session_id=eq.${att.sessionId}&student_reg=eq.${att.studentReg}`, { method: 'GET' });
@@ -1661,14 +1747,34 @@ class HostelDB {
             body: JSON.stringify(record)
           });
         } else {
-          await supabaseFetch('hms_study_attendance', {
-            method: 'POST',
-            body: JSON.stringify(record)
-          });
+          try {
+            await supabaseFetch('hms_study_attendance', {
+              method: 'POST',
+              body: JSON.stringify(record)
+            });
+          } catch (postErr) {
+            // Race-condition fallback: if post failed due to duplicate key conflict (duplicate scans), update instead
+            if (postErr.message.includes('409') || postErr.message.includes('duplicate') || postErr.message.includes('Conflict')) {
+              const retryExisting = await supabaseFetch(`hms_study_attendance?session_id=eq.${att.sessionId}&student_reg=eq.${att.studentReg}`, { method: 'GET' });
+              if (retryExisting && retryExisting.length > 0) {
+                await supabaseFetch(`hms_study_attendance?id=eq.${retryExisting[0].id}`, {
+                  method: 'PATCH',
+                  body: JSON.stringify(record)
+                });
+              }
+            } else {
+              throw postErr;
+            }
+          }
         }
+        writeSuccess = true;
       } catch (e) {
-        console.warn('Supabase upsertStudyAttendance failed, falling back to LocalStorage:', e.message);
+        this.handleSupabaseError(e);
       }
+    }
+
+    if (!writeSuccess) {
+      await this.addToOutbox('study_attendance', att);
     }
     
     let list = this.getData('hms_study_attendance') || [];

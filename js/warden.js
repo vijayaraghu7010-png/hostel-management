@@ -2557,6 +2557,7 @@ async function initWardenGateControl() {
 let studyTimerInterval = null;
 let trendChartInstance = null;
 let deptChartInstance = null;
+const STUDY_SCANNED_TOKENS = new Set();
 
 async function initWardenStudyHour() {
   const startBtn = document.getElementById('btn-start-study-session');
@@ -3008,6 +3009,7 @@ async function initWardenStudyHour() {
         const active = await HostelDB.getActiveStudySession();
         if (active) {
           await HostelDB.closeStudySession(active.id);
+          STUDY_SCANNED_TOKENS.clear();
           if ('BroadcastChannel' in window) {
             try {
               const bc = new BroadcastChannel('hms_study_channel');
@@ -3049,13 +3051,20 @@ async function initWardenStudyHour() {
         return;
       }
 
-      // Prevent screenshot/reuse by checking timestamp (must be within last 60 seconds)
+      // Prevent replay attack by checking if this specific token was already scanned in this session
+      const tokenKey = `${payload.studentReg}_${payload.timestamp}`;
+      if (STUDY_SCANNED_TOKENS.has(tokenKey)) {
+        showToast('Scan failed: QR code already processed (replay blocked).', 'warning');
+        return;
+      }
+
+      // Prevent screenshot/reuse by checking timestamp (must be within 5 minutes)
       const now = Date.now();
       const qrTime = payload.timestamp || 0;
-      const ageInSeconds = Math.floor((now - qrTime) / 1000);
+      const ageInSeconds = Math.abs(now - qrTime) / 1000;
 
-      // We allow up to 60 seconds of clock drift/latency
-      if (ageInSeconds < -10 || ageInSeconds > 60) {
+      // We allow up to 300 seconds (5 minutes) of clock drift/latency
+      if (ageInSeconds > 300) {
         showToast('Scan failed: QR code has expired or is a screenshot.', 'danger');
         return;
       }
@@ -3092,6 +3101,9 @@ async function initWardenStudyHour() {
         finalStatus: 'PRESENT',
         notes: 'Scanned by Warden'
       });
+
+      // Cache token to prevent replay attacks
+      STUDY_SCANNED_TOKENS.add(tokenKey);
 
       // Broadcast the attendance recorded event to sync tabs instantly
       if ('BroadcastChannel' in window) {
