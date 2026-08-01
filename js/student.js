@@ -1440,6 +1440,10 @@ async function initStudentDashboardStudyHour(student) {
       try {
         const historyRows = [];
         for (const s of sessions) {
+          // NOTE: assumes HostelDB.getStudyAttendance(sessionId, regNo) returns an array,
+          // filtered to that student. If your HostelDB API differs (e.g. it needs no
+          // regNo and you filter client-side, or has a dedicated
+          // getStudyAttendanceByStudent(regNo) method), swap the line below accordingly.
           const att = await HostelDB.getStudyAttendance(s.id, student.regNo);
           const rec = att && att[0];
           if (rec) historyRows.push({ session: s, record: rec });
@@ -1452,7 +1456,7 @@ async function initStudentDashboardStudyHour(student) {
           ? historyRows.map(({ session: s, record: r }) => `
               <tr>
                 <td>${s.createdAt ? new Date(s.createdAt).toLocaleDateString() : '-'}</td>
-                <td>${s.sessionTitle || 'Study Session'}</td>
+                <td>${s.startTime || '-'}</td>
                 <td>${r.entryTime ? new Date(r.entryTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
                 <td>${r.entryStatus || r.finalStatus || 'PENDING'}</td>
               </tr>
@@ -1493,6 +1497,8 @@ async function initStudentDashboardStudyHour(student) {
             });
           } catch (e) { console.warn('QR render failed:', e); }
         } else {
+          // FIX: silent failure originally — now surfaced so you notice
+          // if the qrcode.min.js vendor script didn't load.
           console.warn('QRCode library not loaded — check js/vendor/qrcode.min.js path/order.');
           qrCanvas.innerHTML = '<span style="font-size:0.7rem;color:#ef4444;">QR lib missing</span>';
         }
