@@ -19,7 +19,7 @@ class HostelDB {
 
   static async checkConnection() {
     try {
-      await supabaseFetch('hms_leaves?limit=1', { method: 'GET' });
+      await supabaseFetch('hms_study_sessions?limit=1', { method: 'GET' });
       USE_SUPABASE = true;
       console.log('HMS Cloud Connection: Supabase backend active.');
       if (this._retryInterval) {
@@ -38,7 +38,7 @@ class HostelDB {
     if (this._retryInterval) return;
     this._retryInterval = setInterval(async () => {
       try {
-        await supabaseFetch('hms_leaves?limit=1', { method: 'GET' });
+        await supabaseFetch('hms_study_sessions?limit=1', { method: 'GET' });
         USE_SUPABASE = true;
         console.log('HMS Cloud Connection Restored: Supabase backend active.');
         clearInterval(this._retryInterval);
