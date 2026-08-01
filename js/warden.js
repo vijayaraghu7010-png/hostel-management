@@ -2340,7 +2340,18 @@ async function initWardenGateControl() {
       return;
     }
 
-    // 1. Study Hour Scanner Route
+    // 1. Study Hour student-attendance scanner route
+    if (payload.type === 'STUDY_HOUR_STUDENT') {
+      if (typeof window.handleWardenStudyScanResult === 'function') {
+        await window.handleWardenStudyScanResult(finalPayloadStr);
+        return;
+      }
+      renderUnrecognizedValidationResult(finalPayloadStr);
+      showToast('Study Hour scan handler is unavailable on this page.', 'warning');
+      return;
+    }
+
+    // 2. Legacy Study Hour token route
     if (payload.type === 'STUDY_HOUR') {
       const parts = payload.id.split('_');
       const purpose = parts[1] || 'ENTRY';
@@ -2362,7 +2373,7 @@ async function initWardenGateControl() {
       return;
     }
 
-    // 2. Outpass Scanner Route
+    // 3. Outpass Scanner Route
     if (payload.type === 'OUTPASS') {
       let outpassPayload = finalPayloadStr;
       // If payload is structured, map it back to internal format for compatibility
@@ -2423,7 +2434,7 @@ async function initWardenGateControl() {
       return;
     }
 
-    // 3. Fallback: Future / Unrecognized QR Route (VISITOR, MAINTENANCE, etc.)
+    // 4. Fallback: Future / Unrecognized QR Route (VISITOR, MAINTENANCE, etc.)
     renderUnrecognizedValidationResult(finalPayloadStr);
     showToast(`Warning: Scanned future module type "${payload.type}".`, 'warning');
   };
@@ -3035,8 +3046,20 @@ async function initWardenStudyHour() {
         // Ignore JSON error
       }
 
-      if (!payload || payload.type !== 'STUDY_HOUR_STUDENT') {
+      console.debug('[StudyHour][WardenScan] Raw decoded text:', decodedText);
+
+      if (!payload || (payload.type !== 'STUDY_HOUR_STUDENT' && payload.type !== 'STUDY_HOUR')) {
         showToast('Invalid QR Code. Please scan a Student\'s Study Hour Attendance QR.', 'danger');
+        return;
+      }
+
+      const studentReg = payload.studentReg || payload.studentId || '';
+      const sessionId = payload.sessionId || payload.id || '';
+      const qrTimestamp = payload.timestamp || 0;
+
+      if (!studentReg || !sessionId) {
+        console.debug('[StudyHour][WardenScan] Missing student/session fields:', payload);
+        showToast('Scan failed: QR payload is missing student or session data.', 'danger');
         return;
       }
 
@@ -3046,13 +3069,15 @@ async function initWardenStudyHour() {
         return;
       }
 
-      if (payload.sessionId !== active.id) {
+      console.debug('[StudyHour][WardenScan] Active session:', active.id, 'Payload session:', sessionId);
+
+      if (sessionId !== active.id) {
         showToast('Scan failed: This QR belongs to a different study session.', 'danger');
         return;
       }
 
       // Prevent replay attack by checking if this specific token was already scanned in this session
-      const tokenKey = `${payload.studentReg}_${payload.timestamp}`;
+      const tokenKey = `${studentReg}_${qrTimestamp}`;
       if (STUDY_SCANNED_TOKENS.has(tokenKey)) {
         showToast('Scan failed: QR code already processed (replay blocked).', 'warning');
         return;
@@ -3060,7 +3085,7 @@ async function initWardenStudyHour() {
 
       // Prevent screenshot/reuse by checking timestamp (must be within 5 minutes)
       const now = Date.now();
-      const qrTime = payload.timestamp || 0;
+      const qrTime = qrTimestamp;
       const ageInSeconds = Math.abs(now - qrTime) / 1000;
 
       // We allow up to 300 seconds (5 minutes) of clock drift/latency
@@ -3071,16 +3096,16 @@ async function initWardenStudyHour() {
 
       // Check if student exists in database
       const students = await HostelDB.getStudents();
-      const student = students.find(s => s.regNo === payload.studentReg);
+      const student = students.find(s => s.regNo === studentReg);
       if (!student) {
-        showToast(`Scan failed: Student with registration number ${payload.studentReg} not found.`, 'danger');
+        showToast(`Scan failed: Student with registration number ${studentReg} not found.`, 'danger');
         return;
       }
 
       // Check for duplicate attendance
       const attendanceList = await HostelDB.getStudyAttendance(active.id);
       const isDuplicate = attendanceList.some(
-        a => a.studentReg === payload.studentReg && 
+        a => a.studentReg === studentReg && 
         (a.entryStatus === 'PRESENT' || a.entryStatus === 'PASS' || a.finalStatus === 'PRESENT')
       );
 
@@ -3128,6 +3153,10 @@ async function initWardenStudyHour() {
       showToast('Error processing scanned QR code.', 'danger');
     }
   };
+
+  // Shared hook for the generic QR validator on pages that reuse the same
+  // scanner UI. This lets STUDY_HOUR_STUDENT payloads reach attendance logic.
+  window.handleWardenStudyScanResult = handleWardenStudyScan;
 
   const bindScanTriggers = () => {
     const triggerIds = ['btn-universal-scanner', 'btn-scan-student-qr-card-trigger'];
