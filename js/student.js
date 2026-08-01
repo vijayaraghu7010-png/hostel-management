@@ -1491,14 +1491,32 @@ async function initStudentDashboardStudyHour(student) {
               text: qrPayload,
               width: 150,
               height: 150,
-              colorDark: "#0f172a",
+              colorDark: "#000000", // Pure black for maximum contrast and readability
               colorLight: "#ffffff",
-              correctLevel: QRCode.CorrectLevel ? QRCode.CorrectLevel.H : 2
+              correctLevel: QRCode.CorrectLevel ? QRCode.CorrectLevel.M : 0 // Level M (Medium) for lower density and better scan compatibility
             });
-          } catch (e) { console.warn('QR render failed:', e); }
+
+            // Apply explicit styling to canvas/image elements to prevent layout compression or blurring
+            const canvas = qrCanvas.querySelector('canvas');
+            if (canvas) {
+              canvas.style.width = '150px';
+              canvas.style.height = '150px';
+              canvas.style.maxWidth = '100%';
+              canvas.style.display = 'block';
+              canvas.style.margin = '0 auto';
+            }
+            const img = qrCanvas.querySelector('img');
+            if (img) {
+              img.style.width = '150px';
+              img.style.height = '150px';
+              img.style.maxWidth = '100%';
+              img.style.display = 'block';
+              img.style.margin = '0 auto';
+            }
+          } catch (e) {
+            console.warn('QR render failed:', e);
+          }
         } else {
-          // FIX: silent failure originally — now surfaced so you notice
-          // if the qrcode.min.js vendor script didn't load.
           console.warn('QRCode library not loaded — check js/vendor/qrcode.min.js path/order.');
           qrCanvas.innerHTML = '<span style="font-size:0.7rem;color:#ef4444;">QR lib missing</span>';
         }
