@@ -3024,23 +3024,122 @@ async function initWardenStudyHour() {
     });
   }
 
-  if (scannerBtn) {
-    scannerBtn.addEventListener('click', () => {
-      if (window.HMSQRScanner) {
-        window.HMSQRScanner.open({
-          title: 'Universal QR Scanner',
-          mainText: 'Align Study Hour or Outpass QR inside frame',
-          subText: 'System routes QR automatically',
-          onScan: async (decodedText) => {
-            if (typeof handleValidateQrString === 'function') {
-              await handleValidateQrString(decodedText);
-              await renderDashboard();
-            }
+  const handleWardenStudyScan = async (decodedText) => {
+    try {
+      let payload = null;
+      try {
+        payload = JSON.parse(decodedText);
+      } catch (e) {
+        // Ignore JSON error
+      }
+
+      if (!payload || payload.type !== 'STUDY_HOUR_STUDENT') {
+        showToast('Invalid QR Code. Please scan a Student\'s Study Hour Attendance QR.', 'danger');
+        return;
+      }
+
+      const active = await HostelDB.getActiveStudySession();
+      if (!active) {
+        showToast('No active study hour session found.', 'warning');
+        return;
+      }
+
+      if (payload.sessionId !== active.id) {
+        showToast('Scan failed: This QR belongs to a different study session.', 'danger');
+        return;
+      }
+
+      // Prevent screenshot/reuse by checking timestamp (must be within last 60 seconds)
+      const now = Date.now();
+      const qrTime = payload.timestamp || 0;
+      const ageInSeconds = Math.floor((now - qrTime) / 1000);
+
+      // We allow up to 60 seconds of clock drift/latency
+      if (ageInSeconds < -10 || ageInSeconds > 60) {
+        showToast('Scan failed: QR code has expired or is a screenshot.', 'danger');
+        return;
+      }
+
+      // Check if student exists in database
+      const students = await HostelDB.getStudents();
+      const student = students.find(s => s.regNo === payload.studentReg);
+      if (!student) {
+        showToast(`Scan failed: Student with registration number ${payload.studentReg} not found.`, 'danger');
+        return;
+      }
+
+      // Check for duplicate attendance
+      const attendanceList = await HostelDB.getStudyAttendance(active.id);
+      const isDuplicate = attendanceList.some(
+        a => a.studentReg === payload.studentReg && 
+        (a.entryStatus === 'PRESENT' || a.entryStatus === 'PASS' || a.finalStatus === 'PRESENT')
+      );
+
+      if (isDuplicate) {
+        showToast(`Attendance already marked for ${student.name}!`, 'warning');
+        return;
+      }
+
+      // Write attendance to database
+      await HostelDB.upsertStudyAttendance({
+        sessionId: active.id,
+        studentReg: student.regNo,
+        studentName: student.name,
+        dept: student.dept || 'CSE',
+        room: student.room || '-',
+        entryStatus: 'PRESENT',
+        entryTime: new Date().toISOString(),
+        finalStatus: 'PRESENT',
+        notes: 'Scanned by Warden'
+      });
+
+      // Broadcast the attendance recorded event to sync tabs instantly
+      if ('BroadcastChannel' in window) {
+        try {
+          const bc = new BroadcastChannel('hms_study_channel');
+          bc.postMessage({ 
+            type: 'ATTENDANCE_RECORDED', 
+            studentReg: student.regNo, 
+            timestamp: Date.now() 
+          });
+          bc.close();
+        } catch (e) {}
+      }
+
+      showToast(`✅ Attendance Recorded: ${student.name} is PRESENT!`, 'success');
+      
+      // Update local Warden UI Roster & counters
+      await renderDashboard();
+
+    } catch (err) {
+      console.error('Scan processing error:', err);
+      showToast('Error processing scanned QR code.', 'danger');
+    }
+  };
+
+  const bindScanTriggers = () => {
+    const triggerIds = ['btn-universal-scanner', 'btn-scan-student-qr-card-trigger'];
+    triggerIds.forEach(id => {
+      const btn = document.getElementById(id);
+      if (btn) {
+        btn.onclick = () => {
+          if (window.HMSQRScanner) {
+            window.HMSQRScanner.open({
+              title: 'Study Hour QR Scanner',
+              mainText: 'Align Student\'s Phone Screen QR inside frame',
+              subText: 'Attendance will be registered automatically',
+              onScan: async (decodedText) => {
+                await handleWardenStudyScan(decodedText);
+              }
+            });
           }
-        });
+        };
       }
     });
-  }
+  };
+
+  bindScanTriggers();
+
 
   if (filterSearch) filterSearch.addEventListener('input', () => renderDashboard());
   if (filterDept) filterDept.addEventListener('change', () => renderDashboard());

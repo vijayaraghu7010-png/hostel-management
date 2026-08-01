@@ -1288,9 +1288,10 @@ window.openOutpassModalForLeave = async function(leaveId) {
 let studentLiveTimerInterval = null;
 let lastKnownSessionId = null;
 let lastKnownStatus = null;
+let studentQrRegenInterval = null;
 
 async function initStudentDashboardStudyHour(student) {
-  const bannerContainer = document.getElementById('student-study-hour-banner');
+  const bannerContainer = document.getElementById('study-banner-content');
   const sessionCardContainer = document.getElementById('student-session-card');
   const historyTbody = document.getElementById('student-study-history-tbody');
 
@@ -1334,7 +1335,7 @@ async function initStudentDashboardStudyHour(student) {
     // Handle Notifications on State Transitions
     if (showNotification && lastKnownStatus !== null && lastKnownStatus !== currentState) {
       if (currentState === 'active') {
-        showToast('🟢 Study Hour Session Started! Please scan QR code to mark attendance.', 'success');
+        showToast('🟢 Study Hour Session Started! Present your QR code to the Warden.', 'success');
         if (navigator.vibrate) navigator.vibrate([150, 50, 150]);
       } else if (currentState === 'ended') {
         showToast('🔴 The Study Hour session has ended.', 'warning');
@@ -1360,66 +1361,73 @@ async function initStudentDashboardStudyHour(student) {
         </div>
       `;
     } else if (currentState === 'active') {
-      // 'active' -> Student: "🟢 Study Hour Started", scan button shown
+      // 'active' -> Student: "🟢 Study Hour Started", show dynamic unique student QR
       const startTimeStr = sessionToUse ? (sessionToUse.startTime || '19:00') : '19:00';
       cardHTML = `
-        <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%); border: 1.5px solid #10b981; border-radius: var(--border-radius-md); padding: 1rem;">
-          <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
-            <div style="flex: 1; min-width: 260px;">
-              <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem;">
+        <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%); border: 1.5px solid #10b981; border-radius: var(--border-radius-md); padding: 1.25rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 260px; text-align: left;">
+              <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; flex-wrap: wrap;">
                 <span style="font-size: 1.1rem;">🟢</span>
-                <h3 style="font-size: 1.1rem; font-weight: 800; color: #10b981; margin: 0;">🟢 Study Hour Started</h3>
+                <h3 style="font-size: 1.1rem; font-weight: 800; color: #10b981; margin: 0;">Study Hour Started</h3>
                 <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; font-weight: 800; font-size: 0.75rem;">Session Status: Active</span>
               </div>
-              <p style="font-size: 0.88rem; font-weight: 600; color: var(--text-primary); margin: 0 0 0.4rem 0;">
-                "Study Hour has started. Please scan the QR code to mark your attendance."
+              <p style="font-size: 0.88rem; font-weight: 600; color: var(--text-primary); margin: 0 0 0.5rem 0;">
+                Show this secure QR code to the Warden to mark your attendance.
               </p>
               <div style="display: flex; gap: 1.25rem; font-size: 0.8rem; color: var(--text-muted); flex-wrap: wrap;">
                 <span><i class="fa-solid fa-clock" style="color: var(--primary); margin-right: 0.3rem;"></i> Started: <strong>${startTimeStr}</strong></span>
                 <span><i class="fa-solid fa-stopwatch" style="color: #f59e0b; margin-right: 0.3rem;"></i> Live Timer: <strong id="student-live-timer-text" style="color: var(--primary); font-family: monospace;">00:00:00</strong></span>
               </div>
+              <p style="font-size: 0.72rem; color: var(--text-muted); margin: 0.6rem 0 0 0; display: flex; align-items: center; gap: 0.3rem;">
+                <i class="fa-solid fa-arrows-rotate fa-spin" style="color: var(--primary);"></i> Secure QR refreshes every 30s to prevent screenshots
+              </p>
             </div>
 
-            <!-- Scan QR Button (Only shown for Students when status is active) -->
-            <button type="button" class="btn btn-success btn-lg btn-scan-study-hour-qr-trigger" style="background: #10b981; border-color: #10b981; font-weight: 800; padding: 0.75rem 1.5rem; font-size: 0.95rem; border-radius: 12px; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);">
-              <i class="fa-solid fa-qrcode" style="margin-right: 0.4rem;"></i> Scan QR Code
-            </button>
+            <!-- Dynamic Student QR Display Card -->
+            <div style="background: #ffffff; padding: 10px; border-radius: 12px; text-align: center; width: 170px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin: 0 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid var(--border-color);">
+              <div id="student-study-session-qr-canvas" style="width: 150px; height: 150px; display: flex; align-items: center; justify-content: center;"></div>
+              <span style="font-size: 0.65rem; font-weight: 800; color: #475569; display: block; margin-top: 4px; text-transform: uppercase;">Scan Student QR</span>
+            </div>
           </div>
         </div>
       `;
     } else if (currentState === 'attended') {
-      // 'attended' -> Student: "✅ Attendance Recorded", scan button disabled
+      // 'attended' -> Student: "✅ Attendance Recorded", QR hidden
       const attendance = await HostelDB.getStudyAttendance(sessionToUse.id, student.regNo);
       const myRecord = attendance[0] || null;
       const scanTimeStr = myRecord && myRecord.entryTime ? new Date(myRecord.entryTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'recently';
       cardHTML = `
-        <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: var(--border-radius-md); padding: 1rem;">
+        <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: var(--border-radius-md); padding: 1.25rem;">
           <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
-            <div>
+            <div style="text-align: left;">
               <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.2rem;">
                 <span style="font-size: 1.2rem;">✅</span>
-                <h3 style="font-size: 1.1rem; font-weight: 800; color: #10b981; margin: 0;">✅ Attendance Recorded</h3>
+                <h3 style="font-size: 1.1rem; font-weight: 800; color: #10b981; margin: 0;">Attendance Marked</h3>
                 <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; font-weight: 800; font-size: 0.75rem;">Attendance Status: Present</span>
               </div>
-              <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.2rem 0 0 0;">
-                Scan Time: <strong style="color: var(--text-primary);">${scanTimeStr}</strong>
+              <p style="font-size: 0.88rem; color: var(--text-secondary); margin: 0.3rem 0 0 0;">
+                Warden verified your attendance successfully.
+              </p>
+              <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.2rem 0 0 0;">
+                Verified Time: <strong style="color: var(--text-primary);">${scanTimeStr}</strong>
               </p>
             </div>
-            <button type="button" class="btn btn-secondary" disabled style="opacity: 0.7; cursor: not-allowed; font-weight: 700;">
-              <i class="fa-solid fa-check"></i> Attendance Marked
-            </button>
+            <div style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1.5px solid #10b981; padding: 0.5rem 1rem; border-radius: 8px; font-weight: bold; font-size: 0.9rem; display: flex; align-items: center; gap: 0.4rem;">
+              <i class="fa-solid fa-check-double"></i> Verified Present
+            </div>
           </div>
         </div>
       `;
     } else if (currentState === 'ended') {
-      // 'ended' -> Student: "🔴 Study Hour Session Ended", scan button hidden
+      // 'ended' -> Student: "🔴 Study Hour Session Ended", QR hidden
       cardHTML = `
-        <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: var(--border-radius-md); padding: 1rem;">
+        <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: var(--border-radius-md); padding: 1.25rem;">
           <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
-            <div>
+            <div style="text-align: left;">
               <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.2rem;">
                 <span style="font-size: 1.1rem;">🔴</span>
-                <h3 style="font-size: 1.1rem; font-weight: 800; color: #ef4444; margin: 0;">🔴 Study Hour Session Ended</h3>
+                <h3 style="font-size: 1.1rem; font-weight: 800; color: #ef4444; margin: 0;">Study Hour Session Ended</h3>
                 <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; font-weight: 800; font-size: 0.75rem;">Session Status: Ended</span>
               </div>
               <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.2rem 0 0 0;">
@@ -1433,65 +1441,55 @@ async function initStudentDashboardStudyHour(student) {
 
     // Hydrate DOM containers
     if (bannerContainer) {
-      const contentEl = document.getElementById('study-banner-content') || bannerContainer;
-      contentEl.innerHTML = cardHTML;
+      bannerContainer.innerHTML = cardHTML;
     }
     if (sessionCardContainer) {
       const cardContentEl = document.getElementById('student-session-content') || sessionCardContainer;
       cardContentEl.innerHTML = cardHTML;
     }
 
-    // Attach Scan QR Button Click Handlers
-    document.querySelectorAll('.btn-scan-study-hour-qr-trigger').forEach(btn => {
-      btn.onclick = () => {
-        if (!activeSession) {
-          showToast('Study Hour session is not currently active.', 'warning');
-          return;
-        }
-        if (window.HMSQRScanner) {
-          window.HMSQRScanner.open({
-            title: 'Scan Study Hour QR',
-            mainText: 'Align the Warden\'s Study Session QR inside frame',
-            subText: 'Attendance will be registered automatically',
-            onScan: async (decodedText) => {
-              try {
-                let payload = null;
-                try { payload = JSON.parse(decodedText); } catch (e) {}
+    // Handle Dynamic QR Code Generation and Regen Loop
+    if (studentQrRegenInterval) {
+      clearInterval(studentQrRegenInterval);
+      studentQrRegenInterval = null;
+    }
 
-                if (payload && payload.type === 'STUDY_HOUR') {
-                  await HostelDB.upsertStudyAttendance({
-                    sessionId: activeSession.id,
-                    studentReg: student.regNo,
-                    studentName: student.name,
-                    dept: student.dept || 'CSE',
-                    room: student.room || '-',
-                    entryStatus: 'PRESENT',
-                    entryTime: new Date().toISOString(),
-                    finalStatus: 'PRESENT'
-                  });
+    if (currentState === 'active' && activeSession) {
+      const generateStudentQR = () => {
+        const qrCanvas = document.getElementById('student-study-session-qr-canvas');
+        if (!qrCanvas) return;
 
-                  if ('BroadcastChannel' in window) {
-                    try {
-                      const bc = new BroadcastChannel('hms_study_channel');
-                      bc.postMessage({ type: 'ATTENDANCE_RECORDED', studentReg: student.regNo, timestamp: Date.now() });
-                      bc.close();
-                    } catch (e) {}
-                  }
+        qrCanvas.innerHTML = '';
+        const qrPayload = JSON.stringify({
+          type: 'STUDY_HOUR_STUDENT',
+          studentReg: student.regNo,
+          sessionId: activeSession.id,
+          timestamp: Date.now()
+        });
 
-                  showToast('✓ Attendance Recorded: Present!', 'success');
-                  await renderRealtimeState(false);
-                } else {
-                  showToast('Invalid QR Code. Please scan the Warden\'s Study Hour QR.', 'danger');
-                }
-              } catch (err) {
-                console.error('Scan error:', err);
-                showToast('Failed to record attendance.', 'danger');
-              }
-            }
-          });
+        if (typeof QRCode !== 'undefined') {
+          try {
+            new QRCode(qrCanvas, {
+              text: qrPayload,
+              width: 150,
+              height: 150,
+              colorDark: "#0f172a",
+              colorLight: "#ffffff",
+              correctLevel: QRCode.CorrectLevel ? QRCode.CorrectLevel.H : 2
+            });
+            console.log('Secure student QR code generated/refreshed:', qrPayload);
+          } catch (e) {
+            console.warn('QR render error:', e);
+          }
         }
       };
-    });
+
+      // Generate immediately
+      generateStudentQR();
+
+      // Refresh every 30 seconds
+      studentQrRegenInterval = setInterval(generateStudentQR, 30000);
+    }
 
     // Handle Live Timer
     if (activeSession && currentState === 'active') {
@@ -1574,7 +1572,12 @@ async function initStudentDashboardStudyHour(student) {
 
   // 3s Automatic Background Polling Fallback (Zero Refresh Automation)
   const pollInterval = setInterval(() => renderRealtimeState(true), 3000);
-  window.addEventListener('beforeunload', () => clearInterval(pollInterval));
+  window.addEventListener('beforeunload', () => {
+    clearInterval(pollInterval);
+    if (studentQrRegenInterval) {
+      clearInterval(studentQrRegenInterval);
+    }
+  });
 }
 
 async function initStudentStudyHour(student) {
