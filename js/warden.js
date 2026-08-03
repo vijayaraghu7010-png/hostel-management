@@ -31,6 +31,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     await initWardenStudyHour();
   } else if (pagePath.includes('staff.html')) {
     await initStaffManagement();
+  } else if (pagePath.includes('parent-alerts.html')) {
+    if (typeof initParentAlerts === 'function') await initParentAlerts();
   }
 });
 

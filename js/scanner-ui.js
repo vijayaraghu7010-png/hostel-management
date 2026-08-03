@@ -329,8 +329,8 @@
               }
             });
 
-            // 3. Start ZXing decoding from the initialized video element
-            this.zxingControls = await this.zxingReader.decodeFromVideoElement(
+            // 3. Start ZXing continuous decoding from the initialized video element
+            this.zxingControls = await this.zxingReader.decodeFromVideoElementContinuously(
               this.videoEl,
               (result, err) => {
                 if (result && this.isScanning && !this.scanLock) {

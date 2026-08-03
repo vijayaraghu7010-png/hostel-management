@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Parent Alerts - Hostel ERP</title>
+  <meta name="description" content="Automated Parent Alert System with WhatsApp and AI Voice notifications for KVCET Smart Hostel Management">
+  
+  <!-- CSS Library -->
+  <link rel="stylesheet" href="../../css/variables.css">
+  <link rel="stylesheet" href="../../css/global.css">
+  <link rel="stylesheet" href="../../css/components.css">
+  <link rel="stylesheet" href="../../css/warden.css">
+  <link rel="stylesheet" href="../../css/parent-alerts.css">
+  
+  <!-- FontAwesome & Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body class="theme-light" data-root-path="../../">
+
+  <div class="app-container">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+    
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Navbar -->
+      <div id="navbar-container"></div>
+      
+      <!-- Page Body -->
+      <div class="page-body">
+        <div class="container-fluid">
+          
+          <!-- Header -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+            <div>
+              <h1 style="font-size: 1.5rem; font-weight: 800; background: linear-gradient(135deg, var(--text-primary) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Parent Alert System</h1>
+              <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">Automated risk detection, bilingual notifications & delivery tracking</p>
+            </div>
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+              <button class="pa-btn pa-btn-primary pa-scan-btn" id="btn-scan-students">
+                <i class="fa-solid fa-radar"></i>
+                <span>Scan All Students</span>
+              </button>
+              <button class="pa-btn pa-btn-view" id="btn-toggle-settings" style="padding: 0.55rem 1rem;">
+                <i class="fa-solid fa-gear"></i>
+                <span>Settings</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- KPI Stats Grid -->
+          <div class="pa-stats-grid" id="pa-stats-grid">
+            <div class="glass-card pa-stat-card">
+              <div class="pa-stat-icon alerts"><i class="fa-solid fa-bell"></i></div>
+              <div class="pa-stat-info">
+                <span class="pa-stat-label">Total Alerts</span>
+                <span class="pa-stat-value" id="stat-total-alerts">0</span>
+              </div>
+            </div>
+            <div class="glass-card pa-stat-card">
+              <div class="pa-stat-icon risk"><i class="fa-solid fa-triangle-exclamation"></i></div>
+              <div class="pa-stat-info">
+                <span class="pa-stat-label">High Risk</span>
+                <span class="pa-stat-value" id="stat-high-risk">0</span>
+              </div>
+            </div>
+            <div class="glass-card pa-stat-card">
+              <div class="pa-stat-icon pending"><i class="fa-solid fa-clock"></i></div>
+              <div class="pa-stat-info">
+                <span class="pa-stat-label">Pending</span>
+                <span class="pa-stat-value" id="stat-pending">0</span>
+              </div>
+            </div>
+            <div class="glass-card pa-stat-card">
+              <div class="pa-stat-icon sent"><i class="fa-solid fa-paper-plane"></i></div>
+              <div class="pa-stat-info">
+                <span class="pa-stat-label">Sent Today</span>
+                <span class="pa-stat-value" id="stat-sent-today">0</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Settings Panel (Collapsible) -->
+          <div class="glass-card" id="settings-panel" style="margin-bottom: 1.5rem; display: none;">
+            <div class="pa-collapsible-header open" id="settings-header">
+              <h3 style="font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;"><i class="fa-solid fa-sliders" style="color: #A4863D;"></i> Alert Configuration</h3>
+              <i class="fa-solid fa-chevron-down chevron"></i>
+            </div>
+            <div class="pa-collapsible-body open" style="padding: 0 1.5rem 1.5rem;">
+              <div class="pa-settings-grid">
+                <!-- Credit Threshold -->
+                <div class="pa-setting-group">
+                  <label class="pa-setting-label" for="setting-credit-threshold">Credit Warning Threshold</label>
+                  <p class="pa-setting-hint">Alert when credit falls below this value</p>
+                  <select class="form-control" id="setting-credit-threshold" style="margin-bottom: 0;">
+                    <option value="700">700 — Warning Level</option>
+                    <option value="600" selected>600 — High Risk Level</option>
+                    <option value="500">500 — Critical Level</option>
+                    <option value="400">400 — Severe</option>
+                  </select>
+                </div>
+
+                <!-- Absence Threshold -->
+                <div class="pa-setting-group">
+                  <label class="pa-setting-label" for="setting-absence-threshold">Study Hour Absence Threshold</label>
+                  <p class="pa-setting-hint">Alert after N consecutive absences</p>
+                  <select class="form-control" id="setting-absence-threshold" style="margin-bottom: 0;">
+                    <option value="2">2 consecutive</option>
+                    <option value="3" selected>3 consecutive</option>
+                    <option value="5">5 consecutive</option>
+                  </select>
+                </div>
+
+                <!-- Language -->
+                <div class="pa-setting-group">
+                  <label class="pa-setting-label" for="setting-language">Message Language</label>
+                  <p class="pa-setting-hint">WhatsApp and voice message language</p>
+                  <select class="form-control" id="setting-language" style="margin-bottom: 0;">
+                    <option value="ENGLISH">English Only</option>
+                    <option value="TAMIL">Tamil Only</option>
+                    <option value="TAMIL_ENGLISH" selected>Tamil + English (Bilingual)</option>
+                  </select>
+                </div>
+
+                <!-- Alert Frequency -->
+                <div class="pa-setting-group">
+                  <label class="pa-setting-label" for="setting-frequency">Alert Frequency</label>
+                  <p class="pa-setting-hint">Minimum gap between alerts for same student</p>
+                  <select class="form-control" id="setting-frequency" style="margin-bottom: 0;">
+                    <option value="24">Every 24 Hours</option>
+                    <option value="48" selected>Every 48 Hours</option>
+                    <option value="72">Every 72 Hours</option>
+                    <option value="168">Once a Week</option>
+                  </select>
+                </div>
+
+                <!-- Auto Send Toggle -->
+                <div class="pa-setting-group">
+                  <label class="pa-setting-label">Auto-Send Alerts</label>
+                  <p class="pa-setting-hint">Skip warden review, send immediately</p>
+                  <div class="pa-toggle-row">
+                    <span style="font-size: 0.82rem; color: #E6E6FA;">Manual Approval Required</span>
+                    <label class="pa-toggle">
+                      <input type="checkbox" id="setting-auto-send">
+                      <span class="pa-toggle-slider"></span>
+                    </label>
+                  </div>
+                </div>
+
+                <!-- Voice Toggle -->
+                <div class="pa-setting-group">
+                  <label class="pa-setting-label">AI Voice Message</label>
+                  <p class="pa-setting-hint">Generate voice message preview</p>
+                  <div class="pa-toggle-row">
+                    <span style="font-size: 0.82rem; color: #E6E6FA;">Voice Enabled</span>
+                    <label class="pa-toggle">
+                      <input type="checkbox" id="setting-voice-enabled" checked>
+                      <span class="pa-toggle-slider"></span>
+                    </label>
+                  </div>
+                </div>
+
+                <!-- WhatsApp Message Toggle -->
+                <div class="pa-setting-group">
+                  <label class="pa-setting-label">WhatsApp Message</label>
+                  <p class="pa-setting-hint">Enable WhatsApp message sending</p>
+                  <div class="pa-toggle-row">
+                    <span style="font-size: 0.82rem; color: #E6E6FA;">Message Enabled</span>
+                    <label class="pa-toggle">
+                      <input type="checkbox" id="setting-message-enabled" checked>
+                      <span class="pa-toggle-slider"></span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+              <div style="margin-top: 1.25rem; display: flex; justify-content: flex-end;">
+                <button class="pa-btn pa-btn-primary" id="btn-save-settings">
+                  <i class="fa-solid fa-floppy-disk"></i> Save Settings
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Filters & Search -->
+          <div class="glass-card" style="margin-bottom: 1.5rem; padding: 1.25rem 1.5rem;">
+            <div class="pa-filter-bar">
+              <div style="display: flex; align-items: center; gap: 0.5rem; flex-grow: 1; max-width: 350px; min-width: 200px;">
+                <i class="fa-solid fa-magnifying-glass text-muted"></i>
+                <input type="text" id="pa-search" class="form-control" placeholder="Search student name or reg no..." style="margin-bottom: 0;">
+              </div>
+              <div class="pa-filter-group">
+                <label class="pa-filter-label" for="pa-filter-risk">Risk:</label>
+                <select id="pa-filter-risk" class="form-control" style="margin-bottom: 0; max-width: 130px; padding: 0.35rem 0.75rem;">
+                  <option value="">All</option>
+                  <option value="CRITICAL">Critical</option>
+                  <option value="WARNING">Warning</option>
+                  <option value="WATCH">Watch</option>
+                  <option value="NORMAL">Normal</option>
+                </select>
+              </div>
+              <div class="pa-filter-group">
+                <label class="pa-filter-label" for="pa-filter-dept">Dept:</label>
+                <select id="pa-filter-dept" class="form-control" style="margin-bottom: 0; max-width: 120px; padding: 0.35rem 0.75rem;">
+                  <option value="">All</option>
+                  <option value="CSE">CSE</option>
+                  <option value="IT">IT</option>
+                  <option value="ECE">ECE</option>
+                  <option value="EEE">EEE</option>
+                  <option value="MECH">MECH</option>
+                  <option value="CIVIL">CIVIL</option>
+                  <option value="AI & DS">AI & DS</option>
+                </select>
+              </div>
+              <div class="pa-filter-group">
+                <label class="pa-filter-label" for="pa-filter-status">Status:</label>
+                <select id="pa-filter-status" class="form-control" style="margin-bottom: 0; max-width: 130px; padding: 0.35rem 0.75rem;">
+                  <option value="">All</option>
+                  <option value="PENDING">Pending</option>
+                  <option value="SENDING">Sending</option>
+                  <option value="SENT">Sent</option>
+                  <option value="DELIVERED">Delivered</option>
+                  <option value="FAILED">Failed</option>
+                  <option value="RESOLVED">Resolved</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Alerts Table -->
+          <div class="glass-card" style="padding: 0; overflow: hidden; margin-bottom: 2rem;">
+            <div class="pa-section-header" style="padding: 1.25rem 1.5rem 0;">
+              <h3 class="pa-section-title"><i class="fa-solid fa-bell-concierge"></i> Parent Alerts</h3>
+              <span style="font-size: 0.78rem; color: #94a3b8;" id="pa-alert-count">0 alerts</span>
+            </div>
+            <div class="table-responsive" style="border: none; border-radius: 0;">
+              <table class="table-custom" style="margin-bottom: 0; min-width: 1100px;" id="pa-alerts-table">
+                <thead>
+                  <tr>
+                    <th>Student</th>
+                    <th>Reg No</th>
+                    <th>Dept</th>
+                    <th>Room</th>
+                    <th>Credit</th>
+                    <th>Risk Level</th>
+                    <th>Reason</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Sent</th>
+                    <th style="text-align: right; padding-right: 1.5rem;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="pa-alerts-tbody">
+                  <!-- Hydrated by JS -->
+                </tbody>
+              </table>
+            </div>
+            <!-- Pagination -->
+            <div class="table-pagination-bar">
+              <span style="font-size: 0.8rem; color: var(--text-secondary);" id="pa-pagination-info">Showing 0 to 0 of 0 alerts</span>
+              <div style="display: flex; gap: 0.5rem;" id="pa-pagination-btns">
+                <button class="btn btn-secondary btn-sm" id="pa-btn-prev" disabled>Previous</button>
+                <button class="btn btn-secondary btn-sm" id="pa-btn-next" disabled>Next</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Delivery Log (Collapsible) -->
+          <div class="glass-card" style="padding: 0; overflow: hidden;">
+            <div class="pa-collapsible-header" id="delivery-log-header" style="padding: 1.25rem 1.5rem;">
+              <h3 style="font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;"><i class="fa-solid fa-scroll" style="color: #A4863D;"></i> Delivery History Log</h3>
+              <i class="fa-solid fa-chevron-down chevron"></i>
+            </div>
+            <div class="pa-collapsible-body" id="delivery-log-body">
+              <div class="table-responsive" style="border: none; border-radius: 0;">
+                <table class="table-custom" style="margin-bottom: 0; min-width: 900px;" id="pa-delivery-table">
+                  <thead>
+                    <tr>
+                      <th>Student</th>
+                      <th>Parent Number</th>
+                      <th>Alert Time</th>
+                      <th>Message</th>
+                      <th>Voice</th>
+                      <th>Status</th>
+                      <th>Delivery Result</th>
+                    </tr>
+                  </thead>
+                  <tbody id="pa-delivery-tbody">
+                    <!-- Hydrated by JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      
+      <!-- Footer -->
+      <div id="footer-container"></div>
+    </main>
+  </div>
+
+  <!-- Alert Detail Modal -->
+  <div class="modal-backdrop" id="pa-detail-modal" style="display: none;">
+    <div class="modal-card" style="max-width: 750px; max-height: 90vh; overflow-y: auto;">
+      <div class="modal-header">
+        <h3 id="pa-modal-title">Alert Details</h3>
+        <button class="modal-close" id="pa-modal-close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" style="padding: 0;">
+        <!-- Tabs -->
+        <div class="pa-tabs" id="pa-modal-tabs">
+          <button class="pa-tab active" data-tab="profile">Profile</button>
+          <button class="pa-tab" data-tab="attendance">Attendance</button>
+          <button class="pa-tab" data-tab="credits">Credits</button>
+          <button class="pa-tab" data-tab="violations">Violations</button>
+          <button class="pa-tab" data-tab="leaves">Leaves</button>
+          <button class="pa-tab" data-tab="complaints">Complaints</button>
+          <button class="pa-tab" data-tab="message">Message</button>
+          <button class="pa-tab" data-tab="voice">Voice</button>
+        </div>
+        <!-- Tab Content Area -->
+        <div style="padding: 1.25rem 1.5rem;" id="pa-modal-content">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: space-between; gap: 0.75rem; padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); flex-wrap: wrap;">
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button class="pa-btn pa-whatsapp-btn" id="pa-modal-send-whatsapp">
+            <i class="fa-brands fa-whatsapp"></i> Send WhatsApp
+          </button>
+          <button class="pa-btn pa-btn-primary" id="pa-modal-play-voice" style="display: none;">
+            <i class="fa-solid fa-volume-high"></i> Play Voice
+          </button>
+        </div>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button class="pa-btn pa-btn-resolve" id="pa-modal-resolve">
+            <i class="fa-solid fa-circle-check"></i> Resolve
+          </button>
+          <button class="pa-btn pa-btn-view" id="pa-modal-close-btn">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Message Preview/Edit Modal -->
+  <div class="modal-backdrop" id="pa-message-modal" style="display: none;">
+    <div class="modal-card" style="max-width: 550px; max-height: 85vh; overflow-y: auto;">
+      <div class="modal-header">
+        <h3><i class="fa-brands fa-whatsapp" style="color: #25d366; margin-right: 0.5rem;"></i>WhatsApp Message Preview</h3>
+        <button class="modal-close" id="pa-msg-modal-close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" style="padding: 1.25rem 1.5rem;">
+        <!-- Language Tabs -->
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+          <button class="pa-btn pa-btn-primary pa-msg-lang-btn active" data-lang="ENGLISH">English</button>
+          <button class="pa-btn pa-btn-view pa-msg-lang-btn" data-lang="TAMIL">Tamil</button>
+          <button class="pa-btn pa-btn-view pa-msg-lang-btn" data-lang="TAMIL_ENGLISH">Both</button>
+        </div>
+        <!-- Message Preview -->
+        <div class="pa-message-preview" id="pa-msg-preview">
+          <div class="pa-message-bubble" id="pa-msg-bubble">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+        <!-- Editable Area -->
+        <div style="margin-top: 1rem;">
+          <label class="pa-setting-label" style="margin-bottom: 0.5rem; display: block;">Edit Message</label>
+          <textarea class="form-control" id="pa-msg-edit" rows="8" style="font-size: 0.85rem; line-height: 1.6;"></textarea>
+        </div>
+        <!-- Voice Player -->
+        <div id="pa-msg-voice-section" style="margin-top: 1rem;">
+          <label class="pa-setting-label" style="margin-bottom: 0.5rem; display: block;">AI Voice Preview</label>
+          <div class="pa-voice-player">
+            <button class="pa-voice-btn" id="pa-msg-voice-play"><i class="fa-solid fa-play"></i></button>
+            <div class="pa-voice-wave" id="pa-msg-voice-wave">
+              <!-- Wave bars generated by JS -->
+            </div>
+            <span class="pa-voice-info" id="pa-msg-voice-info">Ready</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 0.75rem; padding: 1rem 1.5rem; border-top: 1px solid var(--border-color);">
+        <button class="pa-btn pa-btn-view" id="pa-msg-cancel">Cancel</button>
+        <button class="pa-btn pa-whatsapp-btn" id="pa-msg-approve-send">
+          <i class="fa-brands fa-whatsapp"></i> Approve & Send
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="../../js/utils.js"></script>
+  <script src="../../js/auth.js"></script>
+  <script src="../../js/notifications.js"></script>
+  <script src="../../js/app.js"></script>
+  <script src="../../js/parent-alerts.js"></script>
+  <script src="../../js/warden.js"></script>
+</body>
+</html>

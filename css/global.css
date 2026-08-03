@@ -36,6 +36,10 @@ button, input, select, textarea, a, .btn, .card, .glass-card, .sidebar-link, .na
 #sidebar-container {
   width: var(--sidebar-width);
   flex: 0 0 var(--sidebar-width);
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  overflow: hidden;
   z-index: 100;
   transition: width var(--transition-normal), transform var(--transition-normal);
 }

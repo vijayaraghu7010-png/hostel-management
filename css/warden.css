@@ -47,6 +47,20 @@ body {
   border-right: 1px solid rgba(164, 134, 61, 0.25) !important;
 }
 
+/* Custom scrollbar for Warden luxury theme */
+.sidebar-menu {
+  scrollbar-color: rgba(164, 134, 61, 0.4) transparent !important;
+}
+
+.sidebar-menu::-webkit-scrollbar-thumb {
+  background: rgba(164, 134, 61, 0.35) !important;
+  border-radius: 10px !important;
+}
+
+.sidebar-menu::-webkit-scrollbar-thumb:hover {
+  background: rgba(164, 134, 61, 0.65) !important;
+}
+
 .sidebar-logo {
   background: #A4863D !important;
   color: #FFFFFF !important;
@@ -67,7 +81,7 @@ body {
 
 .sidebar-link {
   color: #E6E6FA !important;
-  opacity: 0.8;
+  opacity: 0.85;
   border-radius: 12px !important;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
@@ -76,6 +90,7 @@ body {
   color: #FFFFFF !important;
   opacity: 1;
   background: rgba(164, 134, 61, 0.14) !important;
+  transform: translateX(3px) !important;
 }
 
 .sidebar-link.active {
