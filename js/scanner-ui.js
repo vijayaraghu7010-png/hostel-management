@@ -329,10 +329,15 @@
               }
             });
 
-            // 3. Start ZXing continuous decoding from the initialized video element
+            // 3. Start ZXing decoding from the initialized video element
+            // NOTE: decodeFromVideoElement() only takes ONE argument and does a single
+            // internal decode-then-resolve — it silently ignores a callback. We need the
+            // *Continuously* variant so our callback actually fires per decoded frame.
+            this._zxingLastActivity = Date.now();
             this.zxingControls = await this.zxingReader.decodeFromVideoElementContinuously(
               this.videoEl,
               (result, err) => {
+                this._zxingLastActivity = Date.now();
                 if (result && this.isScanning && !this.scanLock) {
                   try {
                     const text = typeof result.getText === 'function' ? result.getText() : (result.text || String(result));
@@ -347,6 +352,29 @@
             );
             console.log('▶ Started scanning via Tier 1 (@zxing/browser)');
             if (loader) loader.style.display = 'none';
+
+            // WATCHDOG: decodeContinuously's internal loop only auto-retries on zxing's
+            // own recognized exceptions (NotFound/Checksum/Format). Any other error
+            // (e.g. a 0x0 capture-canvas race on the very first frame) kills the loop
+            // silently with no retry — the overlay stays open but nothing ever fires
+            // again. If we see no callback activity at all for a few seconds, assume
+            // the loop died and fail over to Tier 2 automatically.
+            if (this._zxingWatchdog) clearInterval(this._zxingWatchdog);
+            this._zxingWatchdog = setInterval(() => {
+              if (!this.isScanning || this.activeTier !== 'ZXING_BROWSER') {
+                clearInterval(this._zxingWatchdog);
+                this._zxingWatchdog = null;
+                return;
+              }
+              if (Date.now() - this._zxingLastActivity > 3500) {
+                clearInterval(this._zxingWatchdog);
+                this._zxingWatchdog = null;
+                console.warn('Tier 1 (@zxing/browser) went silent — no frame activity detected. Failing over to Tier 2 (Nimiq).');
+                this.activeTier = 'NIMIQ_SCANNER';
+                this.startCamera();
+              }
+            }, 1000);
+
             return;
           } catch (zxingErr) {
             console.warn('Tier 1 (@zxing/browser) initialization failed, advancing to fallback:', zxingErr);
@@ -741,6 +769,10 @@
       if (this.scanTimer) {
         clearTimeout(this.scanTimer);
         this.scanTimer = null;
+      }
+      if (this._zxingWatchdog) {
+        clearInterval(this._zxingWatchdog);
+        this._zxingWatchdog = null;
       }
 
       // Explicitly stop @zxing/browser controls
