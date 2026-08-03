@@ -91,6 +91,20 @@ export default defineConfig({
         }
       }
     },
+    // Suppress "Failed to load source map" warnings for pre-minified vendor bundles
+    // These .min.js files reference sourceMappingURL but ship without .map files
+    {
+      name: 'suppress-vendor-sourcemap-warnings',
+      enforce: 'pre',
+      transform(code, id) {
+        if (id.includes('vendor') && id.endsWith('.min.js')) {
+          return {
+            code: code.replace(/\/\/[#@]\s*sourceMappingURL=.*/g, ''),
+            map: null
+          };
+        }
+      }
+    },
     copyStaticAssetsPlugin()
   ],
   server: {
