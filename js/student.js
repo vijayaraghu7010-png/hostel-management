@@ -1326,11 +1326,17 @@ async function initStudentDashboardStudyHour(student) {
     } else {
       if (lastKnownSessionId) {
         const closedSession = sessions.find(s => s.id === lastKnownSessionId);
-        if (closedSession && closedSession.status === 'CLOSED') {
+        if (sessions.length > 0 && closedSession && closedSession.status === 'CLOSED') {
+          // sessions.length > 0 confirms Supabase (or a populated cache) responded.
+          // Without this guard, a transient empty-array from a fetch failure would
+          // also land here and falsely render "Study Session Ended".
           currentState = 'ended';
           sessionToUse = closedSession;
         } else {
-          currentState = 'no_session';
+          // sessions.length === 0 means getStudySessions() returned nothing —
+          // most likely a network failure, not a genuine closure. Hold the last
+          // known state so the UI does not flicker during a brief outage.
+          currentState = sessions.length === 0 ? (lastKnownStatus || 'no_session') : 'no_session';
         }
       } else {
         currentState = 'no_session';

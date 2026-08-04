@@ -16,6 +16,10 @@ async function loadSupabaseScript() {
 
 class HostelDB {
   static _retryInterval = null;
+  // Tracks whether the most recent getStudySessions() call was fulfilled by
+  // Supabase (true) or fell back to the local cache (false). Used by
+  // getActiveStudySession() to guard the ACTIVE→CLOSED localStorage mutation.
+  static _lastSessionsFromCloud = false;
 
   static async checkConnection() {
     try {
@@ -1140,6 +1144,7 @@ class HostelDB {
   // --- STUDY HOUR MANAGEMENT & DISCIPLINE CREDIT MODULE ---
 
   static async getStudySessions() {
+    this._lastSessionsFromCloud = false; // reset; set true only on Supabase success below
     if (USE_SUPABASE) {
       try {
         const data = await supabaseFetch(`hms_study_sessions?order=created_at.desc&_t=${Date.now()}`, { 
@@ -1160,6 +1165,7 @@ class HostelDB {
             config: s.config || {}
           }));
           this.setData('hms_study_sessions', mapped);
+          this._lastSessionsFromCloud = true; // authoritative Supabase data received
           return mapped;
         }
       } catch (e) {
@@ -1194,6 +1200,10 @@ class HostelDB {
         }
       } catch (e) {
         this.handleSupabaseError(e);
+        // Network failure: we cannot confirm whether the session is gone.
+        // Return null immediately — do NOT fall through to the localStorage
+        // path that would destructively mark sessions as CLOSED.
+        return null;
       }
     }
 
@@ -1202,7 +1212,10 @@ class HostelDB {
 
     if (!active) {
       const localList = this.getData('hms_study_sessions') || [];
-      if (localList.some(s => s.status === 'ACTIVE')) {
+      // Only clean up stale localStorage when getStudySessions() returned
+      // authoritative data from Supabase. A cache-only result may be stale
+      // (e.g. the session exists in the cloud but not yet in this device's cache).
+      if (this._lastSessionsFromCloud && localList.some(s => s.status === 'ACTIVE')) {
         const cleaned = localList.map(s => s.status === 'ACTIVE' ? { ...s, status: 'CLOSED' } : s);
         this.setData('hms_study_sessions', cleaned);
       }
