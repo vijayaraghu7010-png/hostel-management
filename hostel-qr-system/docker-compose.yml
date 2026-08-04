@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  hostel-qr-portal:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hostel_qr_portal
+    ports:
+      - "8080:80"
+    restart: always
+    environment:
+      - NODE_ENV=production
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
