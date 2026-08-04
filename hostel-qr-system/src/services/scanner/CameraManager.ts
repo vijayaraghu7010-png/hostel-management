@@ -18,7 +18,7 @@ export class CameraManager {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         this.stopStreamTracks(stream);
         return true;
-      } catch (err) {
+      } catch {
         throw new Error('Camera access permission denied or camera unavailable');
       }
     }
