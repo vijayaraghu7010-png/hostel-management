@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Room Allocation - Hostel ERP</title>
+  
+  <!-- CSS Library -->
+  <link rel="stylesheet" href="../../css/variables.css">
+  <link rel="stylesheet" href="../../css/global.css">
+  <link rel="stylesheet" href="../../css/components.css">
+  <link rel="stylesheet" href="../../css/warden.css">
+  
+  <!-- FontAwesome & Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body class="theme-light" data-root-path="../../">
+
+  <div class="app-container">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+    
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Navbar -->
+      <div id="navbar-container"></div>
+      
+      <!-- Page Body -->
+      <div class="page-body">
+        <div class="container-fluid">
+          
+          <!-- Header -->
+          <div style="margin-bottom: 2rem;">
+            <h2 style="font-size: 1.5rem; font-weight: 800; background: linear-gradient(135deg, var(--text-primary) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Hostel Room Allocation</h2>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">Allocate rooms, transfer occupants, and audit residency distributions</p>
+          </div>
+
+          <!-- Top Section: Control and Form Panel -->
+          <div class="row" style="margin-bottom: 2rem;">
+            <!-- Allocation Form -->
+            <div class="col-md-7">
+              <div class="glass-card">
+                <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;"><i class="fa-solid fa-user-plus" style="margin-right: 0.5rem; color: var(--primary);"></i>Allocate or Transfer Occupant</h3>
+                
+                <form id="room-allocation-form">
+                  <div class="row" style="margin: 0 -0.5rem 1rem -0.5rem;">
+                    <!-- Student Selection -->
+                    <div class="col-md-6" style="padding: 0 0.5rem;">
+                      <div class="form-group">
+                        <label class="form-label" for="alloc-student-reg">Select Student</label>
+                        <select class="form-control" id="alloc-student-reg" required>
+                          <!-- Hydrated by JS -->
+                        </select>
+                      </div>
+                    </div>
+
+                    <!-- Room Selection -->
+                    <div class="col-md-6" style="padding: 0 0.5rem;">
+                      <div class="form-group">
+                        <label class="form-label" for="alloc-room-no">Target Room</label>
+                        <select class="form-control" id="alloc-room-no" required>
+                          <!-- Hydrated by JS -->
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Submit button -->
+                  <div style="display: flex; justify-content: flex-end;">
+                    <button type="submit" class="btn btn-primary">
+                      <i class="fa-solid fa-bed"></i>
+                      <span>Confirm Allocation</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            <!-- Reference Guide -->
+            <div class="col-md-5">
+              <div class="glass-card" style="height: 100%;">
+                <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.75rem;"><i class="fa-solid fa-circle-exclamation" style="margin-right: 0.5rem; color: var(--warning);"></i>Allocation Policy</h3>
+                <ul style="list-style-type: none; padding: 0; font-size: 0.85rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 0.75rem;">
+                  <li style="display: flex; gap: 0.5rem;">
+                    <i class="fa-solid fa-caret-right text-primary" style="margin-top:3px;"></i>
+                    <span><strong>Transfer rules:</strong> Allocating a student already assigned to a room will automatically transfer them and clear their old spot.</span>
+                  </li>
+                  <li style="display: flex; gap: 0.5rem;">
+                    <i class="fa-solid fa-caret-right text-primary" style="margin-top:3px;"></i>
+                    <span><strong>Capacity checks:</strong> The ERP prevents allocations exceeding the defined room capacities (e.g. 2, 3, or 4 beds).</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Section: Room Grid -->
+          <div style="margin-bottom: 1.5rem;">
+            <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-primary);"><i class="fa-solid fa-hotel" style="margin-right: 0.5rem; color: var(--primary);"></i>Room Status Matrix</h3>
+            <p style="font-size: 0.8rem; color: var(--text-muted);">Real-time visual map of rooms, wings, and allocated student rosters</p>
+          </div>
+
+          <div class="room-grid" id="room-grid-cards">
+            <!-- Dynamically populated by warden.js -->
+            <div class="spinner-container">
+              <div class="spinner"></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      
+      <!-- Footer -->
+      <div id="footer-container"></div>
+    </main>
+  </div>
+
+  <!-- Scripts -->
+  <script src="../../js/utils.js"></script>
+  <script src="../../js/auth.js"></script>
+  <script src="../../js/notifications.js"></script>
+  <script src="../../js/app.js"></script>
+  <script src="../../js/warden.js"></script>
+</body>
+</html>

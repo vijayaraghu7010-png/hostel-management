@@ -1,0 +1,666 @@
+/* ==========================================================================
+   ENTERPRISE MATCHA BREW & WHITE LOGIN PORTAL STYLES
+   ========================================================================== */
+
+:root {
+  --matcha-dark: #1b3818;
+  --matcha-primary: #2d5a27;
+  --matcha-medium: #3b7138;
+  --matcha-hover: #234820;
+  --matcha-accent: #4a8b43;
+  --matcha-light: #eefbf0;
+  --matcha-glow: rgba(45, 90, 39, 0.35);
+  
+  --slate-dark: #0f172a;
+  --slate-body: #334155;
+  --slate-muted: #64748b;
+  --border-card: rgba(226, 232, 240, 0.95);
+}
+
+.split-login-body {
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
+  color: var(--slate-dark);
+  background-color: #ffffff;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Page Split Container */
+.split-login-wrapper {
+  display: flex;
+  min-height: 100vh;
+  width: 100vw;
+}
+
+/* ==========================================================================
+   LEFT HERO SECTION (MATCHA BREW COLOR PALETTE - 60% WIDTH ON DESKTOP)
+   ========================================================================== */
+.split-hero-section {
+  flex: 1.25;
+  background: linear-gradient(135deg, #162e16 0%, #254a21 50%, #356232 100%);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 4.5rem 5rem;
+  color: #ffffff;
+  overflow: hidden;
+}
+
+/* Matcha Mesh Gradient Overlay */
+.matcha-mesh-bg {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(74, 139, 67, 0.25) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(135, 195, 122, 0.15) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(27, 56, 24, 0.4) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(45, 90, 39, 0.3) 0px, transparent 50%);
+  z-index: 1;
+}
+
+/* Abstract Curved Background Glow Elements */
+.abstract-shape {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.shape-1 {
+  width: 550px;
+  height: 550px;
+  background: radial-gradient(circle, rgba(92, 160, 84, 0.28) 0%, transparent 70%);
+  top: -12%;
+  left: -10%;
+  animation: shapeFloat1 18s ease-in-out infinite alternate;
+}
+
+.shape-2 {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(45, 90, 39, 0.35) 0%, transparent 70%);
+  bottom: -15%;
+  right: -10%;
+  animation: shapeFloat2 22s ease-in-out infinite alternate;
+}
+
+@keyframes shapeFloat1 {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(70px, 80px) scale(1.15); }
+}
+
+@keyframes shapeFloat2 {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-80px, -70px) scale(1.18); }
+}
+
+/* Hero Inner Content */
+.hero-inner-content {
+  position: relative;
+  z-index: 5;
+  max-width: 580px;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+}
+
+/* Hero Top Brand Badge */
+.hero-top-badge {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.hero-badge-icon {
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #3b7138 0%, #4a8b43 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.7rem;
+  color: #ffffff;
+  box-shadow: 0 10px 25px rgba(35, 72, 32, 0.4);
+}
+
+.hero-badge-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.badge-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: #a8e09b;
+}
+
+.badge-sub {
+  font-size: 0.78rem;
+  color: #dcfce7;
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+/* Main Headline & Subtitle */
+.hero-headline-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.hero-main-heading {
+  font-size: 2.25rem;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -0.5px;
+  background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 50%, #bbf7d0 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin: 0;
+}
+
+.hero-sub-tagline {
+  font-size: 0.95rem;
+  color: #e2f8e5;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: 0.2px;
+}
+
+/* 3 Premium Matcha Glass Feature Badges */
+.hero-feature-badges-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.feature-glass-badge {
+  display: flex;
+  align-items: center;
+  gap: 1.15rem;
+  padding: 1.1rem 1.35rem;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 18px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.feature-glass-badge:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateX(6px);
+}
+
+.badge-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: rgba(135, 195, 122, 0.22);
+  color: #87c37a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.badge-text-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.badge-text-box strong {
+  font-size: 0.92rem;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.badge-text-box span {
+  font-size: 0.78rem;
+  color: #dcfce7;
+  opacity: 0.85;
+}
+
+/* Trust Badges Footer */
+.hero-security-trust {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  font-size: 0.75rem;
+  color: #bbf7d0;
+  opacity: 0.85;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.trust-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.trust-sep {
+  opacity: 0.4;
+}
+
+/* ==========================================================================
+   RIGHT FORM SECTION (CLEAN WHITE CARD & MATCHA ACCENTS)
+   ========================================================================== */
+.split-form-section {
+  flex: 0.85;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 2rem;
+  background: #ffffff;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(45, 90, 39, 0.04) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(74, 139, 67, 0.04) 0px, transparent 50%);
+  position: relative;
+}
+
+/* Mobile Brand Header (Hidden on Desktop) */
+.mobile-brand-header {
+  display: none;
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.mobile-logo-box {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #2d5a27, #3b7138);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  margin: 0 auto 0.75rem auto;
+  box-shadow: 0 8px 20px rgba(45, 90, 39, 0.3);
+}
+
+.mobile-brand-header h2 {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+/* Elevated Floating Premium Card */
+.floating-login-card {
+  width: 100%;
+  max-width: 430px;
+  background: #ffffff;
+  border: 1px solid var(--border-card);
+  border-radius: 24px;
+  box-shadow: 
+    0 25px 60px -15px rgba(45, 90, 39, 0.08),
+    0 10px 20px -5px rgba(15, 23, 42, 0.03);
+  padding: 2.75rem 2.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  animation: floatCardEntrance 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  box-sizing: border-box;
+}
+
+@keyframes floatCardEntrance {
+  0% {
+    opacity: 0;
+    transform: translateY(24px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Card Header */
+.card-top-header {
+  text-align: center;
+}
+
+.card-brand-logo {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: var(--matcha-light);
+  color: var(--matcha-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.45rem;
+  margin: 0 auto 1rem auto;
+}
+
+.card-welcome-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 0.35rem 0;
+  letter-spacing: -0.3px;
+}
+
+.card-welcome-subtitle {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin: 0;
+  font-weight: 500;
+}
+
+/* Input Fields */
+#login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+.form-group-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.field-label-text {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.field-input-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.field-icon {
+  position: absolute;
+  left: 1.1rem;
+  color: #64748b;
+  font-size: 0.95rem;
+  pointer-events: none;
+  transition: color 0.2s ease;
+}
+
+.field-control-input {
+  width: 100%;
+  padding: 0.85rem 1rem 0.85rem 2.8rem;
+  background: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 14px;
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: #0f172a;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-sizing: border-box;
+}
+
+.field-control-input::placeholder {
+  color: #94a3b8;
+}
+
+.field-control-input:focus {
+  background: #ffffff;
+  border-color: var(--matcha-primary);
+  box-shadow: 0 0 0 4px rgba(45, 90, 39, 0.15);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.field-input-box:focus-within .field-icon {
+  color: var(--matcha-primary);
+}
+
+.select-input {
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232d5a27' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1.1rem center;
+  background-size: 1.1em;
+  padding-right: 2.8rem;
+  cursor: pointer;
+}
+
+/* Password Visibility Eye Toggle */
+.password-toggle-btn {
+  position: absolute;
+  right: 0.85rem;
+  background: none;
+  border: none;
+  color: #94a3b8;
+  padding: 0.4rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.password-toggle-btn:hover {
+  color: var(--matcha-primary);
+  background: var(--matcha-light);
+}
+
+/* Card Options Bar */
+.card-options-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  margin-top: 0.15rem;
+}
+
+.checkbox-remember {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #475569;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.checkbox-remember input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--matcha-primary);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.link-forgot {
+  color: var(--matcha-primary);
+  text-decoration: none;
+  font-weight: 700;
+  transition: color 0.2s ease;
+}
+
+.link-forgot:hover {
+  color: var(--matcha-hover);
+  text-decoration: underline;
+}
+
+/* Primary Matcha Brew Gradient Button */
+.primary-login-btn {
+  width: 100%;
+  padding: 0.95rem 1.5rem;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #2d5a27 0%, #3b7138 50%, #4a8b43 100%);
+  background-size: 200% auto;
+  border: none;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  box-shadow: 0 10px 25px var(--matcha-glow);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.primary-login-btn:hover {
+  background-position: right center;
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px rgba(45, 90, 39, 0.45);
+}
+
+.primary-login-btn:active {
+  transform: translateY(0);
+}
+
+.primary-login-btn:disabled {
+  opacity: 0.75;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Quick Demo Drawer */
+.demo-account-drawer {
+  background: #f8fafc;
+  border: 1px solid var(--border-card);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.drawer-trigger-bar {
+  padding: 0.75rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #475569;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  user-select: none;
+  list-style: none;
+}
+
+.drawer-trigger-bar::-webkit-details-marker {
+  display: none;
+}
+
+.drawer-trigger-bar .trigger-chevron {
+  font-size: 0.75rem;
+  transition: transform 0.25s ease;
+}
+
+.demo-account-drawer[open] .trigger-chevron {
+  transform: rotate(180deg);
+}
+
+.demo-roles-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-top: 1px solid var(--border-card);
+}
+
+.demo-autofill-btn {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.demo-autofill-btn:hover {
+  border-color: var(--matcha-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(45, 90, 39, 0.1);
+}
+
+.demo-role-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.demo-tag {
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.demo-role-sub {
+  font-size: 0.68rem;
+  color: #64748b;
+}
+
+/* Bottom Trust Footer */
+.card-bottom-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+/* ==========================================================================
+   MOBILE & TABLET RESPONSIVE STYLES (< 992px)
+   ========================================================================== */
+@media (max-width: 991.98px) {
+  .split-hero-section {
+    display: none; /* Hide hero on mobile, convert right panel to clean white/matcha layout */
+  }
+
+  .split-form-section {
+    flex: 1;
+    padding: 1.5rem 1rem;
+    align-items: center;
+    background: #f8fafc;
+    background-image: radial-gradient(at 50% 0%, rgba(45, 90, 39, 0.08) 0px, transparent 60%);
+  }
+
+  .mobile-brand-header {
+    display: block;
+  }
+
+  .floating-login-card {
+    padding: 2rem 1.35rem;
+    border-radius: 20px;
+  }
+
+  .demo-roles-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .floating-login-card {
+    padding: 1.65rem 1.15rem;
+  }
+  .card-welcome-title {
+    font-size: 1.35rem;
+  }
+  .field-control-input {
+    font-size: 0.88rem;
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+}

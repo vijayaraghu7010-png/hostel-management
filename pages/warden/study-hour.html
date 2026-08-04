@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Study Hour Management - Hostel ERP</title>
+  
+  <!-- CSS Stylesheets -->
+  <link rel="stylesheet" href="../../css/variables.css">
+  <link rel="stylesheet" href="../../css/global.css">
+  <link rel="stylesheet" href="../../css/components.css">
+  <link rel="stylesheet" href="../../css/warden.css">
+  <link rel="stylesheet" href="../../css/scanner-ui.css">
+  
+  <!-- FontAwesome & Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="theme-light" data-root-path="../../">
+
+  <div class="app-container">
+    <!-- Sidebar Container -->
+    <div id="sidebar-container"></div>
+    
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Navbar Container -->
+      <div id="navbar-container"></div>
+      
+      <!-- Page Body -->
+      <div class="page-body" style="padding: 1.25rem;">
+        <div class="container-fluid" style="max-width: 1400px; margin: 0 auto;">
+          
+          <!-- Page Header & Primary Action Controls -->
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; background: var(--bg-card); padding: 1.25rem; border-radius: var(--border-radius-lg); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+            <div>
+              <h1 style="font-size: 1.4rem; font-weight: 800; color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fa-solid fa-clock-rotate-left" style="color: var(--primary);"></i>
+                Study Hour Management
+              </h1>
+              <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.2rem 0 0 0;">
+                Live session control, attendance tracking, discipline alerts, and analytics
+              </p>
+            </div>
+
+            <!-- Top Primary Action Buttons -->
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+              <button type="button" class="btn btn-primary" id="btn-start-study-session" style="font-weight: 700;">
+                <i class="fa-solid fa-play"></i> Start Study Session
+              </button>
+              <button type="button" class="btn btn-danger" id="btn-end-study-session" style="font-weight: 700; display: none;">
+                <i class="fa-solid fa-stop"></i> End Study Session
+              </button>
+              <button type="button" class="btn btn-success" id="btn-universal-scanner" style="font-weight: 700; background: #059669; border-color: #059669;">
+                <i class="fa-solid fa-qrcode"></i> Universal QR Scanner
+              </button>
+            </div>
+          </div>
+
+          <!-- Live Dashboard Stat Cards -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+            <div class="stat-card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--border-radius-md); padding: 1rem; position: relative;">
+              <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted);">Session Status</span>
+              <div style="margin-top: 0.4rem; display: flex; align-items: center; justify-content: space-between;">
+                <span class="badge" id="badge-session-status" style="background: rgba(148, 163, 184, 0.2); color: #64748b; font-size: 0.85rem; font-weight: 800;">INACTIVE</span>
+                <i class="fa-solid fa-signal" style="color: var(--primary); font-size: 1.2rem;"></i>
+              </div>
+            </div>
+
+            <div class="stat-card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--border-radius-md); padding: 1rem;">
+              <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted);">Session Timer</span>
+              <div style="font-size: 1.3rem; font-weight: 800; color: var(--primary); margin-top: 0.3rem;" id="stat-live-timer">00:00:00</div>
+            </div>
+
+            <div class="stat-card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--border-radius-md); padding: 1rem;">
+              <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted);">Total Students</span>
+              <div style="font-size: 1.3rem; font-weight: 800; color: var(--text-primary); margin-top: 0.3rem;" id="stat-total-students">0</div>
+            </div>
+
+            <div class="stat-card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--border-radius-md); padding: 1rem;">
+              <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted);">Present</span>
+              <div style="font-size: 1.3rem; font-weight: 800; color: #10b981; margin-top: 0.3rem;" id="stat-present-count">0</div>
+            </div>
+
+            <div class="stat-card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--border-radius-md); padding: 1rem;">
+              <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted);">Pending / Absent</span>
+              <div style="font-size: 1.3rem; font-weight: 800; color: #ef4444; margin-top: 0.3rem;" id="stat-pending-count">0</div>
+            </div>
+
+            <div class="stat-card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--border-radius-md); padding: 1rem;">
+              <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted);">Attendance Rate</span>
+              <div style="font-size: 1.3rem; font-weight: 800; color: #3b82f6; margin-top: 0.3rem;" id="stat-attendance-rate">0%</div>
+            </div>
+          </div>
+
+          <!-- Active Session Card & Generated Session QR Code -->
+          <div id="active-session-banner" style="display: none; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #ffffff; border-radius: var(--border-radius-lg); padding: 1.5rem; margin-bottom: 1.5rem; border: 1px solid #334155; box-shadow: var(--shadow-md);">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
+              <div style="flex: 1; min-width: 260px;">
+                <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #34d399; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">Active Session in Progress</span>
+                <h2 style="font-size: 1.3rem; font-weight: 800; margin: 0.4rem 0 0.2rem 0; color: #ffffff;" id="active-session-title">Evening Study Hour Session</h2>
+                <p style="font-size: 0.85rem; color: #94a3b8; margin: 0;" id="active-session-meta">Started at --:-- | Session Token Active</p>
+                
+                <div style="margin-top: 1rem; display: flex; gap: 0.75rem; align-items: center;">
+                  <span style="font-size: 0.8rem; color: #cbd5e1;"><i class="fa-solid fa-bolt" style="color: #f59e0b; margin-right: 0.3rem;"></i> Last Scan: <strong id="active-session-last-scan">None</strong></span>
+                </div>
+              </div>
+
+              <!-- Scanner Shortcut Card -->
+              <div style="background: #1e293b; padding: 20px; border-radius: 14px; text-align: center; width: 220px; border: 1.5px dashed #475569; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.75rem;">
+                <i class="fa-solid fa-camera fa-2x" style="color: #38bdf8;"></i>
+                <button type="button" class="btn btn-primary btn-sm" id="btn-scan-student-qr-card-trigger" style="font-weight: 700; background: #38bdf8; border-color: #38bdf8; color: #0f172a; border-radius: 8px;">
+                  <i class="fa-solid fa-qrcode"></i> Scan Student QR
+                </button>
+                <span style="font-size: 0.65rem; color: #94a3b8; font-weight: 600;">Scan student phones to log attendance</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Student Attendance Cards Grid with Search & Filters -->
+          <div class="glass-card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--border-radius-lg); padding: 1.25rem; margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.85rem;">
+              <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--text-primary); margin: 0;">
+                <i class="fa-solid fa-users" style="color: var(--primary); margin-right: 0.4rem;"></i>
+                Student Roster & Live Status
+              </h3>
+
+              <!-- Filter Bar -->
+              <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                <input type="text" class="form-control" id="filter-search" placeholder="Search student name or reg..." style="width: 180px; font-size: 0.82rem; margin-bottom: 0;">
+                <select class="form-control" id="filter-dept" style="width: 130px; font-size: 0.82rem; margin-bottom: 0;">
+                  <option value="">All Depts</option>
+                  <option value="CSE">CSE</option>
+                  <option value="ECE">ECE</option>
+                  <option value="EEE">EEE</option>
+                  <option value="MECH">MECH</option>
+                </select>
+                <select class="form-control" id="filter-room" style="width: 120px; font-size: 0.82rem; margin-bottom: 0;">
+                  <option value="">All Rooms</option>
+                  <option value="101">Room 101</option>
+                  <option value="102">Room 102</option>
+                  <option value="103">Room 103</option>
+                  <option value="104">Room 104</option>
+                </select>
+                <select class="form-control" id="filter-attendance" style="width: 130px; font-size: 0.82rem; margin-bottom: 0;">
+                  <option value="">All Statuses</option>
+                  <option value="PRESENT">Present</option>
+                  <option value="PENDING">Pending / Absent</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Student Grid Container -->
+            <div id="study-students-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;">
+              <!-- Hydrated dynamically -->
+            </div>
+          </div>
+
+          <!-- Parent Discipline & Credit Risk Alerts -->
+          <div class="glass-card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--border-radius-lg); padding: 1.25rem; margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+              <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: 0.4rem;">
+                <i class="fa-solid fa-triangle-exclamation" style="color: #f59e0b;"></i>
+                Parent Credit Alerts & Discipline Monitoring
+              </h3>
+              <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #d97706; font-size: 0.75rem; font-weight: 700;">Triggers: Absent or &lt; 500 pts</span>
+            </div>
+            
+            <div id="parent-alerts-container" style="display: flex; flex-direction: column; gap: 0.75rem;">
+              <!-- Hydrated dynamically -->
+            </div>
+          </div>
+
+          <!-- Study Hour Analytics Section (Chart.js) -->
+          <div class="glass-card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--border-radius-lg); padding: 1.25rem; margin-bottom: 1.5rem;">
+            <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--text-primary); margin: 0 0 1.25rem 0;">
+              <i class="fa-solid fa-chart-line" style="color: var(--primary); margin-right: 0.4rem;"></i>
+              Study Hour Analytics & Attendance Trends
+            </h3>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem;">
+              <!-- Chart 1: Attendance Trend -->
+              <div style="background: var(--bg-primary); padding: 1rem; border-radius: var(--border-radius-md); border: 1px solid var(--border-color);">
+                <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); margin: 0 0 0.75rem 0;">Attendance Trend (Daily/Weekly)</h4>
+                <div style="position: relative; height: 220px;">
+                  <canvas id="chart-study-trend"></canvas>
+                </div>
+              </div>
+
+              <!-- Chart 2: Department-wise Attendance -->
+              <div style="background: var(--bg-primary); padding: 1rem; border-radius: var(--border-radius-md); border: 1px solid var(--border-color);">
+                <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); margin: 0 0 0.75rem 0;">Department Attendance Distribution</h4>
+                <div style="position: relative; height: 220px;">
+                  <canvas id="chart-study-dept"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Session History Table -->
+          <div class="glass-card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--border-radius-lg); padding: 1.25rem;">
+            <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--text-primary); margin: 0 0 1rem 0;">
+              <i class="fa-solid fa-history" style="color: var(--primary); margin-right: 0.4rem;"></i>
+              Completed Session History
+            </h3>
+
+            <div class="table-responsive">
+              <table class="table-custom">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Session Title</th>
+                    <th>Start Time</th>
+                    <th>End Time</th>
+                    <th>Present / Total</th>
+                    <th>Attendance %</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="session-history-tbody">
+                  <!-- Hydrated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Scripts -->
+  <script src="../../js/vendor/qrcode.min.js"></script>
+  <script src="../../js/vendor/zxing-browser.min.js"></script>
+  <script src="../../js/vendor/qr-scanner.umd.min.js"></script>
+  <script src="../../js/scanner-ui.js"></script>
+  <script src="../../js/utils.js"></script>
+  <script src="../../js/auth.js"></script>
+  <script src="../../js/notifications.js"></script>
+  <script src="../../js/app.js"></script>
+  <script src="../../js/warden.js"></script>
+</body>
+</html>

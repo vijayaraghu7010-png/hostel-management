@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Attendance - Hostel ERP</title>
+  
+  <!-- CSS Library -->
+  <link rel="stylesheet" href="../../css/variables.css">
+  <link rel="stylesheet" href="../../css/global.css">
+  <link rel="stylesheet" href="../../css/components.css">
+  <link rel="stylesheet" href="../../css/warden.css">
+  
+  <!-- FontAwesome & Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body class="theme-light" data-root-path="../../">
+
+  <div class="app-container">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+    
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Navbar -->
+      <div id="navbar-container"></div>
+      
+      <!-- Page Body -->
+      <div class="page-body">
+        <div class="container-fluid">
+          
+          <!-- Header -->
+          <div style="margin-bottom: 2rem;">
+            <h2 style="font-size: 1.5rem; font-weight: 800; background: linear-gradient(135deg, var(--text-primary) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Daily Attendance Registry</h2>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">Record and audit evening rolls for hostel residence clearance</p>
+          </div>
+
+          <!-- Attendance Container -->
+          <div class="glass-card">
+            <form id="attendance-form">
+              <!-- Filter / Action controls -->
+              <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;">
+                <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                  <label class="form-label" for="attendance-date" style="margin-bottom:0; font-weight:700;">Roll Call Date:</label>
+                  <input type="date" class="form-control" id="attendance-date" style="margin-bottom:0; max-width: 180px;">
+
+                  <label class="form-label" for="attendance-search" style="margin-bottom:0; font-weight:700; margin-left: 1rem;">Search:</label>
+                  <input type="text" id="attendance-search" class="form-control" placeholder="Search student name or reg..." style="margin-bottom:0; max-width: 180px; padding: 0.35rem 0.75rem;">
+
+                  <label class="form-label" for="filter-wing" style="margin-bottom:0; font-weight:700; margin-left: 1rem;">Wing:</label>
+                  <select id="filter-wing" class="form-control" style="margin-bottom:0; max-width: 130px; padding: 0.35rem 0.75rem;">
+                    <option value="">All Wings</option>
+                    <option value="A-Block">A-Block</option>
+                    <option value="B-Block">B-Block</option>
+                    <option value="C-Block">C-Block</option>
+                  </select>
+                </div>
+                <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">
+                  <i class="fa-solid fa-circle-exclamation text-warning" style="margin-right: 0.25rem;"></i>
+                  Absences check matching outing lists
+                </span>
+              </div>
+
+              <!-- Registry Table -->
+              <div class="table-responsive">
+                <table class="table-custom">
+                  <thead>
+                    <tr>
+                      <th style="cursor: pointer;" id="sort-att-reg">Register Number <i class="fa-solid fa-sort"></i></th>
+                      <th style="cursor: pointer;" id="sort-att-name">Student Name <i class="fa-solid fa-sort"></i></th>
+                      <th>Room</th>
+                      <th>Mark Present</th>
+                      <th>Mark Absent</th>
+                    </tr>
+                  </thead>
+                  <tbody id="attendance-tbody">
+                    <!-- Hydrated by JS -->
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Table Pagination controls -->
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); flex-wrap: wrap; gap: 0.75rem;">
+                <span style="font-size: 0.8rem; color: var(--text-secondary);" id="pagination-info-att">Showing 0 to 0 of 0 students</span>
+                <div style="display: flex; gap: 0.5rem;" id="pagination-btns-att">
+                  <button type="button" class="btn btn-secondary btn-sm" id="btn-prev-page-att" disabled>Previous</button>
+                  <button type="button" class="btn btn-secondary btn-sm" id="btn-next-page-att" disabled>Next</button>
+                </div>
+              </div>
+
+              <!-- Submit Form -->
+              <div style="display: flex; justify-content: flex-end; margin-top: 1.5rem;">
+                <button type="submit" class="btn btn-primary">
+                  <i class="fa-solid fa-floppy-disk"></i>
+                  <span>Save Attendance Registry</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+        </div>
+      </div>
+      
+      <!-- Footer -->
+      <div id="footer-container"></div>
+    </main>
+  </div>
+
+  <!-- Scripts -->
+  <script src="../../js/utils.js"></script>
+  <script src="../../js/auth.js"></script>
+  <script src="../../js/notifications.js"></script>
+  <script src="../../js/app.js"></script>
+  <script src="../../js/warden.js"></script>
+</body>
+</html>

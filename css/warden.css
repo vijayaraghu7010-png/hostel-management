@@ -1,0 +1,422 @@
+/* ==========================================================================
+   LUXURY ENTERPRISE WARDEN PORTAL STYLES (STRICT LUXURY PALETTE)
+   Design System Color Palette:
+     Primary Background:   #333333
+     Secondary Background: #2A2A2A
+     Cards:                #3A3A3A
+     Primary Accent:       #A4863D (Gold)
+     Secondary Accent:     #E6E6FA (Lavender Off-White)
+     Success State:        #0E300E (Deep Forest Green)
+     Typography:           #FFFFFF / #E6E6FA
+   ========================================================================== */
+
+/* Page Level Layout & Background Overrides */
+body.theme-light,
+body.theme-dark,
+body {
+  background-color: #333333 !important;
+  color: #FFFFFF !important;
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.main-content {
+  background-color: #333333 !important;
+}
+
+/* Sticky Glass Header Navbar */
+.navbar {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 900 !important;
+  background-color: rgba(42, 42, 42, 0.88) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border-bottom: 1px solid rgba(164, 134, 61, 0.25) !important;
+  color: #E6E6FA !important;
+}
+
+.nav-title {
+  color: #FFFFFF !important;
+  font-weight: 800 !important;
+  font-size: 1.25rem !important;
+}
+
+/* Sidebar Branding & Navigation */
+.sidebar {
+  background-color: #2A2A2A !important;
+  border-right: 1px solid rgba(164, 134, 61, 0.25) !important;
+}
+
+/* Custom scrollbar for Warden luxury theme */
+.sidebar-menu {
+  scrollbar-color: rgba(164, 134, 61, 0.4) transparent !important;
+}
+
+.sidebar-menu::-webkit-scrollbar-thumb {
+  background: rgba(164, 134, 61, 0.35) !important;
+  border-radius: 10px !important;
+}
+
+.sidebar-menu::-webkit-scrollbar-thumb:hover {
+  background: rgba(164, 134, 61, 0.65) !important;
+}
+
+.sidebar-logo {
+  background: #A4863D !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 15px rgba(164, 134, 61, 0.3) !important;
+  border-radius: 12px !important;
+}
+
+.sidebar-title {
+  color: #FFFFFF !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.8px !important;
+}
+
+.sidebar-subtitle {
+  color: #A4863D !important;
+  font-weight: 700 !important;
+}
+
+.sidebar-link {
+  color: #E6E6FA !important;
+  opacity: 0.85;
+  border-radius: 12px !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.sidebar-link:hover {
+  color: #FFFFFF !important;
+  opacity: 1;
+  background: rgba(164, 134, 61, 0.14) !important;
+  transform: translateX(3px) !important;
+}
+
+.sidebar-link.active {
+  color: #FFFFFF !important;
+  opacity: 1;
+  background: rgba(164, 134, 61, 0.22) !important;
+  border-left: 3.5px solid #A4863D !important;
+  font-weight: 700 !important;
+}
+
+.sidebar-link.active i {
+  color: #A4863D !important;
+}
+
+/* Luxury Cards (#3A3A3A) */
+.glass-card,
+.stat-card,
+.room-card,
+.card {
+  background-color: #3A3A3A !important;
+  border: 1px solid rgba(164, 134, 61, 0.22) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35) !important;
+  color: #E6E6FA !important;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.glass-card:hover,
+.stat-card:hover,
+.room-card:hover {
+  transform: translateY(-3px) !important;
+  border-color: rgba(164, 134, 61, 0.5) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* KPI Icons & Stats Metrics */
+.stat-icon {
+  background: #A4863D !important;
+  color: #FFFFFF !important;
+  border-radius: 14px !important;
+  box-shadow: 0 6px 18px rgba(164, 134, 61, 0.3) !important;
+}
+
+.stat-icon.secondary {
+  background: #2A2A2A !important;
+  border: 1px solid rgba(164, 134, 61, 0.25) !important;
+}
+
+.stat-icon.success {
+  background: #0E300E !important;
+  border: 1px solid rgba(164, 134, 61, 0.3) !important;
+  color: #a3e635 !important;
+}
+
+.stat-icon.warning {
+  background: #A4863D !important;
+}
+
+.stat-label {
+  color: #E6E6FA !important;
+  opacity: 0.8;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.6px !important;
+}
+
+.stat-value {
+  color: #FFFFFF !important;
+  font-weight: 800 !important;
+}
+
+/* Buttons System */
+.btn-primary,
+.btn,
+button.btn-primary {
+  background: #A4863D !important;
+  border: 1px solid rgba(164, 134, 61, 0.5) !important;
+  color: #FFFFFF !important;
+  border-radius: 12px !important;
+  font-weight: 700 !important;
+  box-shadow: 0 6px 18px rgba(164, 134, 61, 0.28) !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.btn-primary:hover,
+.btn:hover {
+  background: #8e7333 !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 10px 25px rgba(164, 134, 61, 0.45) !important;
+}
+
+.btn-primary:active,
+.btn:active {
+  transform: translateY(0) !important;
+}
+
+/* Form Controls & Inputs */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="date"],
+input[type="time"],
+select,
+textarea,
+.form-control {
+  background-color: #2A2A2A !important;
+  border: 1px solid rgba(164, 134, 61, 0.3) !important;
+  color: #E6E6FA !important;
+  border-radius: 12px !important;
+  padding: 0.75rem 1rem !important;
+  transition: all 0.25s ease !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #A4863D !important;
+  box-shadow: 0 0 0 3.5px rgba(164, 134, 61, 0.22) !important;
+  outline: none !important;
+}
+
+/* Enterprise Tables with Alternating Rows */
+.table-responsive {
+  background: #2A2A2A !important;
+  border: 1px solid rgba(164, 134, 61, 0.25) !important;
+  border-radius: 16px !important;
+}
+
+.table-custom th {
+  background: #232323 !important;
+  color: #A4863D !important;
+  font-size: 0.78rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.6px !important;
+  text-transform: uppercase !important;
+  border-bottom: 1px solid rgba(164, 134, 61, 0.25) !important;
+  padding: 1rem 1.25rem !important;
+}
+
+.table-custom td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+  color: #E6E6FA !important;
+  padding: 1rem 1.25rem !important;
+}
+
+.table-custom tbody tr:nth-child(even) {
+  background-color: #333333 !important;
+}
+
+.table-custom tbody tr:nth-child(odd) {
+  background-color: #2A2A2A !important;
+}
+
+.table-custom tbody tr:hover {
+  background-color: rgba(164, 134, 61, 0.12) !important;
+}
+
+/* Status Pill Badges */
+.badge-success,
+.badge-present,
+.badge-approved,
+.badge-resolved {
+  background-color: #0E300E !important;
+  color: #a3e635 !important;
+  border: 1px solid rgba(164, 134, 61, 0.3) !important;
+}
+
+.badge-pending,
+.badge-warning {
+  background-color: rgba(164, 134, 61, 0.22) !important;
+  color: #A4863D !important;
+  border: 1px solid #A4863D !important;
+}
+
+.badge-danger,
+.badge-absent,
+.badge-rejected,
+.badge-escalated {
+  background-color: rgba(127, 29, 29, 0.35) !important;
+  color: #f87171 !important;
+  border: 1px solid rgba(248, 113, 113, 0.3) !important;
+}
+
+/* Top Search Bar */
+.nav-search input {
+  background: #3A3A3A !important;
+  border: 1px solid rgba(164, 134, 61, 0.28) !important;
+  color: #E6E6FA !important;
+  padding: 0.55rem 1rem 0.55rem 2.6rem !important;
+  border-radius: 50px !important;
+}
+
+.nav-search i {
+  position: absolute !important;
+  left: 0.95rem !important;
+  color: #A4863D !important;
+  font-size: 0.88rem !important;
+  pointer-events: none !important;
+  z-index: 5 !important;
+}
+
+.nav-search input:focus {
+  border-color: #A4863D !important;
+  box-shadow: 0 0 0 3px rgba(164, 134, 61, 0.22) !important;
+}
+
+/* User Profile Avatar */
+.user-avatar {
+  background: #A4863D !important;
+  color: #FFFFFF !important;
+}
+
+/* Modals */
+.modal-content {
+  background: #3A3A3A !important;
+  border: 1px solid rgba(164, 134, 61, 0.35) !important;
+  color: #E6E6FA !important;
+  border-radius: 20px !important;
+}
+
+/* Room Grid & Progress Bar */
+.room-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.room-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.room-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(164, 134, 61, 0.2);
+  padding-bottom: 0.5rem;
+}
+
+.room-number {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #FFFFFF;
+}
+
+.room-progress-bar {
+  width: 100%;
+  height: 6px;
+  background: #2A2A2A;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.room-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #A4863D 0%, #0E300E 100%);
+  border-radius: 3px;
+}
+
+.room-details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: #E6E6FA;
+}
+
+.room-detail-label {
+  font-size: 0.7rem;
+  color: #b0b0c0;
+}
+
+.room-detail-value {
+  font-weight: 600;
+}
+
+/* Camera Scanner Overrides */
+#qr-camera-viewfinder {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto;
+  min-height: 240px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+#qr-camera-viewfinder video {
+  width: 100% !important;
+  height: auto !important;
+  object-fit: cover;
+}
+
+.scanner-viewport-wrapper {
+  position: relative;
+  width: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #000;
+}
+
+.scanner-corners-overlay .corner {
+  border-color: #A4863D !important;
+}
+
+.scanner-laser-line {
+  background: linear-gradient(90deg, transparent 0%, #A4863D 50%, transparent 100%) !important;
+  box-shadow: 0 0 15px #A4863D, 0 0 25px #A4863D !important;
+}
+
+.scanner-controls-bar {
+  background: rgba(42, 42, 42, 0.9) !important;
+}
+
+.scanner-btn:active, .scanner-btn.active {
+  background: #A4863D !important;
+  border-color: #A4863D !important;
+}
+
+/* Mobile Responsiveness (< 767px) */
+@media (max-width: 767px) {
+  .room-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem;
+  }
+}

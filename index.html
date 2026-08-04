@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KVCET Hostel ERP - Enterprise Portal Sign In</title>
+  
+  <!-- CSS Library -->
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/global.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/login.css">
+  
+  <!-- FontAwesome & Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="theme-light split-login-body">
+
+  <div class="split-login-wrapper">
+    
+    <!-- LEFT HERO SECTION (MATCHA BREW & WHITE THEME) -->
+    <div class="split-hero-section">
+      <!-- Matcha Mesh Background & Ambient Orbs -->
+      <div class="matcha-mesh-bg"></div>
+      
+      <!-- Abstract Curved Glow & Glass Shapes -->
+      <div class="abstract-shape shape-1"></div>
+      <div class="abstract-shape shape-2"></div>
+      
+      <!-- Hero Content -->
+      <div class="hero-inner-content">
+        
+        <!-- Brand Header Badge -->
+        <div class="hero-top-badge">
+          <div class="hero-badge-icon">
+            <i class="fa-solid fa-graduation-cap"></i>
+          </div>
+          <div class="hero-badge-text">
+            <span class="badge-title">KVCET CAMPUS</span>
+            <span class="badge-sub">Hostel Management System</span>
+          </div>
+        </div>
+
+        <!-- Main Title & Subtitle -->
+        <div class="hero-headline-wrapper">
+          <h1 class="hero-main-heading">
+            KVCET Smart Hostel Management <br>& Analytics System
+          </h1>
+          <p class="hero-sub-tagline">
+            "Smart. Secure. Connected Campus Experience."
+          </p>
+        </div>
+
+        <!-- 3 Premium Glass Feature Badges -->
+        <div class="hero-feature-badges-grid">
+          <div class="feature-glass-badge">
+            <div class="badge-icon-box"><i class="fa-solid fa-qrcode"></i></div>
+            <div class="badge-text-box">
+              <strong>QR Based Attendance</strong>
+              <span>Instant digital check-in & gate validation</span>
+            </div>
+          </div>
+
+          <div class="feature-glass-badge">
+            <div class="badge-icon-box"><i class="fa-solid fa-ticket-simple"></i></div>
+            <div class="badge-text-box">
+              <strong>Digital Outpass</strong>
+              <span>Seamless leave & outing approval workflow</span>
+            </div>
+          </div>
+
+          <div class="feature-glass-badge">
+            <div class="badge-icon-box"><i class="fa-solid fa-chart-line"></i></div>
+            <div class="badge-text-box">
+              <strong>Smart Hostel Analytics</strong>
+              <span>Real-time executive insights for Wardens & HOD</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Trust Footer -->
+        <div class="hero-security-trust">
+          <div class="trust-pill"><i class="fa-solid fa-lock"></i> 256-Bit Encrypted</div>
+          <span class="trust-sep">•</span>
+          <div class="trust-pill"><i class="fa-solid fa-shield-halved"></i> Enterprise RBAC</div>
+          <span class="trust-sep">•</span>
+          <div class="trust-pill"><i class="fa-solid fa-server"></i> KVCET Cloud System</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- RIGHT LOGIN PANEL (FLOATING PREMIUM LOGIN CARD) -->
+    <div class="split-form-section">
+      
+      <!-- Elevated Floating Login Card -->
+      <main class="floating-login-card">
+        
+        <!-- Mobile Brand Header (Visible on mobile viewports) -->
+        <div class="mobile-brand-header">
+          <div class="mobile-logo-box">
+            <i class="fa-solid fa-graduation-cap"></i>
+          </div>
+          <h2>KVCET Hostel ERP</h2>
+        </div>
+
+        <!-- Card Header -->
+        <div class="card-top-header">
+          <div class="card-brand-logo">
+            <i class="fa-solid fa-right-to-bracket"></i>
+          </div>
+          <h2 class="card-welcome-title">Welcome Back</h2>
+          <p class="card-welcome-subtitle">Sign in to continue to your Hostel ERP</p>
+        </div>
+
+        <!-- Authentication Form -->
+        <form id="login-form" autocomplete="on">
+          
+          <!-- Portal Role Selection -->
+          <div class="form-group-item">
+            <label for="role" class="field-label-text">User Role</label>
+            <div class="field-input-box">
+              <i class="fa-solid fa-user-gear field-icon"></i>
+              <select class="field-control-input select-input" id="role" required>
+                <option value="" disabled selected>Select your portal role...</option>
+                <option value="student">Student Portal</option>
+                <option value="warden">Hostel Warden</option>
+                <option value="teacher">Class Teacher</option>
+                <option value="hod">Head of Department (HOD)</option>
+                <option value="ao">Administrative Officer (AO)</option>
+                <option value="principal">College Principal</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Campus Email Field -->
+          <div class="form-group-item">
+            <label for="email" class="field-label-text">Campus Email</label>
+            <div class="field-input-box">
+              <i class="fa-solid fa-envelope field-icon"></i>
+              <input type="email" class="field-control-input" id="email" placeholder="username@gmail.com" required autocomplete="email">
+            </div>
+          </div>
+
+          <!-- Security Password Field -->
+          <div class="form-group-item">
+            <label for="password" class="field-label-text">Security Password</label>
+            <div class="field-input-box">
+              <i class="fa-solid fa-lock field-icon"></i>
+              <input type="password" class="field-control-input" id="password" placeholder="••••••••" required autocomplete="current-password">
+              <button type="button" class="password-toggle-btn" id="toggle-password" title="Show/Hide Password">
+                <i class="fa-solid fa-eye"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Form Options Row -->
+          <div class="card-options-bar">
+            <label class="checkbox-remember">
+              <input type="checkbox" id="remember-me">
+              <span>Remember session</span>
+            </label>
+            <a href="#" class="link-forgot" onclick="showToast('Password recovery is managed by the Administrator. Please contact AO.', 'info'); return false;">Forgot credentials?</a>
+          </div>
+
+          <!-- Primary Blue Gradient Login Button -->
+          <button type="submit" class="primary-login-btn">
+            <span>Sign In</span>
+            <i class="fa-solid fa-arrow-right"></i>
+          </button>
+        </form>
+
+        <!-- Quick Demo Account Drawer (1-Tap Fill for Easy Testing) -->
+        <details class="demo-account-drawer">
+          <summary class="drawer-trigger-bar">
+            <span><i class="fa-solid fa-bolt text-warning"></i> Quick Demo Logins (1-Tap Fill)</span>
+            <i class="fa-solid fa-chevron-down trigger-chevron"></i>
+          </summary>
+          
+          <div class="demo-roles-grid">
+            <!-- Student -->
+            <button type="button" class="demo-autofill-btn" data-email="rahul@gmail.com" data-role="student">
+              <div class="demo-role-head">
+                <span><i class="fa-solid fa-graduation-cap" style="color: #2563eb;"></i> Student</span>
+                <span class="demo-tag" style="color: #2563eb;">Rahul &rarr;</span>
+              </div>
+              <div class="demo-role-sub">rahul@gmail.com</div>
+            </button>
+
+            <!-- Warden -->
+            <button type="button" class="demo-autofill-btn" data-email="warden@gmail.com" data-role="warden">
+              <div class="demo-role-head">
+                <span><i class="fa-solid fa-user-shield" style="color: #d97706;"></i> Warden</span>
+                <span class="demo-tag" style="color: #d97706;">Dr. Srinivasan &rarr;</span>
+              </div>
+              <div class="demo-role-sub">warden@gmail.com</div>
+            </button>
+
+            <!-- Teacher -->
+            <button type="button" class="demo-autofill-btn" data-email="teacher@gmail.com" data-role="teacher">
+              <div class="demo-role-head">
+                <span><i class="fa-solid fa-chalkboard-user" style="color: #059669;"></i> Teacher</span>
+                <span class="demo-tag" style="color: #059669;">Prof. Sen &rarr;</span>
+              </div>
+              <div class="demo-role-sub">teacher@gmail.com</div>
+            </button>
+
+            <!-- HOD -->
+            <button type="button" class="demo-autofill-btn" data-email="hod@gmail.com" data-role="hod">
+              <div class="demo-role-head">
+                <span><i class="fa-solid fa-building-user" style="color: #7c3aed;"></i> HOD</span>
+                <span class="demo-tag" style="color: #7c3aed;">Dr. Kumar &rarr;</span>
+              </div>
+              <div class="demo-role-sub">hod@gmail.com</div>
+            </button>
+
+            <!-- AO -->
+            <button type="button" class="demo-autofill-btn" data-email="ao@gmail.com" data-role="ao">
+              <div class="demo-role-head">
+                <span><i class="fa-solid fa-screwdriver-wrench" style="color: #dc2626;"></i> AO</span>
+                <span class="demo-tag" style="color: #dc2626;">V. Malhotra &rarr;</span>
+              </div>
+              <div class="demo-role-sub">ao@gmail.com</div>
+            </button>
+
+            <!-- Principal -->
+            <button type="button" class="demo-autofill-btn" data-email="principal@gmail.com" data-role="principal">
+              <div class="demo-role-head">
+                <span><i class="fa-solid fa-building-columns" style="color: #0891b2;"></i> Principal</span>
+                <span class="demo-tag" style="color: #0891b2;">Dr. Shastri &rarr;</span>
+              </div>
+              <div class="demo-role-sub">principal@gmail.com</div>
+            </button>
+          </div>
+        </details>
+
+        <!-- Trust Footer -->
+        <div class="card-bottom-footer">
+          <i class="fa-solid fa-shield-check"></i>
+          <span>Protected by Secure Authentication • KVCET Cloud</span>
+        </div>
+
+      </main>
+
+    </div>
+
+  </div>
+
+  <!-- Core Scripts -->
+  <script src="js/utils.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/notifications.js"></script>
+  <script src="js/login.js"></script>
+</body>
+</html>

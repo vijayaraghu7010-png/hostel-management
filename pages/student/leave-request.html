@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Leave Request - Hostel ERP</title>
+  
+  <!-- CSS Library -->
+  <link rel="stylesheet" href="../../css/variables.css">
+  <link rel="stylesheet" href="../../css/global.css">
+  <link rel="stylesheet" href="../../css/components.css">
+  <link rel="stylesheet" href="../../css/student.css">
+  
+  <!-- FontAwesome & Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body class="theme-light" data-root-path="../../">
+
+  <div class="app-container">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+    
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Navbar -->
+      <div id="navbar-container"></div>
+      
+      <!-- Page Body -->
+      <div class="page-body">
+        <div class="container-fluid">
+          
+          <!-- Header -->
+          <div style="margin-bottom: 2rem;">
+            <h2 style="font-size: 1.5rem; font-weight: 800; background: linear-gradient(135deg, var(--text-primary) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Apply Outing Leave</h2>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">Submit leave applications to warden and departmental HOD for gate approvals</p>
+          </div>
+
+          <div class="row">
+            <!-- Form Card Col -->
+            <div class="col-md-8">
+              <div class="glass-card">
+                <form id="leave-request-form">
+                  <div class="row" style="margin: 0 -0.5rem 1rem -0.5rem;">
+                    <!-- From Date -->
+                    <div class="col-md-6" style="padding: 0 0.5rem;">
+                      <div class="form-group">
+                        <label class="form-label" for="leave-from">From Date</label>
+                        <input type="date" class="form-control" id="leave-from" required>
+                      </div>
+                    </div>
+
+                    <!-- To Date -->
+                    <div class="col-md-6" style="padding: 0 0.5rem;">
+                      <div class="form-group">
+                        <label class="form-label" for="leave-to">To Date</label>
+                        <input type="date" class="form-control" id="leave-to" required>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Reason textarea -->
+                  <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label class="form-label" for="leave-reason">Reason for Leave</label>
+                    <textarea class="form-control" id="leave-reason" rows="6" placeholder="Specify valid reason for leave (e.g. visiting family, semester break, medical consultation). Include emergency contact numbers..." required style="resize: vertical;"></textarea>
+                  </div>
+
+                  <!-- Mock Attachment -->
+                  <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label class="form-label" for="leave-attachment">Consent Document / Medical Certificate (Optional)</label>
+                    <input type="file" class="form-control" id="leave-attachment">
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">PDF or image files allowed. Max 4MB.</span>
+                  </div>
+
+                  <!-- Submit -->
+                  <div style="display: flex; justify-content: flex-end;">
+                    <button type="submit" class="btn btn-primary">
+                      <i class="fa-solid fa-umbrella-beach"></i>
+                      <span>Submit Leave Application</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            <!-- Guidelines Sidebar -->
+            <div class="col-md-4">
+              <div class="glass-card" style="display: flex; flex-direction: column; gap: 1rem;">
+                <h3 style="font-size: 1rem; font-weight: 700; color: var(--text-primary);"><i class="fa-solid fa-scale-balanced" style="margin-right: 0.5rem; color: var(--primary);"></i>Leave Policy Guidelines</h3>
+                
+                <ul style="list-style-type: none; font-size: 0.85rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 1rem; padding: 0;">
+                  <li style="display: flex; gap: 0.75rem;">
+                    <i class="fa-solid fa-hourglass-start text-warning" style="margin-top: 2px;"></i>
+                    <span><strong>Advance Filing:</strong> Outing applications must be raised at least 24 hours prior to departure.</span>
+                  </li>
+                  <li style="display: flex; gap: 0.75rem;">
+                    <i class="fa-solid fa-bell-concierge text-primary" style="margin-top: 2px;"></i>
+                    <span><strong>Approvals Queue:</strong> Warden is the primary approver. For leave > 3 days, HOD approval is also required.</span>
+                  </li>
+                  <li style="display: flex; gap: 0.75rem;">
+                    <i class="fa-solid fa-id-card text-success" style="margin-top: 2px;"></i>
+                    <span><strong>Outing Gatepass:</strong> Once approved, your campus digital ID is updated, enabling exit gate clearance.</span>
+                  </li>
+                </ul>
+
+                <div style="border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-muted); line-height: 1.4;">
+                  <strong>Warning:</strong> Leaving without approved gatepass counts as <em>Illegal Absence</em>, which generates automated alerts to parents and HODs.
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      
+      <!-- Footer -->
+      <div id="footer-container"></div>
+    </main>
+  </div>
+
+  <!-- Scripts -->
+  <script src="../../js/utils.js"></script>
+  <script src="../../js/auth.js"></script>
+  <script src="../../js/notifications.js"></script>
+  <script src="../../js/app.js"></script>
+  <script src="../../js/student.js"></script>
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Raise Complaint - Hostel ERP</title>
+  
+  <!-- CSS Library -->
+  <link rel="stylesheet" href="../../css/variables.css">
+  <link rel="stylesheet" href="../../css/global.css">
+  <link rel="stylesheet" href="../../css/components.css">
+  <link rel="stylesheet" href="../../css/student.css">
+  
+  <!-- FontAwesome & Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body class="theme-light" data-root-path="../../">
+
+  <div class="app-container">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+    
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Navbar -->
+      <div id="navbar-container"></div>
+      
+      <!-- Page Body -->
+      <div class="page-body">
+        <div class="container-fluid">
+          
+          <!-- Header -->
+          <div style="margin-bottom: 2rem;">
+            <h2 style="font-size: 1.5rem; font-weight: 800; background: linear-gradient(135deg, var(--text-primary) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">File Maintenance Complaint</h2>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">Report hostel room and amenity issues to maintenance personnel</p>
+          </div>
+
+          <div class="row">
+            <!-- Form Card Col -->
+            <div class="col-md-8">
+              <div class="glass-card">
+                <form id="raise-complaint-form">
+                  <!-- Category Selection -->
+                  <div class="form-group">
+                    <label class="form-label" for="complaint-category">Issue Category</label>
+                    <select class="form-control" id="complaint-category" required>
+                      <option value="" disabled selected>Select category...</option>
+                      <option value="Room">Room</option>
+                      <option value="Water">Water</option>
+                      <option value="Electricity">Electricity</option>
+                      <option value="Furniture">Furniture</option>
+                      <option value="Cleaning">Cleaning</option>
+                      <option value="Internet">Internet</option>
+                      <option value="Food">Food</option>
+                      <option value="Warden Complaint">Warden Complaint</option>
+                    </select>
+                  </div>
+
+                  <!-- Priority Selection -->
+                  <div class="form-group">
+                    <label class="form-label" for="complaint-priority">Urgency Priority</label>
+                    <select class="form-control" id="complaint-priority" required>
+                      <option value="" disabled selected>Select urgency level...</option>
+                      <option value="Low">Low - Minor repairs (within 5 days)</option>
+                      <option value="Medium">Medium - Routine repairs (within 48 hours)</option>
+                      <option value="High">High - Urgent / Disruption (within 24 hours)</option>
+                    </select>
+                  </div>
+
+                  <!-- Description -->
+                  <div class="form-group">
+                    <label class="form-label" for="complaint-description">Detailed Description</label>
+                    <textarea class="form-control" id="complaint-description" rows="5" placeholder="Please describe the issue in detail, including specific locations (e.g. washroom tap, right side switchboard)..." required style="resize: vertical;"></textarea>
+                  </div>
+
+                  <!-- Mock File Upload -->
+                  <div class="form-group">
+                    <label class="form-label" for="complaint-attachment">Upload Image Reference (Optional)</label>
+                    <input type="file" class="form-control" id="complaint-attachment" accept="image/*">
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">Supported formats: JPG, PNG. Max size 2MB.</span>
+                  </div>
+
+                  <!-- Submit button -->
+                  <div style="display: flex; justify-content: flex-end; margin-top: 1.5rem;">
+                    <button type="submit" class="btn btn-primary">
+                      <i class="fa-solid fa-paper-plane"></i>
+                      <span>Submit Complaint</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            <!-- Guidelines Sidebar -->
+            <div class="col-md-4">
+              <div class="glass-card" style="display: flex; flex-direction: column; gap: 1rem;">
+                <h3 style="font-size: 1rem; font-weight: 700; color: var(--text-primary);"><i class="fa-solid fa-circle-info" style="margin-right: 0.5rem; color: var(--primary);"></i>Important Tips</h3>
+                
+                <ul style="list-style-type: none; font-size: 0.85rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 1rem; padding: 0;">
+                  <li style="display: flex; gap: 0.75rem;">
+                    <i class="fa-solid fa-triangle-exclamation text-danger" style="margin-top: 2px;"></i>
+                    <span><strong>High Priority:</strong> Use this only for absolute disruptions (complete power outage, plumbing overflow, broken locks).</span>
+                  </li>
+                  <li style="display: flex; gap: 0.75rem;">
+                    <i class="fa-solid fa-camera text-primary" style="margin-top: 2px;"></i>
+                    <span><strong>Attach Images:</strong> Attaching photos helps repair technicians diagnose the issues before arriving at your room.</span>
+                  </li>
+                  <li style="display: flex; gap: 0.75rem;">
+                    <i class="fa-solid fa-check-double text-success" style="margin-top: 2px;"></i>
+                    <span><strong>Verification:</strong> Once resolved, you will receive an alert. You can reopen or verify complaints in the Timeline tab.</span>
+                  </li>
+                </ul>
+
+                <div style="border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 0.5rem;">
+                  <h4 style="font-size: 0.8rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-secondary);">Emergency Contact</h4>
+                  <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
+                    Hostel Warden Desk: +91 99887 76655<br>
+                    Main Gate Security: +91 88776 65544
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      
+      <!-- Footer -->
+      <div id="footer-container"></div>
+    </main>
+  </div>
+
+  <!-- Scripts -->
+  <script src="../../js/utils.js"></script>
+  <script src="../../js/auth.js"></script>
+  <script src="../../js/notifications.js"></script>
+  <script src="../../js/app.js"></script>
+  <script src="../../js/student.js"></script>
+</body>
+</html>

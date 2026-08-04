@@ -1,0 +1,214 @@
+/* --- Global Styles & Layout Framework --- */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: var(--font-primary);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+  touch-action: manipulation;
+  transition: background-color var(--transition-normal), color var(--transition-normal);
+}
+
+/* Optimize touch targets and response */
+button, input, select, textarea, a, .btn, .card, .glass-card, .sidebar-link, .nav-btn {
+  touch-action: manipulation;
+}
+
+/* App Container Layout */
+.app-container {
+  display: flex;
+  width: 100%;
+  max-width: 100vw;
+  min-height: 100vh;
+  position: relative;
+  box-sizing: border-box;
+}
+
+/* Sidebar Wrapper */
+#sidebar-container {
+  width: var(--sidebar-width);
+  flex: 0 0 var(--sidebar-width);
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  overflow: hidden;
+  z-index: 100;
+  transition: width var(--transition-normal), transform var(--transition-normal);
+}
+
+/* Main Workspace */
+.main-content {
+  flex: 1 1 0%;
+  min-width: 0; /* CRITICAL: Allows flex child to shrink below its content width so tables and flex bars don't overflow parent */
+  width: auto;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  box-sizing: border-box;
+  transition: padding-left var(--transition-normal);
+}
+
+/* Page Content Body */
+.page-body {
+  flex-grow: 1;
+  padding: 2rem;
+  animation: pageFadeIn var(--transition-slow) forwards;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/* Common Layout Utilities */
+.container-fluid {
+  width: 100%;
+  max-width: 1400px;
+  min-width: 0;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+@media (max-width: 992px) {
+  .page-body {
+    padding: 1.25rem 1rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .page-body {
+    padding: 0.85rem 0.65rem;
+  }
+}
+
+/* Scrollbar Customization */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+/* --- Core Animations --- */
+
+@keyframes pageFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes slideUpBottomSheet {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .5;
+  }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes modalZoom {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Skeleton Loading utility class */
+.skeleton {
+  animation: pulse 1.5s infinite ease-in-out;
+  background-color: var(--border-color);
+  border-radius: var(--border-radius-sm);
+  color: transparent !important;
+  pointer-events: none;
+}
+
+/* Utility to hide elements */
+.hidden {
+  display: none !important;
+}
+
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+
+.text-primary-color { color: var(--primary); }
+.text-success { color: var(--success); }
+.text-warning { color: var(--warning); }
+.text-danger { color: var(--danger); }
+.text-muted { color: var(--text-muted); }
+
+/* Sticky footer placement utility */
+footer {
+  margin-top: auto;
+}
+
+@media (max-width: 768px) {
+  .page-body {
+    padding: 1rem 0.75rem;
+  }
+}
