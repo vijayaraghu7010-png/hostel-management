@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Staff Management - Hostel ERP</title>
+  
+  <!-- CSS Library -->
+  
+  
+  
+  
+  
+  <!-- FontAwesome & Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/components-9f2f1ffe.css">
+  <link rel="stylesheet" href="/assets/warden-033cd534.css">
+</head>
+<body class="theme-light" data-root-path="../../">
+
+  <div class="app-container">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+    
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Navbar -->
+      <div id="navbar-container"></div>
+      
+      <!-- Page Body -->
+      <div class="page-body">
+        <div class="container-fluid">
+          
+          <!-- Header -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+            <div>
+              <h2 style="font-size: 1.5rem; font-weight: 800; background: linear-gradient(135deg, var(--text-primary) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Staff Management</h2>
+              <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">Add, edit, or remove Teacher and HOD accounts and assign departments</p>
+            </div>
+            <button class="btn btn-primary" id="btn-add-staff-modal">
+              <i class="fa-solid fa-user-plus"></i>
+              <span>Add New Staff</span>
+            </button>
+          </div>
+
+          <!-- Filters & Search Ledger -->
+          <div class="glass-card" style="margin-bottom: 1.5rem; padding: 1.25rem 1.5rem;">
+            <div class="filter-bar">
+              <div style="display: flex; align-items: center; gap: 0.5rem; flex-grow: 1; max-width: 400px; min-width: 200px;">
+                <i class="fa-solid fa-magnifying-glass text-muted"></i>
+                <input type="text" id="staff-search" class="form-control" placeholder="Search by name or employee ID..." style="margin-bottom: 0;">
+              </div>
+              <div class="filter-group">
+                <label class="form-label" for="filter-staff-role" style="margin-bottom: 0; font-weight: 600; font-size: 0.8rem; white-space: nowrap;">Role:</label>
+                <select id="filter-staff-role" class="form-control" style="margin-bottom: 0; max-width: 130px; padding: 0.35rem 0.75rem;">
+                  <option value="">All Roles</option>
+                  <option value="teacher">Teacher</option>
+                  <option value="hod">HOD</option>
+                </select>
+
+                <label class="form-label" for="filter-staff-dept" style="margin-bottom: 0; font-weight: 600; font-size: 0.8rem; white-space: nowrap;">Department:</label>
+                <select id="filter-staff-dept" class="form-control" style="margin-bottom: 0; max-width: 150px; padding: 0.35rem 0.75rem;">
+                  <option value="">All Depts</option>
+                  <option value="CSE">CSE</option>
+                  <option value="IT">IT</option>
+                  <option value="ECE">ECE</option>
+                  <option value="EEE">EEE</option>
+                  <option value="MECH">MECH</option>
+                  <option value="CIVIL">CIVIL</option>
+                  <option value="AI & DS">AI & DS</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Staff Data Table -->
+          <div class="glass-card" style="padding: 0; overflow: hidden;">
+            <div class="table-responsive">
+              <table class="table-custom" style="margin-bottom: 0; min-width: 800px;">
+                <thead>
+                  <tr>
+                    <th style="cursor: pointer;" id="sort-staff-id">Employee ID <i class="fa-solid fa-sort"></i></th>
+                    <th style="cursor: pointer;" id="sort-staff-name">Name <i class="fa-solid fa-sort"></i></th>
+                    <th>Role</th>
+                    <th>Department</th>
+                    <th>Phone</th>
+                    <th>Email</th>
+                    <th style="text-align: right; padding-right: 1.5rem;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="staff-ledger-tbody">
+                  <!-- Hydrated dynamically -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Table Pagination controls -->
+            <div class="table-pagination-bar">
+              <span style="font-size: 0.8rem; color: var(--text-secondary);" id="staff-pagination-info">Showing 0 to 0 of 0 staff</span>
+              <div style="display: flex; gap: 0.5rem;" id="staff-pagination-btns">
+                <button class="btn btn-secondary btn-sm" id="btn-staff-prev-page" disabled>Previous</button>
+                <button class="btn btn-secondary btn-sm" id="btn-staff-next-page" disabled>Next</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      
+      <!-- Footer -->
+      <div id="footer-container"></div>
+    </main>
+  </div>
+
+  <!-- Staff Creation / Edit Modal -->
+  <div class="modal-backdrop" id="staff-modal" style="display: none;">
+    <div class="modal-card" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3 id="staff-modal-title">Add Staff Profile</h3>
+        <button class="modal-close" id="btn-close-staff-modal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="staff-profile-form">
+        <input type="hidden" id="staff-edit-mode" value="false">
+        <input type="hidden" id="staff-original-reg" value="">
+
+        <div class="modal-body" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding: 1.5rem;">
+          
+          <!-- Role Selector -->
+          <div class="form-group" style="grid-column: span 2;">
+            <label class="form-label" for="staff-role">Portal Role</label>
+            <select class="form-control" id="staff-role" required>
+              <option value="" disabled selected>Select role...</option>
+              <option value="teacher">Teacher</option>
+              <option value="hod">Head of Department (HOD)</option>
+            </select>
+          </div>
+
+          <!-- Name -->
+          <div class="form-group">
+            <label class="form-label" for="staff-name">Staff Full Name</label>
+            <input type="text" class="form-control" id="staff-name" required placeholder="Dr. Rajesh Kumar">
+          </div>
+
+          <!-- Employee ID -->
+          <div class="form-group">
+            <label class="form-label" for="staff-reg">Employee ID</label>
+            <input type="text" class="form-control" id="staff-reg" required placeholder="EMP101" style="text-transform: uppercase;">
+          </div>
+
+          <!-- Email -->
+          <div class="form-group">
+            <label class="form-label" for="staff-email">Official Email</label>
+            <input type="email" class="form-control" id="staff-email" required placeholder="rajesh@college.edu">
+          </div>
+
+          <!-- Password -->
+          <div class="form-group">
+            <label class="form-label" for="staff-password">Security Password</label>
+            <input type="password" class="form-control" id="staff-password" placeholder="Default: password">
+          </div>
+
+          <!-- Department -->
+          <div class="form-group">
+            <label class="form-label" for="staff-dept">Academic Department</label>
+            <select class="form-control" id="staff-dept" required>
+              <option value="" disabled selected>Select department...</option>
+              <option value="CSE">Computer Science (CSE)</option>
+              <option value="IT">Information Technology (IT)</option>
+              <option value="ECE">Electronics & Communication (ECE)</option>
+              <option value="EEE">Electrical & Electronics (EEE)</option>
+              <option value="MECH">Mechanical Engineering (MECH)</option>
+              <option value="CIVIL">Civil Engineering (CIVIL)</option>
+              <option value="AI & DS">Artificial Intelligence & Data Science (AI & DS)</option>
+            </select>
+          </div>
+
+          <!-- Phone -->
+          <div class="form-group">
+            <label class="form-label" for="staff-phone">Contact Phone</label>
+            <input type="text" class="form-control" id="staff-phone" required placeholder="+91 98765 43210">
+          </div>
+
+        </div>
+
+        <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 0.75rem; padding: 1rem 1.5rem; border-top: 1px solid var(--border-color);">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-staff-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-staff-profile">
+            <i class="fa-solid fa-floppy-disk"></i>
+            <span>Save Profile</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="../../js/utils.js"></script>
+  <script src="../../js/auth.js"></script>
+  <script src="../../js/notifications.js"></script>
+  <script src="../../js/app.js"></script>
+  <script src="../../js/warden.js"></script>
+</body>
+</html>

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Principal Dashboard - Hostel ERP</title>
+  
+  <!-- CSS Library -->
+  
+  
+  
+  
+  
+  <!-- FontAwesome & Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/components-9f2f1ffe.css">
+  <link rel="stylesheet" href="/assets/principal-fd8cbe4e.css">
+</head>
+<body class="theme-light" data-root-path="../../">
+
+  <div class="app-container">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+    
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Navbar -->
+      <div id="navbar-container"></div>
+      
+      <!-- Page Body -->
+      <div class="page-body">
+        <div class="container-fluid">
+          
+          <!-- Header -->
+          <div style="margin-bottom: 2rem;">
+            <h2 style="font-size: 1.5rem; font-weight: 800; background: linear-gradient(135deg, var(--text-primary) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Executive Principal Dashboard</h2>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">Monitor institution hostel metrics, compliance trends, and administrative activities</p>
+          </div>
+
+          <!-- Executive Stats Cards Grid -->
+          <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 2rem;">
+            <!-- Total Students -->
+            <div class="glass-card stat-card">
+              <div class="stat-icon">
+                <i class="fa-solid fa-users"></i>
+              </div>
+              <div class="stat-info">
+                <span class="stat-label">Total Students</span>
+                <span class="stat-value" id="exec-total-students">0</span>
+              </div>
+            </div>
+
+            <!-- Hostel Students -->
+            <div class="glass-card stat-card">
+              <div class="stat-icon secondary">
+                <i class="fa-solid fa-hotel"></i>
+              </div>
+              <div class="stat-info">
+                <span class="stat-label">Hostellers</span>
+                <span class="stat-value" id="exec-hostel-students">0</span>
+              </div>
+            </div>
+
+            <!-- Leave Students -->
+            <div class="glass-card stat-card">
+              <div class="stat-icon warning">
+                <i class="fa-solid fa-umbrella-beach"></i>
+              </div>
+              <div class="stat-info">
+                <span class="stat-label">On Active Leave</span>
+                <span class="stat-value" id="exec-leave-students">0</span>
+              </div>
+            </div>
+
+            <!-- Illegal Leave -->
+            <div class="glass-card stat-card">
+              <div class="stat-icon danger">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+              </div>
+              <div class="stat-info">
+                <span class="stat-label">Illegal Absence</span>
+                <span class="stat-value" id="exec-illegal-students">0</span>
+              </div>
+            </div>
+
+            <!-- Complaints -->
+            <div class="glass-card stat-card">
+              <div class="stat-icon">
+                <i class="fa-solid fa-clipboard-question"></i>
+              </div>
+              <div class="stat-info">
+                <span class="stat-label">Total Tickets</span>
+                <span class="stat-value" id="exec-complaints">0</span>
+              </div>
+            </div>
+
+            <!-- Resolved Complaints -->
+            <div class="glass-card stat-card">
+              <div class="stat-icon success">
+                <i class="fa-solid fa-circle-check"></i>
+              </div>
+              <div class="stat-info">
+                <span class="stat-label">Resolved Tickets</span>
+                <span class="stat-value" id="exec-resolved-complaints">0</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Section -->
+          <div class="row">
+            <!-- Activity Feed -->
+            <div class="col-md-12">
+              <div class="glass-card" style="height: 100%;">
+                <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: 1.25rem;"><i class="fa-solid fa-chart-line" style="margin-right: 0.5rem; color: var(--primary);"></i>Recent Campus Activity Feed</h3>
+                <div class="activity-feed" id="principal-activity-feed">
+                  <!-- Hydrated by JS principal.js -->
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      
+      <!-- Footer -->
+      <div id="footer-container"></div>
+    </main>
+  </div>
+
+  <!-- Scripts -->
+  <script src="../../js/utils.js"></script>
+  <script src="../../js/auth.js"></script>
+  <script src="../../js/notifications.js"></script>
+  <script src="../../js/app.js"></script>
+  <script src="../../js/principal.js"></script>
+</body>
+</html>

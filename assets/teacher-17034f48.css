@@ -1,0 +1,1 @@
+.search-container{margin-bottom:2rem}.status-indicator{display:inline-flex;align-items:center;gap:.5rem;font-weight:600}.status-dot{width:10px;height:10px;border-radius:50%}.status-dot.in-hostel{background-color:var(--success)}.status-dot.on-leave{background-color:var(--warning)}.status-dot.out-illegal{background-color:var(--danger)}

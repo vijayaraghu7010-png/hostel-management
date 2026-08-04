@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Outing Requests Management - Warden ERP</title>
+  
+  <!-- CSS Library -->
+  
+  
+  
+  
+  
+  <!-- FontAwesome & Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/components-9f2f1ffe.css">
+  <link rel="stylesheet" href="/assets/warden-033cd534.css">
+</head>
+<body class="theme-light" data-root-path="../../">
+
+  <div class="app-container">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+    
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Navbar -->
+      <div id="navbar-container"></div>
+      
+      <!-- Page Body -->
+      <div class="page-body">
+        <div class="container-fluid">
+          
+          <!-- Header -->
+          <div style="margin-bottom: 1.5rem;">
+            <h2 style="font-size: 1.5rem; font-weight: 800; background: linear-gradient(135deg, var(--text-primary) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Short Outing Requests Center</h2>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">Review, authorize, or reject student short outing permissions after parent approval</p>
+          </div>
+
+          <!-- Filter Toolbar -->
+          <div class="glass-card" style="margin-bottom: 1.5rem; padding: 1.25rem 1.5rem;">
+            <div class="filter-bar">
+              <div style="display: flex; align-items: center; gap: 0.5rem; flex-grow: 1; max-width: 400px; min-width: 200px;">
+                <i class="fa-solid fa-magnifying-glass text-muted"></i>
+                <input type="text" id="warden-outing-search" class="form-control" placeholder="Search student name, ID, or destination..." style="margin-bottom: 0;">
+              </div>
+              <div class="filter-group">
+                <label class="form-label" for="filter-outing-status" style="margin-bottom: 0; font-weight: 600; font-size: 0.8rem; white-space: nowrap;">Status:</label>
+                <select id="filter-outing-status" class="form-control" style="margin-bottom: 0; max-width: 170px; padding: 0.35rem 0.75rem;">
+                  <option value="">All Statuses</option>
+                  <option value="Pending Warden" selected>Pending Warden</option>
+                  <option value="Pending Parent">Pending Parent</option>
+                  <option value="Approved">Approved</option>
+                  <option value="Rejected">Rejected</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Outing Table Card -->
+          <div class="glass-card" style="padding: 0; overflow: hidden;">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 0.5rem;">
+              <h3 style="font-size: 1rem; font-weight: 700; margin: 0;"><i class="fa-solid fa-person-walking-arrow-right" style="margin-right: 0.5rem; color: var(--primary);"></i>Student Outing Applications</h3>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">Approving generates valid Digital Outing Pass</span>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table-custom" style="margin-bottom: 0; min-width: 900px;">
+                <thead>
+                  <tr>
+                    <th>Outing ID</th>
+                    <th>Student (Room)</th>
+                    <th>Date & Window</th>
+                    <th>Duration</th>
+                    <th>Destination / Reason</th>
+                    <th>Parent Status</th>
+                    <th>Warden Status</th>
+                    <th style="text-align: right; padding-right: 1.5rem;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="warden-outings-tbody">
+                  <!-- Hydrated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      
+      <!-- Footer -->
+      <div id="footer-container"></div>
+    </main>
+  </div>
+
+  <!-- CENTER-SCREEN MODAL: Outing Action Confirmation -->
+  <div class="modal-overlay hidden" id="modal-outing-action">
+    <div class="modal-backdrop" id="modal-outing-action-backdrop"></div>
+    <div class="modal-container" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="outing-action-title">Process Outing Request</h3>
+        <button class="modal-close" id="modal-outing-action-close">&times;</button>
+      </div>
+      <form id="form-outing-action">
+        <div class="modal-body">
+          <input type="hidden" id="outing-action-id">
+          <input type="hidden" id="outing-action-type">
+          
+          <div id="outing-action-summary" style="background: var(--bg-primary); padding: 0.85rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); font-size: 0.82rem; margin-bottom: 1rem;">
+            <!-- Hydrated by JS -->
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="outing-action-remarks">Warden Remarks / Remarks Note (Optional)</label>
+            <textarea id="outing-action-remarks" class="form-control" rows="2" placeholder="Add optional remarks..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-outing-action">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btn-submit-outing-action">Confirm Decision</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="../../js/utils.js"></script>
+  <script src="../../js/auth.js"></script>
+  <script src="../../js/notifications.js"></script>
+  <script src="../../js/app.js"></script>
+  <script src="../../js/warden.js"></script>
+</body>
+</html>

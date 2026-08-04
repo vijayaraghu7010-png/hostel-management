@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gate Control & Outpass QR Scanner - Warden ERP</title>
+  
+  <!-- CSS Library -->
+  
+  
+  
+  
+  
+  
+  <!-- FontAwesome & Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/components-9f2f1ffe.css">
+  <link rel="stylesheet" href="/assets/warden-033cd534.css">
+  <link rel="stylesheet" href="/assets/scanner-ui-5c95562f.css">
+</head>
+<body class="theme-light" data-root-path="../../">
+
+  <div class="app-container">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+    
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Navbar -->
+      <div id="navbar-container"></div>
+      
+      <!-- Page Body -->
+      <div class="page-body">
+        <div class="container-fluid">
+          
+          <!-- Header -->
+          <div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+            <div>
+              <h2 style="font-size: 1.5rem; font-weight: 800; background: linear-gradient(135deg, var(--text-primary) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Gate Control & Outpass Scanner</h2>
+              <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">Scan Digital Outpass QR codes, verify authoritative student identity, and record campus exit & return</p>
+            </div>
+            <div>
+              <button class="btn btn-primary" id="btn-toggle-camera-gate" style="padding: 0.65rem 1.25rem; font-weight: 700; border-radius: 30px; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);"><i class="fa-solid fa-qrcode"></i> <span id="gate-cam-btn-text">Open QR Scanner</span></button>
+            </div>
+          </div>
+
+          <div class="row">
+            <!-- Left Column: QR Code Scanner Launcher & Manual Search -->
+            <div class="col-lg-6 col-12">
+              <div class="glass-card" style="margin-bottom: 1.5rem;">
+                <h3 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem;"><i class="fa-solid fa-qrcode" style="color: var(--primary); margin-right: 0.5rem;"></i>Outpass QR Verification Scanner</h3>
+                
+                <!-- Metro / GPay / PhonePe Scanner Launcher Box -->
+                <div id="scanner-launcher-card" style="position: relative; width: 100%; border-radius: 20px; overflow: hidden; background: linear-gradient(145deg, #07090e 0%, #1e293b 100%); border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 30px rgba(0,0,0,0.3); padding: 2.25rem 1.5rem; text-align: center; cursor: pointer; transition: all 0.25 ease; margin-bottom: 1.25rem;" onclick="if(window.HMSQRScanner) { window.HMSQRScanner.open({ title: 'Outpass QR Scanner', mainText: 'Align the QR code inside the frame', subText: 'The QR will be scanned automatically.', allowManual: true, onScan: function(text){ if(window.handleGateScanResult) window.handleGateScanResult(text); } }); }">
+                  <div style="width: 76px; height: 76px; border-radius: 50%; background: rgba(56, 189, 248, 0.15); border: 2px solid rgba(56, 189, 248, 0.4); color: #38bdf8; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem auto; font-size: 2.2rem; box-shadow: 0 0 25px rgba(56, 189, 248, 0.3);">
+                    <i class="fa-solid fa-qrcode"></i>
+                  </div>
+                  <h4 style="font-size: 1.15rem; font-weight: 800; color: #ffffff; margin-bottom: 0.35rem; letter-spacing: 0.3px;">Launch Fullscreen Scanner</h4>
+                  <p style="font-size: 0.85rem; color: #94a3b8; margin: 0 0 1.25rem 0; line-height: 1.4;">Metro & Payment style instant automatic scanner for mobile & desktop</p>
+                  <button type="button" class="btn btn-primary btn-sm" style="border-radius: 25px; padding: 0.5rem 1.25rem; font-weight: 700; background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%); border: none;">
+                    <i class="fa-solid fa-camera" style="margin-right: 0.4rem;"></i> Tap to Scan QR
+                  </button>
+                  
+                  <div id="gate-qr-reader" style="display: none;"></div>
+                </div>
+
+                <!-- Manual pass payload input -->
+                <div style="border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                  <label class="form-label" for="manual-qr-input" style="font-weight: 600; font-size: 0.8rem;">Or Enter Pass Payload / Pass ID Manually:</label>
+                  <div style="display: flex; gap: 0.5rem;">
+                    <input type="text" id="manual-qr-input" class="form-control" placeholder='{"op":"OP-L10293","tok":"..."} or OP-L10293' style="margin-bottom: 0;">
+                    <button class="btn btn-primary" id="btn-validate-manual"><i class="fa-solid fa-magnifying-glass"></i> Validate</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Overdue Outings Alert Card -->
+              <div class="glass-card" style="border-left: 4px solid var(--warning);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+                  <h3 style="font-size: 1rem; font-weight: 700; margin: 0; color: var(--warning);"><i class="fa-solid fa-clock-triangle-exclamation" style="margin-right: 0.5rem;"></i>Overdue Outings Monitor</h3>
+                  <span class="badge badge-warning" id="overdue-count-badge">0 Overdue</span>
+                </div>
+                <div id="overdue-outings-list" style="max-height: 250px; overflow-y: auto;">
+                  <!-- Hydrated dynamically -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Column: Live Validation & Decision Result Card -->
+            <div class="col-lg-6 col-12">
+              <div class="glass-card" id="outpass-validation-result-card">
+                <div style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted);" id="outpass-empty-state">
+                  <i class="fa-solid fa-id-card-clip" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+                  <h4 style="font-size: 1rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.5rem;">Awaiting Outpass Scan</h4>
+                  <p style="font-size: 0.82rem; margin: 0;">Scan a student's Digital Outpass QR or enter pass ID to view authoritative identity and log exit/return.</p>
+                </div>
+                
+                <!-- Dynamic Content injected on scan -->
+                <div id="outpass-scan-detail" style="display: none;">
+                  <!-- Hydrated by JS -->
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      
+      <!-- Footer -->
+      <div id="footer-container"></div>
+    </main>
+  </div>
+
+  <!-- CENTER-SCREEN MODAL: Revoke Outpass Confirmation -->
+  <div class="modal-overlay hidden" id="modal-revoke-pass">
+    <div class="modal-backdrop" id="modal-revoke-backdrop"></div>
+    <div class="modal-container" style="max-width: 460px;">
+      <div class="modal-header">
+        <h3 class="modal-title" style="color: var(--danger);"><i class="fa-solid fa-ban" style="margin-right: 0.5rem;"></i>Revoke Outpass Permission</h3>
+        <button class="modal-close" id="modal-revoke-close">&times;</button>
+      </div>
+      <form id="form-revoke-pass">
+        <div class="modal-body">
+          <input type="hidden" id="revoke-pass-id">
+          <p style="font-size: 0.85rem; color: var(--text-primary); margin-bottom: 1rem;">Are you sure you want to revoke this digital outpass? The student will no longer be allowed exit/entry with this pass.</p>
+
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="revoke-reason">Reason for Revocation *</label>
+            <textarea id="revoke-reason" class="form-control" rows="2" placeholder="e.g. Disciplinary hold / Parent revoked request..." required></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-revoke">Cancel</button>
+          <button type="submit" class="btn btn-danger" id="btn-confirm-revoke"><i class="fa-solid fa-ban"></i> Confirm Revocation</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="../../js/vendor/zxing-browser.min.js"></script>
+  <script src="../../js/vendor/qr-scanner.umd.min.js"></script>
+  <script src="../../js/scanner-ui.js"></script>
+  <script src="../../js/utils.js"></script>
+  <script src="../../js/auth.js"></script>
+  <script src="../../js/notifications.js"></script>
+  <script src="../../js/app.js"></script>
+  <script src="../../js/warden.js"></script>
+</body>
+</html>

@@ -1,0 +1,1 @@
+.escalation-step{padding:1rem;border-radius:var(--border-radius-sm);background:var(--bg-primary);border-left:4px solid var(--border-color);margin-bottom:1rem}.escalation-step.pending{border-left-color:var(--warning)}.escalation-step.escalated{border-left-color:var(--danger)}.escalation-step.closed{border-left-color:var(--success)}

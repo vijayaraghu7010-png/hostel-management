@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Leave Request Status - Hostel ERP</title>
+  
+  <!-- CSS Library -->
+  
+  
+  
+  
+  
+  <!-- FontAwesome & Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/components-9f2f1ffe.css">
+  <link rel="stylesheet" href="/assets/student-0ad389cb.css">
+</head>
+<body class="theme-light" data-root-path="../../">
+
+  <div class="app-container">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+    
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Navbar -->
+      <div id="navbar-container"></div>
+      
+      <!-- Page Body -->
+      <div class="page-body">
+        <div class="container-fluid">
+          
+          <!-- Header -->
+          <div style="margin-bottom: 2rem;">
+            <h2 style="font-size: 1.5rem; font-weight: 800; background: linear-gradient(135deg, var(--text-primary) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Leave Request Status</h2>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">View status, track approval progress timelines, and check warden review remarks</p>
+          </div>
+
+          <!-- Stats Cards Grid -->
+          <div class="stats-grid" style="margin-bottom: 2rem;">
+            <!-- Total Requests -->
+            <div class="glass-card stat-card">
+              <div class="stat-icon">
+                <i class="fa-solid fa-plane-departure"></i>
+              </div>
+              <div class="stat-info">
+                <span class="stat-label">Total Leaves</span>
+                <span class="stat-value" id="stats-total-leaves">0</span>
+              </div>
+            </div>
+
+            <!-- Pending -->
+            <div class="glass-card stat-card">
+              <div class="stat-icon warning">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+              </div>
+              <div class="stat-info">
+                <span class="stat-label">Pending</span>
+                <span class="stat-value" id="stats-pending-leaves">0</span>
+              </div>
+            </div>
+
+            <!-- Approved -->
+            <div class="glass-card stat-card">
+              <div class="stat-icon success">
+                <i class="fa-solid fa-circle-check"></i>
+              </div>
+              <div class="stat-info">
+                <span class="stat-label">Approved</span>
+                <span class="stat-value" id="stats-approved-leaves">0</span>
+              </div>
+            </div>
+
+            <!-- Rejected -->
+            <div class="glass-card stat-card">
+              <div class="stat-icon danger">
+                <i class="fa-solid fa-circle-xmark"></i>
+              </div>
+              <div class="stat-info">
+                <span class="stat-label">Rejected</span>
+                <span class="stat-value" id="stats-rejected-leaves">0</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Filters & Search Ledger -->
+          <div class="glass-card" style="margin-bottom: 1.5rem; padding: 1.25rem 1.5rem;">
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap; justify-content: space-between; align-items: center;">
+              <!-- Reason Search -->
+              <div style="display: flex; align-items: center; gap: 0.5rem; flex-grow: 1; max-width: 320px;">
+                <i class="fa-solid fa-magnifying-glass text-muted"></i>
+                <input type="text" id="leaves-search" class="form-control" placeholder="Search by reason..." style="margin-bottom: 0;">
+              </div>
+              
+              <!-- Date Search -->
+              <div style="display: flex; align-items: center; gap: 0.5rem; flex-grow: 1; max-width: 220px;">
+                <i class="fa-solid fa-calendar text-muted"></i>
+                <input type="date" id="leaves-date" class="form-control" style="margin-bottom: 0;">
+              </div>
+
+              <!-- Status Dropdown -->
+              <div style="display: flex; gap: 0.75rem; align-items: center;">
+                <label class="form-label" for="filter-leave-status" style="margin-bottom: 0; font-weight: 600; font-size: 0.8rem;">Status:</label>
+                <select id="filter-leave-status" class="form-control" style="margin-bottom: 0; max-width: 140px; padding: 0.35rem 0.75rem;">
+                  <option value="">All</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Approved">Approved</option>
+                  <option value="Rejected">Rejected</option>
+                  <option value="Cancelled">Cancelled</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Leave Requests Table Card -->
+          <div class="glass-card" style="padding: 0; overflow: hidden; position: relative;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
+              <h3 style="font-size: 1rem; font-weight: 700;"><i class="fa-solid fa-list-check" style="margin-right: 0.5rem; color: var(--primary);"></i>My Leave Request History</h3>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">Click a row to track gatepass timeline & review remarks</span>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table-custom" style="margin-bottom: 0;">
+                <thead>
+                  <tr>
+                    <th style="cursor: pointer;" id="sort-lv-id">Request ID <i class="fa-solid fa-sort"></i></th>
+                    <th>From Date</th>
+                    <th>To Date</th>
+                    <th>Days</th>
+                    <th>Reason</th>
+                    <th style="cursor: pointer;" id="sort-lv-date">Submitted Date <i class="fa-solid fa-sort"></i></th>
+                    <th>Status</th>
+                    <th>Reviewed By</th>
+                    <th>Remarks</th>
+                    <th style="text-align: right; padding-right: 1.5rem;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="student-leaves-tbody">
+                  <!-- Hydrated by JS -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Table Pagination controls -->
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); flex-wrap: wrap; gap: 0.75rem;">
+              <span style="font-size: 0.8rem; color: var(--text-secondary);" id="pagination-info-lv">Showing 0 to 0 of 0 requests</span>
+              <div style="display: flex; gap: 0.5rem;" id="pagination-btns-lv">
+                <button class="btn btn-secondary btn-sm" id="btn-prev-page-lv" disabled>Previous</button>
+                <button class="btn btn-secondary btn-sm" id="btn-next-page-lv" disabled>Next</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      
+      <!-- Footer -->
+      <div id="footer-container"></div>
+    </main>
+  </div>
+
+  <!-- Detail Modal -->
+  <div class="modal-backdrop" id="leave-details-modal" style="display: none;">
+    <div class="modal-card" style="max-width: 600px; width: 90%;">
+      <div class="modal-header" style="background: var(--bg-primary);">
+        <h3><i class="fa-solid fa-plane-departure text-primary-color" style="margin-right: 0.5rem;"></i>Leave Status & Timeline</h3>
+        <button class="modal-close" id="btn-close-details-modal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" style="padding: 1.5rem; max-height: 75vh; overflow-y: auto;">
+        
+        <!-- Header Info -->
+        <div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <h4 style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem;" id="detail-leave-id">Leave Request -</h4>
+            <span style="font-size: 0.8rem; color: var(--text-secondary);">Submitted on: <strong id="detail-submitted-on">-</strong></span>
+          </div>
+          <span class="badge" id="detail-status" style="font-size: 0.8rem;">Pending</span>
+        </div>
+
+        <!-- Grid Attributes -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; background: var(--bg-primary); padding: 1.25rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color);">
+          <div>
+            <span style="font-size:0.75rem; color: var(--text-muted);">Student Name</span>
+            <div style="font-weight: 600; font-size: 0.85rem;" id="detail-student-name">-</div>
+          </div>
+          <div>
+            <span style="font-size:0.75rem; color: var(--text-muted);">Register Number</span>
+            <div style="font-weight: 600; font-size: 0.85rem;" id="detail-reg-no">-</div>
+          </div>
+          <div>
+            <span style="font-size:0.75rem; color: var(--text-muted);">Department</span>
+            <div style="font-weight: 600; font-size: 0.85rem;" id="detail-dept">-</div>
+          </div>
+          <div>
+            <span style="font-size:0.75rem; color: var(--text-muted);">Room Number</span>
+            <div style="font-weight: 600; font-size: 0.85rem;" id="detail-room">-</div>
+          </div>
+          <div>
+            <span style="font-size:0.75rem; color: var(--text-muted);">From Date</span>
+            <div style="font-weight: 600; font-size: 0.85rem;" id="detail-from-date">-</div>
+          </div>
+          <div>
+            <span style="font-size:0.75rem; color: var(--text-muted);">To Date</span>
+            <div style="font-weight: 600; font-size: 0.85rem;" id="detail-to-date">-</div>
+          </div>
+          <div>
+            <span style="font-size:0.75rem; color: var(--text-muted);">Total Days</span>
+            <div style="font-weight: 600; font-size: 0.85rem;" id="detail-total-days">-</div>
+          </div>
+          <div>
+            <span style="font-size:0.75rem; color: var(--text-muted);">Reviewed By</span>
+            <div style="font-weight: 600; font-size: 0.85rem;" id="detail-reviewed-by">-</div>
+          </div>
+        </div>
+
+        <!-- Reason and Remarks -->
+        <div style="margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
+          <div>
+            <h5 style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem;">Reason for Outstation Leave</h5>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); background: var(--bg-primary); border: 1px solid var(--border-color); padding: 0.75rem 1rem; border-radius: var(--border-radius-sm);" id="detail-reason">-</p>
+          </div>
+          <div>
+            <h5 style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem;">Reviewer Remarks</h5>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); background: var(--bg-primary); border: 1px solid var(--border-color); padding: 0.75rem 1rem; border-radius: var(--border-radius-sm);" id="detail-remarks">-</p>
+          </div>
+        </div>
+
+        <!-- Progress Timeline -->
+        <div>
+          <h4 style="font-size: 0.9rem; font-weight: 700; margin-bottom: 1rem; color: var(--text-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;"><i class="fa-solid fa-timeline" style="margin-right: 0.5rem; color: var(--primary);"></i>Gatepass Approval Timeline</h4>
+          <div class="timeline" id="detail-timeline-container">
+            <!-- Timeline items rendered dynamically -->
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer" style="background: var(--bg-primary); justify-content: flex-end;">
+        <button class="btn btn-secondary" id="btn-close-details-footer">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CENTER-SCREEN MODAL: Digital Outpass Viewer -->
+  <div class="modal-overlay hidden" id="modal-view-outpass">
+    <div class="modal-backdrop" id="modal-outpass-backdrop"></div>
+    <div class="modal-container" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fa-solid fa-qrcode" style="color: var(--primary); margin-right: 0.5rem;"></i>KVCET Digital Outpass</h3>
+        <button class="modal-close" id="modal-outpass-close">&times;</button>
+      </div>
+      <div class="modal-body" style="text-align: center;">
+        <div id="outpass-card-content">
+          <!-- Hydrated dynamically -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btn-close-outpass-modal">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="../../js/vendor/qrcode.min.js"></script>
+  <script src="../../js/utils.js"></script>
+  <script src="../../js/auth.js"></script>
+  <script src="../../js/notifications.js"></script>
+  <script src="../../js/app.js"></script>
+  <script src="../../js/student.js"></script>
+</body>
+</html>

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Management - Hostel ERP</title>
+  
+  <!-- CSS Library -->
+  
+  
+  
+  
+  
+  <!-- FontAwesome & Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/components-9f2f1ffe.css">
+  <link rel="stylesheet" href="/assets/warden-033cd534.css">
+</head>
+<body class="theme-light" data-root-path="../../">
+
+  <div class="app-container">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+    
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Navbar -->
+      <div id="navbar-container"></div>
+      
+      <!-- Page Body -->
+      <div class="page-body">
+        <div class="container-fluid">
+          
+          <!-- Header -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+            <div>
+              <h2 style="font-size: 1.5rem; font-weight: 800; background: linear-gradient(135deg, var(--text-primary) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Student Management</h2>
+              <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">Add, edit, deactivate, or allocate rooms for hostel residents</p>
+            </div>
+            <button class="btn btn-primary" id="btn-add-student-modal">
+              <i class="fa-solid fa-user-plus"></i>
+              <span>Add New Student</span>
+            </button>
+          </div>
+
+          <!-- Filters & Search Ledger -->
+          <div class="glass-card" style="margin-bottom: 1.5rem; padding: 1.25rem 1.5rem;">
+            <div class="filter-bar">
+              <div style="display: flex; align-items: center; gap: 0.5rem; flex-grow: 1; max-width: 400px; min-width: 200px;">
+                <i class="fa-solid fa-magnifying-glass text-muted"></i>
+                <input type="text" id="student-search" class="form-control" placeholder="Search by name, roll number, or room..." style="margin-bottom: 0;">
+              </div>
+              <div class="filter-group">
+                <label class="form-label" for="filter-dept" style="margin-bottom: 0; font-weight: 600; font-size: 0.8rem; white-space: nowrap;">Branch:</label>
+                <select id="filter-dept" class="form-control" style="margin-bottom: 0; max-width: 120px; padding: 0.35rem 0.75rem;">
+                  <option value="">All</option>
+                  <option value="CSE">CSE</option>
+                  <option value="IT">IT</option>
+                  <option value="ECE">ECE</option>
+                  <option value="EEE">EEE</option>
+                  <option value="MECH">MECH</option>
+                  <option value="CIVIL">CIVIL</option>
+                  <option value="AI & DS">AI & DS</option>
+                </select>
+                
+                <label class="form-label" for="filter-status" style="margin-bottom: 0; font-weight: 600; font-size: 0.8rem; white-space: nowrap;">Status:</label>
+                <select id="filter-status" class="form-control" style="margin-bottom: 0; max-width: 130px; padding: 0.35rem 0.75rem;">
+                  <option value="">All</option>
+                  <option value="Active">Active</option>
+                  <option value="Deactivated">Deactivated</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Students Data Table -->
+          <div class="glass-card" style="padding: 0; overflow: hidden;">
+            <div class="table-responsive">
+              <table class="table-custom" style="margin-bottom: 0; min-width: 850px;">
+                <thead>
+                  <tr>
+                    <th style="cursor: pointer;" id="sort-reg">Reg No <i class="fa-solid fa-sort"></i></th>
+                    <th style="cursor: pointer;" id="sort-name">Name <i class="fa-solid fa-sort"></i></th>
+                    <th>Branch</th>
+                    <th>Year</th>
+                    <th>Gender</th>
+                    <th>Room</th>
+                    <th>Phone</th>
+                    <th>Status</th>
+                    <th style="text-align: right; padding-right: 1.5rem;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="student-ledger-tbody">
+                  <!-- Hydrated dynamically -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Table Pagination controls -->
+            <div class="table-pagination-bar">
+              <span style="font-size: 0.8rem; color: var(--text-secondary);" id="pagination-info">Showing 0 to 0 of 0 students</span>
+              <div style="display: flex; gap: 0.5rem;" id="pagination-btns">
+                <button class="btn btn-secondary btn-sm" id="btn-prev-page" disabled>Previous</button>
+                <button class="btn btn-secondary btn-sm" id="btn-next-page" disabled>Next</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      
+      <!-- Footer -->
+      <div id="footer-container"></div>
+    </main>
+  </div>
+
+  <!-- Student Creation / Edit Modal -->
+  <div class="modal-backdrop" id="student-modal" style="display: none;">
+    <div class="modal-card" style="max-width: 650px;">
+      <div class="modal-header">
+        <h3 id="modal-title">Add Student Profile</h3>
+        <button class="modal-close" id="btn-close-modal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="student-profile-form">
+        <input type="hidden" id="edit-mode" value="false">
+        <input type="hidden" id="original-reg-no" value="">
+
+        <div class="modal-body" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding: 1.5rem;">
+          <!-- Name -->
+          <div class="form-group">
+            <label class="form-label" for="student-name">Full Name</label>
+            <input type="text" class="form-control" id="student-name" required placeholder="John Doe">
+          </div>
+
+          <!-- Register Number -->
+          <div class="form-group">
+            <label class="form-label" for="student-reg">Register Number</label>
+            <input type="text" class="form-control" id="student-reg" required placeholder="STU100" style="text-transform: uppercase;">
+          </div>
+
+          <!-- Email -->
+          <div class="form-group">
+            <label class="form-label" for="student-email">Campus Email</label>
+            <input type="email" class="form-control" id="student-email" required placeholder="johndoe@gmail.com">
+          </div>
+
+          <!-- Password -->
+          <div class="form-group">
+            <label class="form-label" for="student-password">Security Password</label>
+            <input type="password" class="form-control" id="student-password" placeholder="Default: password">
+          </div>
+
+          <!-- Department -->
+          <div class="form-group">
+            <label class="form-label" for="student-dept">Department Branch</label>
+            <select class="form-control" id="student-dept" required>
+              <option value="" disabled selected>Select branch...</option>
+              <option value="CSE">Computer Science (CSE)</option>
+              <option value="IT">Information Technology (IT)</option>
+              <option value="ECE">Electronics & Communication (ECE)</option>
+              <option value="EEE">Electrical & Electronics (EEE)</option>
+              <option value="MECH">Mechanical Engineering (MECH)</option>
+              <option value="CIVIL">Civil Engineering (CIVIL)</option>
+              <option value="AI & DS">Artificial Intelligence & Data Science (AI & DS)</option>
+            </select>
+          </div>
+
+          <!-- Year -->
+          <div class="form-group">
+            <label class="form-label" for="student-year">Academic Year</label>
+            <select class="form-control" id="student-year" required>
+              <option value="" disabled selected>Select year...</option>
+              <option value="1st Year">1st Year</option>
+              <option value="2nd Year">2nd Year</option>
+              <option value="3rd Year">3rd Year</option>
+              <option value="4th Year">4th Year</option>
+            </select>
+          </div>
+
+          <!-- Gender -->
+          <div class="form-group">
+            <label class="form-label" for="student-gender">Gender</label>
+            <select class="form-control" id="student-gender" required>
+              <option value="" disabled selected>Select gender...</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <!-- Phone -->
+          <div class="form-group">
+            <label class="form-label" for="student-phone">Contact Phone</label>
+            <input type="text" class="form-control" id="student-phone" required placeholder="+91 90000 00000">
+          </div>
+
+          <!-- Date of Birth -->
+          <div class="form-group">
+            <label class="form-label" for="student-dob">Date of Birth</label>
+            <input type="date" class="form-control" id="student-dob" required>
+          </div>
+
+          <!-- Parent Name -->
+          <div class="form-group">
+            <label class="form-label" for="student-parent-name">Parent Name</label>
+            <input type="text" class="form-control" id="student-parent-name" required placeholder="Robert Doe">
+          </div>
+
+          <!-- Parent Phone -->
+          <div class="form-group">
+            <label class="form-label" for="student-parent-phone">Parent Phone</label>
+            <input type="text" class="form-control" id="student-parent-phone" required placeholder="+91 99999 99999">
+          </div>
+
+          <!-- Bed Number -->
+          <div class="form-group">
+            <label class="form-label" for="student-bed">Bed Number</label>
+            <input type="text" class="form-control" id="student-bed" placeholder="e.g. Bed A">
+          </div>
+
+          <!-- Address -->
+          <div class="form-group" style="grid-column: span 2;">
+            <label class="form-label" for="student-address">Home Address</label>
+            <textarea class="form-control" id="student-address" required placeholder="123 Street, City, State, ZIP" rows="2" style="resize: vertical; font-family: inherit;"></textarea>
+          </div>
+
+          <!-- Room Assignment -->
+          <div class="form-group">
+            <label class="form-label" for="student-room">Room Assignment</label>
+            <select class="form-control" id="student-room">
+              <option value="">Unallocated</option>
+              <!-- Hydrated dynamically -->
+            </select>
+          </div>
+
+          <!-- Hostel Status -->
+          <div class="form-group">
+            <label class="form-label" for="student-status">Hostel Enrollment Status</label>
+            <select class="form-control" id="student-status" required>
+              <option value="Active">Active Resident</option>
+              <option value="Deactivated">Deactivated / Left</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 0.75rem; padding: 1rem 1.5rem; border-top: 1px solid var(--border-color);">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-profile">
+            <i class="fa-solid fa-floppy-disk"></i>
+            <span>Save Profile</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="../../js/utils.js"></script>
+  <script src="../../js/auth.js"></script>
+  <script src="../../js/notifications.js"></script>
+  <script src="../../js/app.js"></script>
+  <script src="../../js/warden.js"></script>
+</body>
+</html>

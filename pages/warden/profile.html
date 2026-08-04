@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Profile - Hostel ERP</title>
+  
+  <!-- CSS Library -->
+  
+  
+  
+  
+  
+  <!-- FontAwesome & Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/components-9f2f1ffe.css">
+  <link rel="stylesheet" href="/assets/warden-033cd534.css">
+</head>
+<body class="theme-light" data-root-path="../../">
+
+  <div class="app-container">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+    
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Navbar -->
+      <div id="navbar-container"></div>
+      
+      <!-- Page Body -->
+      <div class="page-body">
+        <div class="container-fluid">
+          
+          <!-- Header with Edit Action -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+            <div>
+              <h2 style="font-size: 1.5rem; font-weight: 800; background: linear-gradient(135deg, var(--text-primary) 0%, var(--primary) 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">My Profile</h2>
+              <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">View and manage your account details and personal credentials</p>
+            </div>
+            <button class="btn btn-primary" id="btn-edit-profile" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1.25rem; font-weight: 600; border-radius: var(--border-radius-sm); box-shadow: 0 4px 14px rgba(124, 58, 237, 0.3); transition: all 0.2s ease;">
+              <i class="fa-solid fa-pen-to-square"></i> Edit Profile
+            </button>
+          </div>
+
+          <div class="row">
+            <!-- Left Bio Card -->
+            <div class="col-md-4">
+              <div class="glass-card text-center" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2.5rem 1.5rem;">
+                <div id="profile-avatar-big" style="width: 100px; height: 100px; border-radius: 50%; background: var(--grad-primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: 800; margin-bottom: 1.5rem; box-shadow: 0 8px 24px rgba(124, 58, 237, 0.3);">
+                  W
+                </div>
+                
+                <h3 id="profile-name" style="font-size: 1.2rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem;">Warden Name</h3>
+                <span class="badge badge-present" id="profile-role-badge" style="margin-bottom: 1.5rem;">Chief Warden</span>
+                
+                <div style="width: 100%; border-top: 1px solid var(--border-color); padding-top: 1.5rem; text-align: left; display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.8rem; color: var(--text-muted);">
+                  <div>
+                    <i class="fa-solid fa-hotel" style="margin-right: 0.5rem; color: var(--primary);"></i>
+                    <span>Campus Location: <strong id="profile-residence-card">Hostel Block</strong></span>
+                  </div>
+                  <div>
+                    <i class="fa-solid fa-shield-halved" style="margin-right: 0.5rem; color: var(--primary);"></i>
+                    <span>Account Status: <strong id="profile-status-card">Active Account</strong></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Details Card -->
+            <div class="col-md-8">
+              <div class="glass-card">
+                <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;"><i class="fa-solid fa-id-card-clip" style="margin-right: 0.5rem; color: var(--primary);"></i>Registration & Personal Credentials</h3>
+                
+                <div class="profile-info-grid">
+                  <!-- Name -->
+                  <div class="profile-info-item">
+                    <span class="profile-info-label">Full Name</span>
+                    <span class="profile-info-value" id="profile-name-detail">—</span>
+                  </div>
+                  
+                  <!-- Reg Number / ID -->
+                  <div class="profile-info-item">
+                    <span class="profile-info-label">Staff ID / Email</span>
+                    <span class="profile-info-value" id="profile-reg">—</span>
+                  </div>
+
+                  <!-- Role -->
+                  <div class="profile-info-item">
+                    <span class="profile-info-label">System Role</span>
+                    <span class="profile-info-value" id="profile-role">Chief Warden</span>
+                  </div>
+
+                  <!-- Dept -->
+                  <div class="profile-info-item">
+                    <span class="profile-info-label">Department / Division</span>
+                    <span class="profile-info-value" id="profile-dept">Hostel Administration</span>
+                  </div>
+
+                  <!-- Email -->
+                  <div class="profile-info-item">
+                    <span class="profile-info-label">Registered Email</span>
+                    <span class="profile-info-value" id="profile-email">—</span>
+                  </div>
+
+                  <!-- Contact Phone -->
+                  <div class="profile-info-item">
+                    <span class="profile-info-label">Phone Number</span>
+                    <span class="profile-info-value" id="profile-phone">—</span>
+                  </div>
+
+                  <!-- Gender -->
+                  <div class="profile-info-item">
+                    <span class="profile-info-label">Gender</span>
+                    <span class="profile-info-value" id="profile-gender">—</span>
+                  </div>
+
+                  <!-- Date of Birth -->
+                  <div class="profile-info-item">
+                    <span class="profile-info-label">Date of Birth</span>
+                    <span class="profile-info-value" id="profile-dob">—</span>
+                  </div>
+
+                  <!-- Address -->
+                  <div class="profile-info-item" style="grid-column: span 2;">
+                    <span class="profile-info-label">Permanent Address</span>
+                    <span class="profile-info-value" id="profile-address">—</span>
+                  </div>
+                </div>
+
+                <div style="margin-top: 2rem; background: var(--bg-primary); padding: 1.25rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5; display: flex; align-items: center; gap: 0.75rem;">
+                  <i class="fa-solid fa-circle-info" style="font-size: 1.25rem; color: var(--primary);"></i>
+                  <span>Click the <strong>Edit Profile</strong> button above to update your personal information, phone number, address, or password.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      
+      <!-- Footer -->
+      <div id="footer-container"></div>
+    </main>
+  </div>
+
+  <!-- Edit Profile Modal -->
+  <div class="modal-overlay hidden" id="edit-profile-modal">
+    <div class="modal-container" style="max-width: 600px; width: 92%;">
+      <div class="modal-header">
+        <h3 class="modal-title" style="display: flex; align-items: center; gap: 0.5rem;"><i class="fa-solid fa-user-pen" style="color: var(--primary);"></i> Edit Profile Details</h3>
+        <button class="modal-close" id="btn-close-edit-profile-modal">&times;</button>
+      </div>
+      <form id="edit-profile-form">
+        <div class="modal-body" style="display: flex; flex-direction: column; gap: 1rem; max-height: 70vh; overflow-y: auto;">
+          <div class="form-group">
+            <label class="form-label" for="edit-profile-name">Full Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="edit-profile-name" required placeholder="Enter full name">
+          </div>
+          
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label class="form-label" for="edit-profile-email">Email Address <span class="text-danger">*</span></label>
+                <input type="email" class="form-control" id="edit-profile-email" required placeholder="name@example.com">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label class="form-label" for="edit-profile-phone">Phone Number</label>
+                <input type="tel" class="form-control" id="edit-profile-phone" placeholder="+91 98765 43210">
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label class="form-label" for="edit-profile-gender">Gender</label>
+                <select class="form-control" id="edit-profile-gender">
+                  <option value="">Select Gender</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label class="form-label" for="edit-profile-dob">Date of Birth</label>
+                <input type="date" class="form-control" id="edit-profile-dob">
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="edit-profile-dept">Department / Division</label>
+            <input type="text" class="form-control" id="edit-profile-dept" placeholder="e.g. Hostel Administration">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="edit-profile-address">Address</label>
+            <textarea class="form-control" id="edit-profile-address" rows="2" placeholder="Full permanent/communication address"></textarea>
+          </div>
+
+          <div style="border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 0.5rem;">
+            <label class="form-label" for="edit-profile-password" style="font-weight: 700; color: var(--text-primary);">Change Password (Optional)</label>
+            <input type="password" class="form-control" id="edit-profile-password" placeholder="Enter new password to update (leave empty to keep current)">
+          </div>
+        </div>
+
+        <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-edit-profile">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-profile-submit">
+            <i class="fa-solid fa-check"></i> Save Changes
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="../../js/utils.js"></script>
+  <script src="../../js/auth.js"></script>
+  <script src="../../js/notifications.js"></script>
+  <script src="../../js/app.js"></script>
+  <script src="../../js/warden.js"></script>
+</body>
+</html>

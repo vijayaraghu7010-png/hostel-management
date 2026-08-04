@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Parent Outing Approval - KVCET Hostel ERP</title>
+  
+  <!-- CSS Library -->
+  
+  
+  
+  
+  <!-- FontAwesome & Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    body {
+      background: var(--bg-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem;
+    }
+    .parent-card {
+      width: 100%;
+      max-width: 480px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-md);
+      box-shadow: var(--glass-shadow);
+      padding: 1.75rem;
+      box-sizing: border-box;
+    }
+    .brand-header {
+      text-align: center;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 1.25rem;
+    }
+    .brand-logo {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--border-radius-sm);
+      background: var(--grad-primary);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      margin: 0 auto 0.75rem auto;
+    }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.6rem 0;
+      border-bottom: 1px dashed var(--border-color);
+      font-size: 0.85rem;
+    }
+    .info-label {
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+    .info-value {
+      color: var(--text-primary);
+      font-weight: 700;
+      text-align: right;
+    }
+    .action-btn-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+    @media (max-width: 480px) {
+      .action-btn-group {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+  <link rel="stylesheet" href="/assets/components-9f2f1ffe.css">
+</head>
+<body class="theme-light">
+
+  <div class="parent-card" id="parent-approval-card">
+    <div class="brand-header">
+      <div class="brand-logo"><i class="fa-solid fa-graduation-cap"></i></div>
+      <h2 style="font-size: 1.25rem; font-weight: 800; color: var(--text-primary); margin: 0;">KVCET HOSTEL ERP</h2>
+      <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.25rem;">Official Parent Outing Approval Portal / பெற்றோர் அனுமதி தளம்</p>
+    </div>
+
+    <div id="parent-loading-state" style="text-align: center; padding: 2rem 0; color: var(--text-muted);">
+      <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 2rem; color: var(--primary); margin-bottom: 0.75rem;"></i>
+      <p style="font-size: 0.85rem; margin: 0;">Verifying Parent Approval Token...</p>
+    </div>
+
+    <div id="parent-error-state" style="display: none; text-align: center; padding: 1.5rem 0;">
+      <i class="fa-solid fa-circle-xmark" style="font-size: 3rem; color: var(--danger); margin-bottom: 0.75rem;"></i>
+      <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem;" id="parent-error-title">Invalid or Expired Link</h3>
+      <p style="font-size: 0.82rem; color: var(--text-secondary); margin: 0;" id="parent-error-desc">This approval link has expired or has already been used.</p>
+    </div>
+
+    <div id="parent-form-state" style="display: none;">
+      <div style="background: rgba(79, 70, 229, 0.06); border-left: 3px solid var(--primary); padding: 0.75rem 1rem; border-radius: 4px; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1.25rem;">
+        <i class="fa-solid fa-circle-info" style="color: var(--primary); margin-right: 0.4rem;"></i>
+        Your ward has requested permission for a short outing. Please review details below:
+      </div>
+
+      <div class="info-row">
+        <span class="info-label">Student Name / பெயர்:</span>
+        <span class="info-value" id="val-student-name">Rahul S</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Register No / பதிவு எண்:</span>
+        <span class="info-value" id="val-student-reg">21CS041</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Department & Room / துறை:</span>
+        <span class="info-value" id="val-student-dept">CSE - Room F18</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Outing Date / தேதி:</span>
+        <span class="info-value" id="val-outing-date">2026-07-25</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Requested Exit Time:</span>
+        <span class="info-value" id="val-exit-time">2:00 PM</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Expected Return Time:</span>
+        <span class="info-value" id="val-return-time">6:00 PM</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Destination / செல்லுமிடம்:</span>
+        <span class="info-value" id="val-destination">Chengalpattu</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Reason / காரணம்:</span>
+        <span class="info-value" id="val-reason">Personal Work</span>
+      </div>
+
+      <div class="action-btn-group">
+        <button class="btn btn-danger" id="btn-parent-reject" style="padding: 0.75rem;"><i class="fa-solid fa-xmark"></i> REJECT OUTING</button>
+        <button class="btn btn-success" id="btn-parent-approve" style="padding: 0.75rem;"><i class="fa-solid fa-check"></i> APPROVE OUTING</button>
+      </div>
+    </div>
+
+    <div id="parent-success-state" style="display: none; text-align: center; padding: 1.5rem 0;">
+      <i class="fa-solid fa-circle-check" style="font-size: 3.5rem; color: var(--success); margin-bottom: 0.75rem;"></i>
+      <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem;" id="parent-success-title">Decision Recorded</h3>
+      <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0;" id="parent-success-desc">Thank you. Your outing approval decision has been logged and sent to the Warden for final clearance.</p>
+    </div>
+  </div>
+
+  <script src="../../js/utils.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get('token');
+
+      const loadingEl = document.getElementById('parent-loading-state');
+      const errorEl = document.getElementById('parent-error-state');
+      const formEl = document.getElementById('parent-form-state');
+      const successEl = document.getElementById('parent-success-state');
+
+      if (!token) {
+        loadingEl.style.display = 'none';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      try {
+        const req = await HostelDB.getOutingRequestByToken(token);
+        if (!req) {
+          loadingEl.style.display = 'none';
+          errorEl.style.display = 'block';
+          return;
+        }
+
+        if (req.parentApprovalStatus !== 'Pending') {
+          loadingEl.style.display = 'none';
+          errorEl.style.display = 'none';
+          successEl.style.display = 'block';
+          document.getElementById('parent-success-title').textContent = `Outing Already ${req.parentApprovalStatus}`;
+          document.getElementById('parent-success-desc').textContent = `You have already ${req.parentApprovalStatus.toLowerCase()} this outing request.`;
+          return;
+        }
+
+        // Fetch student details
+        const students = await HostelDB.getStudents();
+        const student = students.find(s => s.regNo === req.studentReg) || { name: 'Student', regNo: req.studentReg, dept: 'CSE', room: '-' };
+
+        document.getElementById('val-student-name').textContent = student.name;
+        document.getElementById('val-student-reg').textContent = student.regNo;
+        document.getElementById('val-student-dept').textContent = `${student.dept || 'CSE'} - Room ${student.room || '-'}`;
+        document.getElementById('val-outing-date').textContent = req.outingDate;
+        document.getElementById('val-exit-time').textContent = req.requestedExitTime;
+        document.getElementById('val-return-time').textContent = req.expectedReturnTime;
+        document.getElementById('val-destination').textContent = req.destination;
+        document.getElementById('val-reason').textContent = req.reason;
+
+        loadingEl.style.display = 'none';
+        formEl.style.display = 'block';
+
+        // Decision Handlers
+        document.getElementById('btn-parent-approve').addEventListener('click', async () => {
+          formEl.style.display = 'none';
+          loadingEl.style.display = 'block';
+          await HostelDB.updateOutingParentApproval(req.id, 'Approved');
+          loadingEl.style.display = 'none';
+          successEl.style.display = 'block';
+          document.getElementById('parent-success-title').textContent = 'Outing Permission Approved';
+          document.getElementById('parent-success-desc').textContent = 'Your approval has been recorded and submitted to the Warden for final outpass generation.';
+        });
+
+        document.getElementById('btn-parent-reject').addEventListener('click', async () => {
+          formEl.style.display = 'none';
+          loadingEl.style.display = 'block';
+          await HostelDB.updateOutingParentApproval(req.id, 'Rejected');
+          loadingEl.style.display = 'none';
+          successEl.style.display = 'block';
+          document.getElementById('parent-success-title').textContent = 'Outing Request Rejected';
+          document.getElementById('parent-success-desc').textContent = 'You have declined this outing request. The student will be notified.';
+        });
+
+      } catch (err) {
+        console.error('Parent Approval Error:', err);
+        loadingEl.style.display = 'none';
+        errorEl.style.display = 'block';
+      }
+    });
+  </script>
+</body>
+</html>

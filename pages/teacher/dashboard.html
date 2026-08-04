@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teacher Dashboard - Hostel ERP</title>
+  
+  <!-- CSS Library -->
+  
+  
+  
+  
+  
+  <!-- FontAwesome & Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/components-9f2f1ffe.css">
+  <link rel="stylesheet" href="/assets/teacher-17034f48.css">
+</head>
+<body class="theme-light" data-root-path="../../">
+
+  <div class="app-container">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+    
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Navbar -->
+      <div id="navbar-container"></div>
+      
+      <!-- Page Body -->
+      <div class="page-body">
+        <div class="container-fluid">
+          
+          <!-- Header -->
+          <div style="margin-bottom: 2rem;">
+            <h2 style="font-size: 1.5rem; font-weight: 800; background: linear-gradient(135deg, var(--text-primary) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Departmental Overview</h2>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">Monitor hostel status, leaves, and evening absences of students in your academic branch</p>
+          </div>
+
+          <!-- Stats Grid -->
+          <div class="stats-grid">
+            <!-- Dept Students -->
+            <div class="glass-card stat-card">
+              <div class="stat-icon">
+                <i class="fa-solid fa-users"></i>
+              </div>
+              <div class="stat-info">
+                <span class="stat-label">Dept Students</span>
+                <span class="stat-value" id="stats-total-students">0</span>
+              </div>
+            </div>
+
+            <!-- In Hostel -->
+            <div class="glass-card stat-card">
+              <div class="stat-icon success">
+                <i class="fa-solid fa-house-chimney-user"></i>
+              </div>
+              <div class="stat-info">
+                <span class="stat-label">Present in Hostel</span>
+                <span class="stat-value" id="stats-in-hostel">0</span>
+              </div>
+            </div>
+
+            <!-- On Leave -->
+            <div class="glass-card stat-card">
+              <div class="stat-icon warning">
+                <i class="fa-solid fa-plane-departure"></i>
+              </div>
+              <div class="stat-info">
+                <span class="stat-label">On Approved Leave</span>
+                <span class="stat-value" id="stats-on-leave">0</span>
+              </div>
+            </div>
+
+            <!-- Illegal Absence -->
+            <div class="glass-card stat-card">
+              <div class="stat-icon danger">
+                <i class="fa-solid fa-circle-exclamation"></i>
+              </div>
+              <div class="stat-info">
+                <span class="stat-label">Illegal Absences</span>
+                <span class="stat-value" id="stats-illegal-leave">0</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Alert Logs & Operations Row -->
+          <div class="row">
+            <div class="col-md-12">
+              <div class="glass-card" style="height: 100%;">
+                <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem; margin-bottom: 1rem;">
+                  <h3 style="font-size: 1rem; font-weight: 700; color: var(--text-primary);"><i class="fa-solid fa-triangle-exclamation" style="margin-right: 0.5rem; color: var(--danger);"></i>Urgent Student Absence Alerts</h3>
+                  <span style="font-size: 0.75rem; color: var(--text-muted);">Real-time evening roll-call warnings</span>
+                </div>
+                
+                <div class="table-responsive">
+                  <table class="table-custom">
+                    <thead>
+                      <tr>
+                        <th>Register Number</th>
+                        <th>Student Name</th>
+                        <th>Room</th>
+                        <th>Warning Details</th>
+                      </tr>
+                    </thead>
+                    <tbody id="teacher-alerts-tbody">
+                      <!-- Hydrated by JS teacher.js -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      
+      <!-- Footer -->
+      <div id="footer-container"></div>
+    </main>
+  </div>
+
+  <!-- Scripts -->
+  <script src="../../js/utils.js"></script>
+  <script src="../../js/auth.js"></script>
+  <script src="../../js/notifications.js"></script>
+  <script src="../../js/app.js"></script>
+  <script src="../../js/teacher.js"></script>
+</body>
+</html>

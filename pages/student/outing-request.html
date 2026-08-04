@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Short Outing Permission - Student Portal</title>
+  
+  <!-- CSS Library -->
+  
+  
+  
+  
+  
+  <!-- FontAwesome & Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/components-9f2f1ffe.css">
+  <link rel="stylesheet" href="/assets/student-0ad389cb.css">
+</head>
+<body class="theme-light" data-root-path="../../">
+
+  <div class="app-container">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+    
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Navbar -->
+      <div id="navbar-container"></div>
+      
+      <!-- Page Body -->
+      <div class="page-body">
+        <div class="container-fluid">
+          
+          <!-- Header -->
+          <div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+            <div>
+              <h2 style="font-size: 1.5rem; font-weight: 800; background: linear-gradient(135deg, var(--text-primary) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Short Outing Permission System</h2>
+              <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">Apply for campus exit permissions (Max 4 hours policy). Requires Parent Approval Link & Warden Clearance.</p>
+            </div>
+            <div>
+              <button class="btn btn-primary" id="btn-open-outing-modal"><i class="fa-solid fa-plus-circle"></i> Request Outing</button>
+            </div>
+          </div>
+
+          <!-- Policy Information Card -->
+          <div class="glass-card" style="margin-bottom: 1.5rem; background: rgba(79, 70, 229, 0.04); border-left: 4px solid var(--primary); padding: 1rem 1.25rem;">
+            <div style="display: flex; gap: 0.85rem; align-items: flex-start;">
+              <i class="fa-solid fa-shield-halved" style="font-size: 1.25rem; color: var(--primary); margin-top: 0.1rem;"></i>
+              <div>
+                <h4 style="font-size: 0.9rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem;">Outing Permission Policy Rules</h4>
+                <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0; line-height: 1.4;">
+                  1. Maximum allowed duration per outing is <strong>4 Hours</strong>.<br>
+                  2. Share the generated <strong>Parent Approval Link</strong> with your parent for single-click authorization.<br>
+                  3. Digital Outpass & QR Code is issued automatically once Warden approves.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Outing Requests Table -->
+          <div class="glass-card" style="padding: 0; overflow: hidden;">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 0.5rem;">
+              <h3 style="font-size: 1rem; font-weight: 700; margin: 0;"><i class="fa-solid fa-clock-rotate-left" style="margin-right: 0.5rem; color: var(--primary);"></i>My Outing Applications</h3>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">Real-time status of short outing requests</span>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table-custom" style="margin-bottom: 0; min-width: 850px;">
+                <thead>
+                  <tr>
+                    <th>Outing ID</th>
+                    <th>Date</th>
+                    <th>Requested Window</th>
+                    <th>Duration</th>
+                    <th>Destination / Reason</th>
+                    <th>Parent Status</th>
+                    <th>Warden Status</th>
+                    <th style="text-align: right; padding-right: 1.5rem;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="student-outing-tbody">
+                  <!-- Hydrated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      
+      <!-- Footer -->
+      <div id="footer-container"></div>
+    </main>
+  </div>
+
+  <!-- CENTER-SCREEN MODAL: Request Short Outing -->
+  <div class="modal-overlay hidden" id="modal-outing-request">
+    <div class="modal-backdrop" id="modal-outing-backdrop"></div>
+    <div class="modal-container" style="max-width: 540px;">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fa-solid fa-person-walking-luggage" style="color: var(--primary); margin-right: 0.5rem;"></i>Request Short Outing Permission</h3>
+        <button class="modal-close" id="modal-outing-close">&times;</button>
+      </div>
+      <form id="form-outing-request">
+        <div class="modal-body">
+          <div id="outing-policy-alert" style="display: none; background: rgba(244, 67, 54, 0.08); border-left: 3px solid var(--danger); padding: 0.75rem; border-radius: 4px; font-size: 0.8rem; color: var(--danger); margin-bottom: 1rem;">
+            <i class="fa-solid fa-triangle-exclamation" style="margin-right: 0.4rem;"></i>
+            <span id="outing-policy-msg">Normal outing permission cannot exceed 4 hours.</span>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr; gap: 1rem;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" for="outing-date">Outing Date *</label>
+              <input type="date" id="outing-date" class="form-control" required>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" for="outing-exit-time">Requested Exit Time *</label>
+                <input type="time" id="outing-exit-time" class="form-control" required value="14:00">
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" for="outing-return-time">Expected Return Time *</label>
+                <input type="time" id="outing-return-time" class="form-control" required value="18:00">
+              </div>
+            </div>
+
+            <div style="background: var(--bg-primary); padding: 0.75rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); font-size: 0.82rem; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;">
+              <span>Calculated Outing Duration:</span>
+              <strong id="outing-duration-badge" style="color: var(--primary); font-size: 0.9rem;">4 Hours 0 Mins</strong>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" for="outing-destination">Destination *</label>
+              <input type="text" id="outing-destination" class="form-control" placeholder="e.g. Chengalpattu Town / Medical Clinic" required>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" for="outing-reason">Reason Description *</label>
+              <textarea id="outing-reason" class="form-control" rows="2" placeholder="State reason for outing..." required></textarea>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" for="outing-emergency">Emergency Contact Phone (Optional)</label>
+              <input type="tel" id="outing-emergency" class="form-control" placeholder="10-digit mobile number">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-outing">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btn-submit-outing"><i class="fa-solid fa-paper-plane"></i> Submit Request</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- CENTER-SCREEN MODAL: Digital Outpass Viewer -->
+  <div class="modal-overlay hidden" id="modal-view-outpass">
+    <div class="modal-backdrop" id="modal-outpass-backdrop"></div>
+    <div class="modal-container" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fa-solid fa-qrcode" style="color: var(--primary); margin-right: 0.5rem;"></i>KVCET Digital Outpass</h3>
+        <button class="modal-close" id="modal-outpass-close">&times;</button>
+      </div>
+      <div class="modal-body" style="text-align: center;">
+        <div id="outpass-card-content">
+          <!-- Hydrated dynamically -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btn-close-outpass-modal">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="../../js/vendor/qrcode.min.js"></script>
+  <script src="../../js/utils.js"></script>
+  <script src="../../js/auth.js"></script>
+  <script src="../../js/notifications.js"></script>
+  <script src="../../js/app.js"></script>
+  <script src="../../js/student.js"></script>
+</body>
+</html>

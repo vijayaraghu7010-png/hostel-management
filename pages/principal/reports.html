@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reports - Hostel ERP</title>
+  
+  <!-- CSS Library -->
+  
+  
+  
+  
+  
+  <!-- FontAwesome & Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Print stylesheet -->
+  <style>
+    @media print {
+      body {
+        background: #ffffff;
+        color: #000000;
+      }
+      .app-container {
+        display: block;
+      }
+      #sidebar-container, .navbar, .btn, #footer-container {
+        display: none !important;
+      }
+      .main-content {
+        padding: 0;
+      }
+      .glass-card {
+        border: none;
+        box-shadow: none;
+        background: none;
+        padding: 0;
+      }
+    }
+  </style>
+  <link rel="stylesheet" href="/assets/components-9f2f1ffe.css">
+  <link rel="stylesheet" href="/assets/principal-fd8cbe4e.css">
+</head>
+<body class="theme-light" data-root-path="../../">
+
+  <div class="app-container">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+    
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Navbar -->
+      <div id="navbar-container"></div>
+      
+      <!-- Page Body -->
+      <div class="page-body">
+        <div class="container-fluid">
+          
+          <!-- Header -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+            <div>
+              <h2 style="font-size: 1.5rem; font-weight: 800; background: linear-gradient(135deg, var(--text-primary) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Executive Institution Reports</h2>
+              <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">Generate and print official hostel occupancy and compliance journals</p>
+            </div>
+            
+            <button class="btn btn-primary" id="btn-print-reports">
+              <i class="fa-solid fa-print"></i>
+              <span>Print Executive Summary</span>
+            </button>
+          </div>
+
+          <!-- Report Page Body -->
+          <div class="glass-card" style="padding: 2.5rem;">
+            <!-- Report Title -->
+            <div style="text-align: center; margin-bottom: 2.5rem; border-bottom: 2px solid var(--border-color); padding-bottom: 1.5rem;">
+              <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary);">KVCET ERP SYSTEM</h1>
+              <h3 style="font-size: 1.1rem; font-weight: 600; color: var(--primary); margin-top: 0.25rem; letter-spacing: 1px;">Executive Hostel Operations Audit</h3>
+              <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem;">Academic Year: 2025-2026 | Prepared for: College Board of Directors</p>
+            </div>
+
+            <!-- Stats Block -->
+            <div class="row" style="margin-bottom: 2.5rem;">
+              <div class="col-md-3">
+                <div style="text-align: center; border-right: 1px solid var(--border-color); padding: 0.5rem;">
+                  <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Total Enrollment</span>
+                  <h2 style="font-size: 2rem; font-weight: 800; color: var(--text-primary); margin-top: 0.25rem;" id="rep-total-students">0</h2>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div style="text-align: center; border-right: 1px solid var(--border-color); padding: 0.5rem;">
+                  <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Hostel Residents</span>
+                  <h2 style="font-size: 2rem; font-weight: 800; color: var(--primary); margin-top: 0.25rem;" id="rep-hostel-students">0</h2>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div style="text-align: center; border-right: 1px solid var(--border-color); padding: 0.5rem;">
+                  <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Students on Leave</span>
+                  <h2 style="font-size: 2rem; font-weight: 800; color: var(--warning); margin-top: 0.25rem;" id="rep-active-leaves">0</h2>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div style="text-align: center; padding: 0.5rem;">
+                  <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Illegal Absences</span>
+                  <h2 style="font-size: 2rem; font-weight: 800; color: var(--danger); margin-top: 0.25rem;" id="rep-illegal-absences">0</h2>
+                </div>
+              </div>
+            </div>
+
+            <!-- Report Body Text -->
+            <div style="margin-bottom: 3rem;">
+              <h4 style="font-size: 1rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.75rem;">Executive Summary Statement</h4>
+              <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6; margin-bottom: 1.5rem;">
+                Hostel occupancy levels are stable with low vacant percentages. Wing-wise allocations are heavily optimized to prevent overcrowding and ensure efficient allocation of resources.
+              </p>
+              <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6;">
+                Daily roll-call procedures have been successfully automated. Attendance percentages remain highly compliant, with automated warnings triggered for unauthorized evening absences.
+              </p>
+            </div>
+
+            <!-- Signatures -->
+            <div style="margin-top: 5rem; display: flex; justify-content: space-between; border-top: 1px dashed var(--border-color); padding-top: 2rem; font-size: 0.85rem; color: var(--text-secondary);">
+              <div>
+                <p style="font-weight: 700;">Dr. Sandeep Shastri</p>
+                <p style="color: var(--text-muted);">College Principal</p>
+              </div>
+              <div style="text-align: right;">
+                <p style="font-weight: 700;">Vikas Malhotra</p>
+                <p style="color: var(--text-muted);">Administrative Officer (AO)</p>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+      
+      <!-- Footer -->
+      <div id="footer-container"></div>
+    </main>
+  </div>
+
+  <!-- Scripts -->
+  <script src="../../js/utils.js"></script>
+  <script src="../../js/auth.js"></script>
+  <script src="../../js/notifications.js"></script>
+  <script src="../../js/app.js"></script>
+  <script src="../../js/principal.js"></script>
+</body>
+</html>
