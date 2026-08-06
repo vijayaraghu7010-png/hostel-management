@@ -20,7 +20,7 @@ export function useQRCode({
   type,
   id,
   payloadData = {},
-  ttlSeconds = 30,
+  ttlSeconds = 60,
   autoRefresh = true,
   options,
 }: UseQRCodeProps) {
@@ -39,7 +39,7 @@ export function useQRCode({
   optionsRef.current = options;
 
   const generateNewQR = useCallback(async () => {
-    setState((prev) => ({ ...prev, loading: true, error: null }));
+    setState((prev: QRState) => ({ ...prev, loading: true, error: null }));
 
     try {
       const payload: UniversalQRPayload = await createSignedPayload(
@@ -62,7 +62,7 @@ export function useQRCode({
       });
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to generate QR code');
-      setState((prev) => ({
+      setState((prev: QRState) => ({
         ...prev,
         loading: false,
         error,
@@ -88,7 +88,7 @@ export function useQRCode({
         if (autoRefresh) {
           void generateNewQR();
         } else {
-          setState((prev) => ({
+          setState((prev: QRState) => ({
             ...prev,
             isExpired: true,
             timeRemainingSeconds: 0,
@@ -98,7 +98,7 @@ export function useQRCode({
           }
         }
       } else {
-        setState((prev) => ({
+        setState((prev: QRState) => ({
           ...prev,
           timeRemainingSeconds: remaining,
           isExpired: isExpired(expiresAt),

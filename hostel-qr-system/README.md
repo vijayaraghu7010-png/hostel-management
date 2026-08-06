@@ -23,7 +23,7 @@ Hostel ERP Core System (https://jxdsuhutztvuoknkypay.supabase.co)
 
 ## Key Features
 
-1. **Universal QR Generator Engine**: 30-second auto-refreshing QR codes signed with HMAC SHA-256 digital signatures, cryptographic nonces, anti-replay protection, and expiry validation.
+1. **Universal QR Generator Engine**: 60-second auto-refreshing QR codes signed with HMAC SHA-256 digital signatures, cryptographic nonces, anti-replay protection, and expiry validation.
 2. **Universal Scanner Engine**: Multi-device ZXing browser camera scanner supporting rear auto-selection, webcams, torch toggle, pause/resume, and reticle overlays.
 3. **Study Hour Module**: Real-time warden session start/stop controls, live elapsed clocks, attendance counters, filterable rosters, and check-in verifications.
 4. **Outpass & Gate Control Module**: Student leave applications, warden request approvals/rejections, progress timelines, and gate exit/re-entry QR verification.

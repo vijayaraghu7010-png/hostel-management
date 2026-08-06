@@ -2,7 +2,7 @@ import type { QRType, UniversalQRPayload } from '@/types/qr';
 import { QRSecurity } from '@/utils/security';
 
 export const CURRENT_QR_VERSION = 1;
-export const DEFAULT_TTL_SECONDS = 30;
+export const DEFAULT_TTL_SECONDS = 60;
 
 export async function createSignedPayload<T extends Record<string, unknown> = Record<string, unknown>>(
   type: QRType,

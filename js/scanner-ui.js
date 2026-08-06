@@ -1,6 +1,6 @@
 /**
  * HMS PRODUCTION UNIVERSAL QR SCANNER CONTROLLER
- * Robust @zxing/browser + Nimiq QrScanner + BarcodeDetector Architecture
+ * html5-qrcode Engine Architecture for KVCET Hostel ERP
  */
 (function (global) {
   'use strict';
@@ -8,63 +8,51 @@
   class HMSQRScannerManager {
     constructor() {
       this.overlayEl = null;
-      this.videoEl = null;
+      this.cameraContainerEl = null;
       this.isScanning = false;
       this.scanLock = false;
       this.isTorchOn = false;
-      this.activeDevices = [];
-      this.currentDeviceIndex = 0;
-      this.activeStream = null;
-      this.scanTimer = null;
-      this.activeTier = 'ZXING_BROWSER';
-
-      // Engine instances
-      this.zxingReader = null;
-      this.zxingControls = null;
-      this.nimiqScanner = null;
-      this.barcodeDetector = null;
+      this.availableCameras = [];
+      this.currentCameraIndex = 0;
+      this.html5QrCode = null;
 
       this.onScanCallback = null;
       this.onCloseCallback = null;
       this.onManualCallback = null;
       this.audioCtx = null;
 
-      this.initEngines();
+      this._lastScannedText = null;
+      this._lastScannedTime = 0;
+    }
+
+    /**
+     * Ensure html5-qrcode script is loaded
+     */
+    async ensureHtml5QrcodeLoaded() {
+      if (global.Html5Qrcode) return true;
+
+      return new Promise((resolve) => {
+        const script = document.createElement('script');
+        script.src = (window.location.pathname.includes('/pages/') ? '../../' : './') + 'js/vendor/html5-qrcode.min.js';
+        script.onload = () => {
+          console.log('✓ html5-qrcode script loaded successfully.');
+          resolve(true);
+        };
+        script.onerror = () => {
+          console.error('Failed to load html5-qrcode.min.js');
+          resolve(false);
+        };
+        document.head.appendChild(script);
+      });
     }
 
     /* ----------------------------------------------------------------------
-       1. Initialize Engines (Feature-detect BarcodeDetector & @zxing/browser)
-       ---------------------------------------------------------------------- */
-    initEngines() {
-      // Tier 1: @zxing/browser
-      if (global.ZXingBrowser && global.ZXingBrowser.BrowserQRCodeReader) {
-        try {
-          this.zxingReader = new global.ZXingBrowser.BrowserQRCodeReader();
-          this.activeTier = 'ZXING_BROWSER';
-          console.log('✓ Primary Engine Initialized: @zxing/browser');
-        } catch (e) {
-          console.warn('ZXing Browser init warning:', e);
-        }
-      }
-
-      // Feature-detect native BarcodeDetector for hardware acceleration fallback
-      if ('BarcodeDetector' in global) {
-        try {
-          this.barcodeDetector = new global.BarcodeDetector({ formats: ['qr_code'] });
-          console.log('⚡ Hardware GPU Acceleration Available: BarcodeDetector');
-        } catch (e) {
-          this.barcodeDetector = null;
-        }
-      }
-    }
-
-    /* ----------------------------------------------------------------------
-       2. Inject Universal Fullscreen Scanner DOM Layout
+       1. Inject Universal Fullscreen Scanner DOM Layout
        ---------------------------------------------------------------------- */
     initDOM() {
       if (document.getElementById('hms-qr-scanner-fullscreen')) {
         this.overlayEl = document.getElementById('hms-qr-scanner-fullscreen');
-        this.videoEl = document.getElementById('hms-scanner-video-el');
+        this.cameraContainerEl = document.getElementById('hms-scanner-camera-container');
         return;
       }
 
@@ -90,14 +78,15 @@
         </div>
 
         <!-- Viewfinder Stream Container -->
-        <div class="hms-scanner-viewfinder">
+        <div class="hms-scanner-viewfinder" id="hms-scanner-viewfinder">
           <!-- Loading Spinner Overlay -->
           <div class="hms-scanner-loader" id="hms-scanner-loader-el" style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(5,7,10,0.92); z-index: 100; gap: 1rem;">
             <i class="fa-solid fa-circle-notch fa-spin fa-3x" style="color: #38bdf8;"></i>
             <span style="color: #ffffff; font-size: 0.9rem; font-weight: 500;" id="hms-scanner-status-text">Initializing HD Lens...</span>
           </div>
 
-          <video id="hms-scanner-video-el" class="hms-scanner-video" autoplay playsinline muted></video>
+          <!-- HTML5-QRCode Render Target Container -->
+          <div id="hms-scanner-camera-container" style="position: absolute; inset: 0; width: 100%; height: 100%; background: #000;"></div>
           
           <!-- Centered Square Viewfinder Frame -->
           <div class="hms-scanner-frame-wrapper" id="hms-scanner-frame">
@@ -145,7 +134,7 @@
           </div>
         </div>
 
-        <!-- Temporary Debug Sheet Modal -->
+        <!-- Debug Sheet Modal -->
         <div class="hms-debug-modal-backdrop" id="hms-debug-modal-backdrop" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 9999; align-items: flex-end; justify-content: center;">
           <div style="background: #0f172a; color: #f8fafc; border-top: 2px solid #38bdf8; width: 100%; max-width: 540px; border-radius: 20px 20px 0 0; padding: 20px; font-family: monospace; box-shadow: 0 -10px 40px rgba(0,0,0,0.8); max-height: 80vh; overflow-y: auto;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 10px; margin-bottom: 12px;">
@@ -183,13 +172,13 @@
 
       document.body.appendChild(container);
       this.overlayEl = container;
-      this.videoEl = document.getElementById('hms-scanner-video-el');
+      this.cameraContainerEl = document.getElementById('hms-scanner-camera-container');
 
       this.attachEvents();
     }
 
     /* ----------------------------------------------------------------------
-       3. Attach DOM Event Listeners
+       2. Attach DOM Event Listeners
        ---------------------------------------------------------------------- */
     attachEvents() {
       const backBtn = document.getElementById('hms-scanner-btn-back');
@@ -226,10 +215,11 @@
     }
 
     /* ----------------------------------------------------------------------
-       4. Open Scanner Fullscreen Overlay
+       3. Open Scanner Fullscreen Overlay
        ---------------------------------------------------------------------- */
     async open(options = {}) {
       this.initDOM();
+      await this.ensureHtml5QrcodeLoaded();
 
       this.onScanCallback = options.onScan || null;
       this.onCloseCallback = options.onClose || null;
@@ -263,11 +253,16 @@
 
       this.isScanning = true;
       this.scanLock = false;
+      this.isTorchOn = false;
+
+      const torchBtn = document.getElementById('hms-scanner-btn-torch');
+      if (torchBtn) torchBtn.classList.remove('active');
+
       await this.startCamera();
     }
 
     /* ----------------------------------------------------------------------
-       5. Camera Initialization (Ideal Constraints & Graceful Degradation Fallback)
+       4. Camera Initialization via html5-qrcode (Auto Rear Camera Selection)
        ---------------------------------------------------------------------- */
     async startCamera() {
       const loader = document.getElementById('hms-scanner-loader-el');
@@ -275,214 +270,111 @@
       if (loader) loader.style.display = 'flex';
       if (errorOverlay) errorOverlay.style.display = 'none';
 
-      this.releaseStream();
+      await this.releaseStream();
 
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        this.showErrorState(
-          'HTTPS Access Required',
-          'Camera APIs are blocked on unsecured (HTTP) connections. Please access over HTTPS or localhost.'
-        );
-        return;
+      if (!global.Html5Qrcode) {
+        const loaded = await this.ensureHtml5QrcodeLoaded();
+        if (!loaded) {
+          this.showErrorState('Engine Error', 'Failed to load html5-qrcode scanner library.');
+          return;
+        }
       }
 
       try {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        this.activeDevices = devices.filter(d => d.kind === 'videoinput');
+        // Enumerate video cameras
+        try {
+          const cameras = await global.Html5Qrcode.getCameras();
+          this.availableCameras = cameras || [];
+        } catch (e) {
+          console.warn('Could not enumerate cameras via Html5Qrcode:', e);
+          this.availableCameras = [];
+        }
 
-        let selectedDeviceId = null;
-        if (this.activeDevices.length > 0) {
-          selectedDeviceId = this.activeDevices[0].deviceId;
-          for (let i = 0; i < this.activeDevices.length; i++) {
-            const label = (this.activeDevices[i].label || '').toLowerCase();
-            if (label.includes('back') || label.includes('rear') || label.includes('environment')) {
-              selectedDeviceId = this.activeDevices[i].deviceId;
-              this.currentDeviceIndex = i;
-              break;
+        // Auto-select Rear / Environment camera
+        let selectedCameraId = null;
+        if (this.availableCameras.length > 0) {
+          const findByLabel = (kw) => this.availableCameras.find(c => (c.label || '').toLowerCase().includes(kw));
+          const rearCam = findByLabel('back') ||
+                          findByLabel('environment') ||
+                          findByLabel('rear') ||
+                          findByLabel('facing back') ||
+                          this.availableCameras[this.availableCameras.length - 1];
+
+          if (rearCam) {
+            selectedCameraId = rearCam.id;
+            this.currentCameraIndex = this.availableCameras.findIndex(c => c.id === rearCam.id);
+          }
+        }
+
+        // Create Html5Qrcode instance targeted at our container
+        this.html5QrCode = new global.Html5Qrcode('hms-scanner-camera-container', { verbose: false });
+
+        // Build camera constraint (Device ID or environment facingMode fallback)
+        const cameraConfig = selectedCameraId
+          ? { deviceId: { exact: selectedCameraId } }
+          : { facingMode: 'environment' };
+
+        const scanConfig = {
+          fps: 15,
+          qrbox: (viewfinderWidth, viewfinderHeight) => {
+            const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+            const boxSize = Math.floor(minEdge * 0.72);
+            return { width: Math.max(boxSize, 200), height: Math.max(boxSize, 200) };
+          },
+          aspectRatio: 1.0
+        };
+
+        // Start scanning with html5-qrcode engine
+        await this.html5QrCode.start(
+          cameraConfig,
+          scanConfig,
+          (decodedText, decodedResult) => {
+            if (this.isScanning && !this.scanLock) {
+              this.handleDecodeSuccess(decodedText);
             }
+          },
+          (errorMessage) => {
+            // Frame parse error - ignore standard non-QR frame errors
           }
-        }
+        );
 
-        // Try Tier 1: @zxing/browser (Preferred Engine with explicit stream metadata initialization)
-        if (this.zxingReader && this.activeTier === 'ZXING_BROWSER') {
-          try {
-            const constraints = {
-              video: {
-                deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
-                facingMode: selectedDeviceId ? undefined : { ideal: 'environment' },
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
-              }
-            };
-
-            // 1. Acquire media stream first so video dimensions populate before ZXing attaches
-            this.activeStream = await navigator.mediaDevices.getUserMedia(constraints);
-            this.videoEl.srcObject = this.activeStream;
-            await this.videoEl.play();
-
-            // 2. Wait until video element reports positive non-zero dimensions (loadedmetadata)
-            await new Promise((resolve) => {
-              if (this.videoEl.videoWidth > 0 && this.videoEl.videoHeight > 0) {
-                resolve();
-              } else {
-                this.videoEl.onloadedmetadata = () => resolve();
-                setTimeout(resolve, 800);
-              }
-            });
-
-            // 3. Start ZXing decoding from the initialized video element
-            // NOTE: decodeFromVideoElement() only takes ONE argument and does a single
-            // internal decode-then-resolve — it silently ignores a callback. We need the
-            // *Continuously* variant so our callback actually fires per decoded frame.
-            this._zxingLastActivity = Date.now();
-            this.zxingControls = await this.zxingReader.decodeFromVideoElementContinuously(
-              this.videoEl,
-              (result, err) => {
-                this._zxingLastActivity = Date.now();
-                if (result && this.isScanning && !this.scanLock) {
-                  try {
-                    const text = typeof result.getText === 'function' ? result.getText() : (result.text || String(result));
-                    if (text) {
-                      this.handleScanResult(text);
-                    }
-                  } catch (e) {
-                    console.error('Error processing ZXing result:', e);
-                  }
-                }
-              }
-            );
-            console.log('▶ Started scanning via Tier 1 (@zxing/browser)');
-            if (loader) loader.style.display = 'none';
-
-            // WATCHDOG: decodeContinuously's internal loop only auto-retries on zxing's
-            // own recognized exceptions (NotFound/Checksum/Format). Any other error
-            // (e.g. a 0x0 capture-canvas race on the very first frame) kills the loop
-            // silently with no retry — the overlay stays open but nothing ever fires
-            // again. If we see no callback activity at all for a few seconds, assume
-            // the loop died and fail over to Tier 2 automatically.
-            if (this._zxingWatchdog) clearInterval(this._zxingWatchdog);
-            this._zxingWatchdog = setInterval(() => {
-              if (!this.isScanning || this.activeTier !== 'ZXING_BROWSER') {
-                clearInterval(this._zxingWatchdog);
-                this._zxingWatchdog = null;
-                return;
-              }
-              if (Date.now() - this._zxingLastActivity > 3500) {
-                clearInterval(this._zxingWatchdog);
-                this._zxingWatchdog = null;
-                console.warn('Tier 1 (@zxing/browser) went silent — no frame activity detected. Failing over to Tier 2 (Nimiq).');
-                this.activeTier = 'NIMIQ_SCANNER';
-                this.startCamera();
-              }
-            }, 1000);
-
-            return;
-          } catch (zxingErr) {
-            console.warn('Tier 1 (@zxing/browser) initialization failed, advancing to fallback:', zxingErr);
-            this.activeTier = 'NIMIQ_SCANNER';
-          }
-        }
-
-        // Fallback Tier 2: Nimiq QrScanner (ONLY initialized if Tier 1 fails)
-        if (this.activeTier === 'NIMIQ_SCANNER' && global.QrScanner) {
-          try {
-            this.nimiqScanner = new global.QrScanner(
-              this.videoEl,
-              (result) => {
-                if (this.isScanning && !this.scanLock) {
-                  const text = typeof result === 'object' ? result.data : result;
-                  this.handleScanResult(text);
-                }
-              },
-              {
-                preferredCamera: 'environment',
-                highlightScanRegion: false,
-                highlightCodeOutline: false,
-                maxScansPerSecond: 10
-              }
-            );
-            await this.nimiqScanner.start();
-            console.log('▶ Started scanning via Tier 2 (Nimiq QrScanner)');
-            if (loader) loader.style.display = 'none';
-            return;
-          } catch (nimiqErr) {
-            console.warn('Tier 2 (Nimiq) failed, attempting native BarcodeDetector fallback:', nimiqErr);
-          }
-        }
-
-        // Fallback Tier 3: Native BarcodeDetector (feature-detected)
-        if ('BarcodeDetector' in global) {
-          const videoConstraints = {
-            facingMode: selectedDeviceId ? undefined : { ideal: 'environment' },
-            deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          };
-
-          this.activeStream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: false });
-          this.videoEl.srcObject = this.activeStream;
-          await this.videoEl.play();
-
-          const track = this.activeStream.getVideoTracks()[0];
-          if (track && track.applyConstraints) {
-            try {
-              await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
-            } catch (e) {}
-          }
-
-          this.startNativeDetectionLoop();
-          if (loader) loader.style.display = 'none';
-          return;
-        }
-
-        throw new Error('No compatible QR decoding engine available.');
+        console.log('▶ html5-qrcode scanner started successfully!');
+        if (loader) loader.style.display = 'none';
 
       } catch (err) {
-        console.error('Camera Stream Initialization Error:', err);
+        console.error('Camera Initialization Error:', err);
         this.showErrorState(
           err.name === 'NotAllowedError' ? 'Camera Permission Denied' : 'Camera Unavailable',
-          'Unable to access camera lens. Please check permissions.'
+          'Unable to access camera lens. Please check browser camera permissions.'
         );
       }
     }
 
-    startNativeDetectionLoop() {
-      const scanFrame = async () => {
-        if (!this.isScanning || this.scanLock || !this.videoEl) return;
-
-        if (this.videoEl.readyState >= 2 && !this.videoEl.paused && !this.videoEl.ended) {
-          let decodedText = null;
-          if (this.barcodeDetector) {
-            try {
-              const barcodes = await this.barcodeDetector.detect(this.videoEl);
-              if (barcodes && barcodes.length > 0) {
-                decodedText = barcodes[0].rawValue;
-              }
-            } catch (e) {}
-          }
-
-          if (decodedText && this.isScanning && !this.scanLock) {
-            this.handleScanResult(decodedText);
-            return;
-          }
-        }
-
-        if (this.isScanning && !this.scanLock) {
-          this.scanTimer = setTimeout(scanFrame, 120);
-        }
-      };
-
-      scanFrame();
+    /* ----------------------------------------------------------------------
+       5. Existing Callback Bridge: handleDecodeSuccess(decodedText)
+       ---------------------------------------------------------------------- */
+    handleDecodeSuccess(decodedText) {
+      this.handleScanResult(decodedText);
     }
 
     /* ----------------------------------------------------------------------
-       6. Process & Debug Log Scanned Result
+       6. Process & Debug Log Scanned Result (With 2s Duplicate Scan Prevention)
        ---------------------------------------------------------------------- */
     handleScanResult(decodedText) {
       if (!this.isScanning || this.scanLock) return;
+
+      // Duplicate scan prevention (2000ms debounce window)
+      const now = Date.now();
+      if (this._lastScannedText === decodedText && (now - this._lastScannedTime < 2000)) {
+        console.log('Duplicate QR scan ignored within 2000ms debounce window:', decodedText);
+        return;
+      }
+
+      this._lastScannedText = decodedText;
+      this._lastScannedTime = now;
       this.scanLock = true; // Lock immediately to prevent duplicate triggers
 
-      // Print decoded value in Console
-      console.log("%c=== UNIVERSAL QR DECODED ===", "color: #10b981; font-weight: bold; font-size: 14px;", decodedText);
+      console.log("%c=== UNIVERSAL QR DECODED (html5-qrcode) ===", "color: #10b981; font-weight: bold; font-size: 14px;", decodedText);
 
       let payload = null;
       let parseError = null;
@@ -585,7 +477,7 @@
         successOverlay.classList.add('active');
       }
 
-      this.releaseStream();
+      await this.releaseStream();
 
       await new Promise((r) => setTimeout(r, 650));
       this.close(true);
@@ -600,29 +492,40 @@
        ---------------------------------------------------------------------- */
     async toggleTorch() {
       try {
-        let track = null;
-        if (this.activeStream) {
-          track = this.activeStream.getVideoTracks()[0];
-        } else if (this.videoEl && this.videoEl.srcObject) {
-          track = this.videoEl.srcObject.getVideoTracks()[0];
-        }
-
-        if (!track) return;
-
-        const capabilities = track.getCapabilities ? track.getCapabilities() : {};
-        if (!capabilities.torch) {
-          if (typeof showToast === 'function') {
-            showToast('Flashlight torch is not supported on this camera device.', 'warning');
-          }
-          return;
-        }
-
         this.isTorchOn = !this.isTorchOn;
-        await track.applyConstraints({ advanced: [{ torch: this.isTorchOn }] });
+
+        let torchApplied = false;
+        if (this.html5QrCode && typeof this.html5QrCode.applyVideoConstraints === 'function') {
+          try {
+            await this.html5QrCode.applyVideoConstraints({
+              advanced: [{ torch: this.isTorchOn }]
+            });
+            torchApplied = true;
+          } catch (e) {
+            console.warn('html5QrCode applyVideoConstraints torch failed:', e);
+          }
+        }
+
+        if (!torchApplied) {
+          // Fallback directly to video element track constraints
+          const container = document.getElementById('hms-scanner-camera-container');
+          const video = container ? container.querySelector('video') : null;
+          const stream = video ? video.srcObject : null;
+          const track = stream ? stream.getVideoTracks()[0] : null;
+
+          if (track && track.applyConstraints) {
+            await track.applyConstraints({ advanced: [{ torch: this.isTorchOn }] });
+            torchApplied = true;
+          }
+        }
 
         const torchBtn = document.getElementById('hms-scanner-btn-torch');
         if (torchBtn) {
           torchBtn.classList.toggle('active', this.isTorchOn);
+        }
+
+        if (!torchApplied && typeof showToast === 'function') {
+          showToast('Flashlight torch is not supported on this camera device.', 'warning');
         }
       } catch (err) {
         console.warn('Torch activation error:', err);
@@ -633,14 +536,12 @@
        8. Switch Camera Lenses
        ---------------------------------------------------------------------- */
     async switchCamera() {
-      if (this.activeDevices.length <= 1) {
-        if (typeof showToast === 'function') {
-          showToast('No alternative camera devices detected.', 'info');
-        }
-        return;
+      if (this.availableCameras.length <= 1) {
+        this.currentCameraIndex = (this.currentCameraIndex + 1) % 2;
+      } else {
+        this.currentCameraIndex = (this.currentCameraIndex + 1) % this.availableCameras.length;
       }
 
-      this.currentDeviceIndex = (this.currentDeviceIndex + 1) % this.activeDevices.length;
       if (this.isScanning) {
         await this.startCamera();
       }
@@ -764,44 +665,18 @@
     /* ----------------------------------------------------------------------
        10. Clean Disposal & Memory Release
        ---------------------------------------------------------------------- */
-    releaseStream() {
+    async releaseStream() {
       this.isScanning = false;
-      if (this.scanTimer) {
-        clearTimeout(this.scanTimer);
-        this.scanTimer = null;
-      }
-      if (this._zxingWatchdog) {
-        clearInterval(this._zxingWatchdog);
-        this._zxingWatchdog = null;
-      }
-
-      // Explicitly stop @zxing/browser controls
-      if (this.zxingControls) {
+      if (this.html5QrCode) {
         try {
-          this.zxingControls.stop();
-        } catch (e) {}
-        this.zxingControls = null;
-      }
-
-      // Explicitly stop Nimiq QrScanner
-      if (this.nimiqScanner) {
-        try {
-          this.nimiqScanner.stop();
-          this.nimiqScanner.destroy();
-        } catch (e) {}
-        this.nimiqScanner = null;
-      }
-
-      // Explicitly stop MediaStream tracks
-      if (this.activeStream) {
-        try {
-          this.activeStream.getTracks().forEach((track) => track.stop());
-        } catch (e) {}
-        this.activeStream = null;
-      }
-
-      if (this.videoEl) {
-        this.videoEl.srcObject = null;
+          if (this.html5QrCode.isScanning) {
+            await this.html5QrCode.stop();
+          }
+          this.html5QrCode.clear();
+        } catch (e) {
+          console.warn('html5QrCode releaseStream warning:', e);
+        }
+        this.html5QrCode = null;
       }
     }
 

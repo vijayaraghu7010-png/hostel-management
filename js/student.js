@@ -1387,7 +1387,7 @@ async function initStudentDashboardStudyHour(student) {
                 <span><i class="fa-solid fa-stopwatch" style="color: #f59e0b; margin-right: 0.3rem;"></i> Live Timer: <strong id="student-live-timer-text" style="color: var(--primary); font-family: monospace;">00:00:00</strong></span>
               </div>
               <p style="font-size: 0.72rem; color: var(--text-muted); margin: 0.6rem 0 0 0; display: flex; align-items: center; gap: 0.3rem;">
-                <i class="fa-solid fa-arrows-rotate fa-spin" style="color: var(--primary);"></i> Secure QR refreshes every 30s to prevent screenshots
+                <i class="fa-solid fa-arrows-rotate fa-spin" style="color: var(--primary);"></i> Secure QR refreshes every 1 min to prevent screenshots
               </p>
             </div>
             <div style="background: #ffffff; padding: 10px; border-radius: 12px; text-align: center; width: 170px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin: 0 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid var(--border-color);">
@@ -1530,7 +1530,7 @@ async function initStudentDashboardStudyHour(student) {
         }
       };
       generateStudentQR();
-      studentQrRegenInterval = setInterval(generateStudentQR, 30000);
+      studentQrRegenInterval = setInterval(generateStudentQR, 60000);
     }
 
     if (activeSession && currentState === 'active') {
@@ -1579,34 +1579,47 @@ async function initStudentDashboardStudyHour(student) {
 
   if (!studyHourListenersAttached) {
     studyHourListenersAttached = true;
-    document.addEventListener('visibilitychange', () => {
-      if (!document.hidden && window.currentStudyHourRender) {
-        window.currentStudyHourRender(true);
+
+    const performImmediateRefresh = async () => {
+      if (window.currentStudyHourRender) {
+        await HostelDB.getActiveStudySession();
+        await window.currentStudyHourRender(true);
       }
-    });
-    window.addEventListener('focus', () => {
-      if (window.currentStudyHourRender) window.currentStudyHourRender(true);
-    });
-    window.addEventListener('pageshow', () => {
-      if (window.currentStudyHourRender) window.currentStudyHourRender(true);
-    });
-    window.addEventListener('online', () => {
-      if (window.currentStudyHourRender) window.currentStudyHourRender(true);
-    });
+    };
+
+    const managePollingState = async () => {
+      if (document.visibilityState === 'visible') {
+        await performImmediateRefresh();
+        if (!studyHourPollInterval) {
+          studyHourPollInterval = setInterval(async () => {
+            if (document.visibilityState === 'visible') {
+              await performImmediateRefresh();
+            }
+          }, 5000);
+        }
+      } else {
+        if (studyHourPollInterval) {
+          clearInterval(studyHourPollInterval);
+          studyHourPollInterval = null;
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', managePollingState);
+    window.addEventListener('focus', performImmediateRefresh);
+    window.addEventListener('pageshow', performImmediateRefresh);
+    window.addEventListener('online', performImmediateRefresh);
     window.addEventListener('storage', (e) => {
-      if ((e.key === 'hms_study_sessions' || e.key === 'hms_study_attendance') && window.currentStudyHourRender) {
-        window.currentStudyHourRender(true);
+      if (e.key === 'hms_study_sessions' || e.key === 'hms_study_attendance') {
+        performImmediateRefresh();
       }
     });
+
+    managePollingState();
   }
 
-  if (studyHourPollInterval) clearInterval(studyHourPollInterval);
-  studyHourPollInterval = setInterval(() => {
-    if (window.currentStudyHourRender) window.currentStudyHourRender(true);
-  }, 3000);
-
   window.addEventListener('beforeunload', () => {
-    clearInterval(studyHourPollInterval);
+    if (studyHourPollInterval) clearInterval(studyHourPollInterval);
     if (studentQrRegenInterval) clearInterval(studentQrRegenInterval);
     if (studentLiveTimerInterval) clearInterval(studentLiveTimerInterval);
     window.currentStudyHourRender = null;

@@ -89,7 +89,7 @@ export const DigitalWalletQR: React.FC<DigitalWalletQRProps> = ({
         )}
       </div>
 
-      {/* Embedded High-Res Universal QR Generator with 30s Countdown */}
+      {/* Embedded High-Res Universal QR Generator with 60s Countdown */}
       <div className="bg-slate-900 border-b border-x border-slate-800 rounded-b-3xl pb-5">
         <UniversalQR
           type={type}
@@ -101,7 +101,7 @@ export const DigitalWalletQR: React.FC<DigitalWalletQRProps> = ({
             department,
             roomNumber,
           }}
-          ttlSeconds={30}
+          ttlSeconds={60}
           autoRefresh={true}
         />
       </div>

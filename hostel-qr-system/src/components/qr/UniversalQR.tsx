@@ -19,7 +19,7 @@ export const UniversalQR: React.FC<UniversalQRProps> = ({
   type,
   id,
   payloadData,
-  ttlSeconds = 30,
+  ttlSeconds = 60,
   autoRefresh = true,
   options,
   title,
